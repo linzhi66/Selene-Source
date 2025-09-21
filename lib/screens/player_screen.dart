@@ -229,6 +229,25 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       }
     }
 
+    // 设置进度为 100%
+    updateLoadingProgress(1.0);
+    updateLoadingMessage('准备就绪，即将开始播放...');
+    updateLoadingEmoji('✨');
+
+    setState(() {
+      _showSwitchLoadingOverlay = true;
+      _switchLoadingMessage = '视频加载中...';
+    });
+
+    // 延时 1 秒后隐藏加载界面
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+
     // 设置播放
     startPlay(playEpisodeIndex, playTime);
   }
@@ -525,21 +544,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void _onVideoPlayerReady() {
     // 视频播放器准备就绪时的处理逻辑
     debugPrint('Video player is ready!');
-    
-    // 设置进度为 100%
-    updateLoadingProgress(1.0);
-    updateLoadingMessage('准备就绪，即将开始播放...');
-    updateLoadingEmoji('✨');
 
-    // 延时 1 秒后隐藏加载界面
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          // 隐藏切换加载蒙版
-          _showSwitchLoadingOverlay = false;
-        });
-      }
+    setState(() {
+      // 隐藏切换加载蒙版
+      _showSwitchLoadingOverlay = false;
     });
     
     // 如果有需要恢复的播放进度，则跳转到指定位置
