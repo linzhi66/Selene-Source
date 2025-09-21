@@ -174,13 +174,13 @@ class DoubanService {
         }
       }
 
-      // 提取集数（仅剧集有） - 暂时不使用，但保留解析逻辑以备将来使用
-      // int? episodes;
-      // final episodesRegex = RegExp(r'<span[^>]*class="pl">集数:</span>([^<]+)');
-      // final episodesMatch = episodesRegex.firstMatch(html);
-      // if (episodesMatch != null) {
-      //   episodes = int.tryParse(episodesMatch.group(1)?.trim() ?? '');
-      // }
+      // 提取集数（仅剧集有）
+      int? episodes;
+      final episodesRegex = RegExp(r'<span[^>]*class="pl">集数:</span>([^<]+)');
+      final episodesMatch = episodesRegex.firstMatch(html);
+      if (episodesMatch != null) {
+        episodes = int.tryParse(episodesMatch.group(1)?.trim() ?? '');
+      }
 
       // 提取时长 - 支持电影和剧集
       int? episodeLength;
@@ -249,6 +249,60 @@ class DoubanService {
         summary = summary2;
       }
 
+      // 提取推荐区域
+      List<DoubanRecommendItem> recommends = [];
+      try {
+        // 查找推荐区域
+        final recommendationsRegex = RegExp(r'<div[^>]*id="recommendations"[^>]*>(.*?)</div>', multiLine: true, dotAll: true);
+        final recommendationsMatch = recommendationsRegex.firstMatch(html);
+        
+        if (recommendationsMatch != null) {
+          final recommendationsContent = recommendationsMatch.group(1) ?? '';
+          
+          // 提取所有推荐项目
+          final dlRegex = RegExp(r'<dl>(.*?)</dl>', multiLine: true, dotAll: true);
+          final dlMatches = dlRegex.allMatches(recommendationsContent);
+          
+          for (final dlMatch in dlMatches) {
+            final dlContent = dlMatch.group(1) ?? '';
+            
+            // 提取链接和海报
+            final linkRegex = RegExp(r'<a[^>]*href="https://movie\.douban\.com/subject/(\d+)/[^"]*"[^>]*>');
+            final linkMatch = linkRegex.firstMatch(dlContent);
+            
+            // 提取海报图片
+            final imgRegex = RegExp(r'<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"');
+            final imgMatch = imgRegex.firstMatch(dlContent);
+            
+            // 提取评分
+            final rateRegex = RegExp(r'<span[^>]*class="subject-rate"[^>]*>([^<]*)</span>');
+            final rateMatch = rateRegex.firstMatch(dlContent);
+            
+            if (linkMatch != null && imgMatch != null) {
+              final recommendId = linkMatch.group(1) ?? '';
+              final posterUrl = imgMatch.group(1) ?? '';
+              final title = imgMatch.group(2) ?? '';
+              final recommendRate = rateMatch?.group(1)?.trim();
+              
+              // 过滤掉空的评分
+              final rate = recommendRate?.isNotEmpty == true ? recommendRate : null;
+              
+              if (recommendId.isNotEmpty && title.isNotEmpty) {
+                recommends.add(DoubanRecommendItem(
+                  id: recommendId,
+                  title: title,
+                  poster: posterUrl,
+                  rate: rate,
+                ));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // 推荐区域解析失败，继续执行
+        print('解析推荐区域失败: $e');
+      }
+
       return DoubanMovieDetails(
         id: id,
         title: title,
@@ -266,6 +320,8 @@ class DoubanService {
         releaseDate: releaseDate,
         originalTitle: null, // HTML页面中暂未找到原始标题的提取逻辑
         imdbId: null, // HTML页面中暂未找到IMDB ID的提取逻辑
+        recommends: recommends,
+        totalEpisodes: episodes,
       );
     } catch (e) {
       // 如果解析失败，返回基本信息
@@ -659,6 +715,14 @@ class DoubanService {
         cacheKey,
         (raw) {
           final map = raw as Map<String, dynamic>;
+          
+          // 处理推荐列表
+          List<DoubanRecommendItem> recommends = [];
+          if (map['recommends'] != null) {
+            final recommendsData = map['recommends'] as List<dynamic>? ?? [];
+            recommends = recommendsData.map((r) => DoubanRecommendItem.fromJson(r as Map<String, dynamic>)).toList();
+          }
+          
           return DoubanMovieDetails(
             id: map['id']?.toString() ?? '',
             title: map['title']?.toString() ?? '',
@@ -688,6 +752,7 @@ class DoubanService {
             releaseDate: map['releaseDate']?.toString(),
             originalTitle: map['originalTitle']?.toString(),
             imdbId: map['imdbId']?.toString(),
+            recommends: recommends,
           );
         },
       );

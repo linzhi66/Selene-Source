@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../models/play_record.dart';
 import '../services/theme_service.dart';
 import '../widgets/capsule_tab_switcher.dart';
 import '../widgets/custom_refresh_indicator.dart';

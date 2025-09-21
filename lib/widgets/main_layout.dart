@@ -162,9 +162,11 @@ class _MainLayoutState extends State<MainLayout> {
                 child: Center(
                   child: Icon(
                     LucideIcons.search,
-                    color: themeService.isDarkMode 
-                        ? const Color(0xFFffffff)
-                        : const Color(0xFF2c3e50),
+                    color: widget.isSearchMode 
+                        ? const Color(0xFF27ae60) // 搜索模式时绿色
+                        : themeService.isDarkMode 
+                            ? const Color(0xFFffffff) // 非搜索模式深色主题白色
+                            : const Color(0xFF2c3e50), // 非搜索模式浅色主题深灰色
                     size: 24,
                     weight: 1.0,
                   ),

@@ -1,6 +1,61 @@
 import 'play_record.dart';
 import 'video_info.dart';
 
+/// 豆瓣推荐项目数据模型
+class DoubanRecommendItem {
+  final String id;
+  final String title;
+  final String poster;
+  final String? rate;
+
+  const DoubanRecommendItem({
+    required this.id,
+    required this.title,
+    required this.poster,
+    this.rate,
+  });
+
+  /// 从JSON创建DoubanRecommendItem实例
+  factory DoubanRecommendItem.fromJson(Map<String, dynamic> json) {
+    return DoubanRecommendItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      poster: json['poster']?.toString() ?? '',
+      rate: json['rate']?.toString(),
+    );
+  }
+
+  /// 转换为JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'poster': poster,
+      'rate': rate,
+    };
+  }
+
+  /// 转换为VideoInfo格式，用于VideoCard显示
+  VideoInfo toVideoInfo() {
+    return VideoInfo(
+      id: id,
+      source: 'douban',
+      title: title,
+      sourceName: '豆瓣',
+      year: '', // 推荐项目没有年份信息
+      cover: poster,
+      index: 1,
+      totalEpisodes: 1,
+      playTime: 0,
+      totalTime: 0,
+      saveTime: DateTime.now().millisecondsSinceEpoch,
+      searchTitle: title,
+      doubanId: id,
+      rate: rate,
+    );
+  }
+}
+
 /// 豆瓣电影详情数据模型
 class DoubanMovieDetails {
   final String id;
@@ -19,6 +74,8 @@ class DoubanMovieDetails {
   final String? releaseDate;
   final String? originalTitle;
   final String? imdbId;
+  final int? totalEpisodes;
+  final List<DoubanRecommendItem> recommends;
 
   const DoubanMovieDetails({
     required this.id,
@@ -37,6 +94,8 @@ class DoubanMovieDetails {
     this.releaseDate,
     this.originalTitle,
     this.imdbId,
+    this.totalEpisodes,
+    this.recommends = const [],
   });
 
   /// 从JSON创建DoubanMovieDetails实例
@@ -117,6 +176,21 @@ class DoubanMovieDetails {
           .toList();
     }
     
+    // 处理推荐列表
+    List<DoubanRecommendItem> recommends = [];
+    if (json['recommends'] != null) {
+      final recommendsData = json['recommends'] as List<dynamic>? ?? [];
+      recommends = recommendsData.map((r) => DoubanRecommendItem.fromJson(r as Map<String, dynamic>)).toList();
+    }
+    
+    // 处理总集数
+    int? totalEpisodes;
+    if (json['episodes_count'] != null) {
+      totalEpisodes = json['episodes_count'] as int?;
+    } else if (json['total_episodes'] != null) {
+      totalEpisodes = json['total_episodes'] as int?;
+    }
+    
     return DoubanMovieDetails(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -136,6 +210,8 @@ class DoubanMovieDetails {
       releaseDate: json['pubdate']?.toString(),
       originalTitle: json['original_title']?.toString(),
       imdbId: json['imdb']?.toString(),
+      totalEpisodes: totalEpisodes,
+      recommends: recommends,
     );
   }
 
@@ -158,6 +234,8 @@ class DoubanMovieDetails {
       'releaseDate': releaseDate,
       'originalTitle': originalTitle,
       'imdbId': imdbId,
+      'totalEpisodes': totalEpisodes,
+      'recommends': recommends.map((r) => r.toJson()).toList(),
     };
   }
 }

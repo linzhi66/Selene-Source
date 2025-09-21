@@ -11,6 +11,8 @@ class VideoPlayerWidget extends StatefulWidget {
   final Function(bool)? onFullscreenChange;
   final Function(VideoPlayerWidgetController)? onControllerCreated;
   final VoidCallback? onReady;
+  final VoidCallback? onNextEpisode;
+  final VoidCallback? onVideoCompleted;
 
   const VideoPlayerWidget({
     super.key,
@@ -20,6 +22,8 @@ class VideoPlayerWidget extends StatefulWidget {
     this.onFullscreenChange,
     this.onControllerCreated,
     this.onReady,
+    this.onNextEpisode,
+    this.onVideoCompleted,
   });
 
   @override
@@ -58,6 +62,11 @@ class VideoPlayerWidgetController {
     return _state._videoController?.value.isPlaying ?? false;
   }
 
+  /// 暂停播放
+  void pause() {
+    _state._chewieController?.pause();
+  }
+
   /// 销毁播放器资源
   void dispose() {
     _state._videoController?.dispose();
@@ -70,6 +79,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _isFullscreen = false;
+  bool _hasCompleted = false; // 防止重复触发完成事件
 
   @override
   void initState() {
@@ -132,11 +142,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             customControls: CustomChewieControls(
               onBackPressed: widget.onBackPressed,
               onFullscreenChange: _handleFullscreenChange,
+              onNextEpisode: widget.onNextEpisode,
             ),
           );
           
+          // 添加视频播放完成监听
+          _videoController!.addListener(_onVideoStateChanged);
+          
           setState(() {
             _isInitialized = true;
+            _hasCompleted = false;
           });
           
           // 触发 ready 事件
@@ -153,14 +168,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   Future<void> updateVideoUrl(String newVideoUrl) async {
     if (!mounted) return;
     
+    // 保存当前全屏状态
+    final wasFullscreen = _isFullscreen;
+    
+    // 如果当前在全屏状态，先退出全屏
+    if (wasFullscreen && _chewieController != null) {
+      _chewieController!.exitFullScreen();
+      // 等待退出全屏完成
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    
     try {
-      // 释放当前控制器
+      // 先移除监听器，再释放控制器
+      _videoController?.removeListener(_onVideoStateChanged);
       _chewieController?.dispose();
       _videoController?.dispose();
       
       // 重置状态
       setState(() {
         _isInitialized = false;
+        _hasCompleted = false;
+        _isFullscreen = false; // 确保全屏状态被重置
       });
       
       // 创建新的控制器
@@ -183,8 +211,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
           customControls: CustomChewieControls(
             onBackPressed: widget.onBackPressed,
             onFullscreenChange: _handleFullscreenChange,
+            onNextEpisode: widget.onNextEpisode,
           ),
         );
+        
+        // 添加视频播放完成监听
+        _videoController!.addListener(_onVideoStateChanged);
         
         setState(() {
           _isInitialized = true;
@@ -192,6 +224,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         
         // 触发 ready 事件
         widget.onReady?.call();
+        
+        // 如果之前是全屏状态，等待 ready 后重新进入全屏
+        if (wasFullscreen) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _chewieController != null) {
+              // 延迟一点时间确保播放器完全准备好
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted && _chewieController != null) {
+                  _chewieController!.enterFullScreen();
+                }
+              });
+            }
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error updating video URL: $e');
@@ -213,6 +259,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       await _videoController!.seekTo(position);
     } catch (e) {
       debugPrint('Error seeking to position: $e');
+    }
+  }
+
+  // 处理视频状态变化
+  void _onVideoStateChanged() {
+    if (!mounted || _videoController == null || !_videoController!.value.isInitialized) return;
+    
+    final value = _videoController!.value;
+    
+    // 检查视频是否播放完成
+    if (value.position >= value.duration && value.duration.inMilliseconds > 0) {
+      if (!_hasCompleted) {
+        _hasCompleted = true;
+        widget.onVideoCompleted?.call();
+      }
     }
   }
 
@@ -241,6 +302,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   void dispose() {
     // 恢复屏幕方向为自动
     _restoreOrientation();
+    // 移除监听器
+    _videoController?.removeListener(_onVideoStateChanged);
     _videoController?.dispose();
     _chewieController?.dispose();
     super.dispose();
@@ -267,11 +330,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 class CustomChewieControls extends StatefulWidget {
   final VoidCallback? onBackPressed;
   final Function(bool) onFullscreenChange;
+  final VoidCallback? onNextEpisode;
 
   const CustomChewieControls({
     super.key,
     this.onBackPressed,
     required this.onFullscreenChange,
+    this.onNextEpisode,
   });
 
   @override
@@ -302,6 +367,12 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
     
     // 获取 ChewieController
     final chewieController = ChewieController.of(context);
+    
+    // 如果控制器发生变化，先移除旧监听器
+    if (_chewieController != null && _chewieController != chewieController) {
+      _chewieController!.videoPlayerController.removeListener(_onVideoStateChanged);
+    }
+    
     _chewieController = chewieController;
     // 监听视频播放状态变化
     _chewieController!.videoPlayerController.addListener(_onVideoStateChanged);
@@ -664,6 +735,7 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
                               chewieController.play();
                             }
                           },
+                          behavior: HitTestBehavior.opaque,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             child: AnimatedBuilder(
@@ -683,34 +755,38 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
                         // 下一集按钮
                         Transform.translate(
                           offset: const Offset(-8, 0),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.skip_next,
-                              color: Colors.white,
-                              size: isFullscreen ? 28 : 24,
-                            ),
-                            onPressed: () {
+                          child: GestureDetector(
+                            onTap: () {
                               _onUserInteraction();
-                              // Handle next episode
+                              widget.onNextEpisode?.call();
                             },
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.skip_next,
+                                color: Colors.white,
+                                size: isFullscreen ? 28 : 24,
+                              ),
+                            ),
                           ),
                         ),
                         // 位置指示器
                         Expanded(
                           child: _buildPositionIndicator(chewieController),
                         ),
-                        // 设置按钮
-                        IconButton(
-                          icon: Icon(
-                            Icons.settings,
-                            color: Colors.white,
-                            size: isFullscreen ? 22 : 20,
-                          ),
-                          onPressed: () {
-                            _onUserInteraction();
-                            // Handle settings
-                          },
-                        ),
+                        // // 设置按钮
+                        // IconButton(
+                        //   icon: Icon(
+                        //     Icons.settings,
+                        //     color: Colors.white,
+                        //     size: isFullscreen ? 22 : 20,
+                        //   ),
+                        //   onPressed: () {
+                        //     _onUserInteraction();
+                        //     // Handle settings
+                        //   },
+                        // ),
                         // 全屏按钮
                         GestureDetector(
                           onTap: () {
@@ -722,6 +798,7 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
                               widget.onFullscreenChange(true);
                             }
                           },
+                          behavior: HitTestBehavior.opaque,
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             child: Icon(

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/douban_movie.dart';
-import '../models/play_record.dart';
 import 'video_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'video_menu_bottom_sheet.dart';

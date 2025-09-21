@@ -478,7 +478,7 @@ class M3U8Service {
 
   /// 格式化下载速度为字符串
   String _formatDownloadSpeed(double speedKBps) {
-    if (speedKBps <= 0) return '0KB/s';
+    if (speedKBps <= 0) return '超时';
     
     if (speedKBps >= 1024) {
       // 大于等于1MB/s，显示为MB/s
@@ -490,6 +490,92 @@ class M3U8Service {
     }
   }
 
+
+  /// 并发测速所有源并实时回调结果
+  Future<void> testSourcesWithCallback(
+    List<dynamic> allSources,
+    Function(String sourceId, Map<String, dynamic> speedData) onSourceCompleted, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    if (allSources.isEmpty) return;
+    
+    // 为每个源选择要测试的集数链接
+    final testUrls = <String, String>{}; // sourceId -> episodeUrl
+    
+    for (final source in allSources) {
+      final sourceId = '${source.source}_${source.id}';
+      String episodeUrl;
+      
+      // 选择第二集链接，如果没有第二集则选择第一集
+      if (source.episodes.length >= 2) {
+        episodeUrl = source.episodes[1]; // 第二集
+      } else if (source.episodes.isNotEmpty) {
+        episodeUrl = source.episodes[0]; // 第一集
+      } else {
+        continue; // 跳过没有集数的源
+      }
+      
+      testUrls[sourceId] = episodeUrl;
+    }
+    
+    // 创建并发测速任务
+    final futures = testUrls.entries.map((entry) async {
+      final sourceId = entry.key;
+      final episodeUrl = entry.value;
+      
+      try {
+        final streamInfo = await getStreamInfo(episodeUrl).timeout(
+          timeout,
+          onTimeout: () {
+            return {
+              'resolution': {'width': 0, 'height': 0},
+              'downloadSpeed': 0.0,
+              'latency': 0,
+              'success': false,
+              'error': '获取流信息超时',
+            };
+          },
+        );
+        
+        if (streamInfo['success']) {
+          final downloadSpeed = streamInfo['downloadSpeed'] as double;
+          final latency = streamInfo['latency'] as int;
+          final resolutionData = streamInfo['resolution'] as Map<String, int>;
+          
+          // 转换分辨率为标准格式
+          final resolution = _convertResolutionToString(resolutionData);
+          
+          final speedData = {
+            'quality': resolution,
+            'loadSpeed': _formatDownloadSpeed(downloadSpeed),
+            'pingTime': '${latency}ms',
+          };
+          
+          // 实时回调结果
+          onSourceCompleted(sourceId, speedData);
+        } else {
+          // 测速失败的情况
+          final speedData = {
+            'quality': '未知',
+            'loadSpeed': '超时',
+            'pingTime': '超时',
+          };
+          onSourceCompleted(sourceId, speedData);
+        }
+      } catch (e) {
+        // 异常情况
+        final speedData = {
+          'quality': '未知',
+          'loadSpeed': '超时',
+          'pingTime': '超时',
+        };
+        onSourceCompleted(sourceId, speedData);
+      }
+    });
+    
+    // 并发执行所有测速任务，每个任务完成后会立即触发回调
+    await Future.wait(futures);
+  }
 
   /// 释放资源
   void dispose() {
