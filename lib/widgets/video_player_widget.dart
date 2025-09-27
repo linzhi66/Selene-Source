@@ -395,6 +395,9 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
   bool _isLongPressing = false;
   double _originalPlaybackSpeed = 1.0;
   Duration? _dragPosition; // 拖动时的位置
+  bool _isSeekingViaSwipe = false; // 是否正在通过滑动进行seek
+  double _swipeStartX = 0; // 滑动开始时的X坐标
+  Duration _swipeStartPosition = Duration.zero; // 滑动开始时的播放位置
 
   @override
   void initState() {
@@ -582,6 +585,75 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
     _startHideTimer();
   }
 
+  // 处理空白区域水平滑动开始
+  void _onSwipeStart(DragStartDetails details) {
+    if (!mounted) return;
+
+    final chewieController = _chewieController;
+    if (chewieController == null || !chewieController.videoPlayerController.value.isInitialized) {
+      return;
+    }
+
+    setState(() {
+      _isSeekingViaSwipe = true;
+      _swipeStartX = details.globalPosition.dx;
+      _swipeStartPosition = chewieController.videoPlayerController.value.position;
+      _controlsVisible = true; // 显示控件
+    });
+
+    _hideTimer?.cancel(); // 取消自动隐藏定时器
+  }
+
+  // 处理空白区域水平滑动更新
+  void _onSwipeUpdate(DragUpdateDetails details) {
+    if (!mounted || !_isSeekingViaSwipe) return;
+
+    final chewieController = _chewieController;
+    if (chewieController == null || !chewieController.videoPlayerController.value.isInitialized) {
+      return;
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final swipeDistance = details.globalPosition.dx - _swipeStartX;
+
+    // 计算滑动比例：每100像素代表10%的视频时长变化
+    final swipeRatio = swipeDistance / (screenWidth * 0.5); // 半屏宽度代表100%变化
+    final duration = chewieController.videoPlayerController.value.duration;
+
+    // 计算目标位置
+    final targetPosition = _swipeStartPosition + Duration(milliseconds: (duration.inMilliseconds * swipeRatio * 0.1).round());
+    final clampedPosition = Duration(milliseconds: targetPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
+
+    setState(() {
+      _dragPosition = clampedPosition; // 更新拖动位置显示
+    });
+  }
+
+  // 处理空白区域水平滑动结束
+  void _onSwipeEnd(DragEndDetails details) {
+    if (!mounted || !_isSeekingViaSwipe) return;
+
+    final chewieController = _chewieController;
+    if (chewieController == null || !chewieController.videoPlayerController.value.isInitialized) {
+      setState(() {
+        _isSeekingViaSwipe = false;
+      });
+      return;
+    }
+
+    // 如果有拖动位置，跳转到该位置
+    if (_dragPosition != null) {
+      chewieController.videoPlayerController.seekTo(_dragPosition!);
+    }
+
+    setState(() {
+      _isSeekingViaSwipe = false;
+      _dragPosition = null;
+    });
+
+    _startHideTimer(); // 重新开始自动隐藏定时器
+  }
+
   // 退出全屏
   void _exitFullscreen() {
     // 检查widget是否仍然mounted
@@ -607,6 +679,10 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
           _onLongPressEnd(const LongPressEndDetails());
         }
       },
+      // 添加水平滑动处理
+      onHorizontalDragStart: _onSwipeStart,
+      onHorizontalDragUpdate: _onSwipeUpdate,
+      onHorizontalDragEnd: _onSwipeEnd,
       child: Stack(
         children: [
           // 全屏点击区域 - 始终存在，用于显示/隐藏控件
@@ -750,6 +826,7 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
                       _dragPosition = duration;
                     });
                   },
+                  dragPosition: _dragPosition, // 传入拖动位置
                 ),
               ),
             ),
@@ -893,6 +970,37 @@ class _CustomChewieControlsState extends State<CustomChewieControls> {
                 ),
               ),
             ),
+          // 滑动seeking时的视觉反馈
+          if (_isSeekingViaSwipe)
+            Positioned(
+              top: 10,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.fast_rewind,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '滑动调整进度',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.fast_forward,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 24,
+                  ),
+                ],
+              ),
+            ),
           if (_isLongPressing)
             Positioned(
               // child: Text("倍速播放"),
@@ -971,6 +1079,7 @@ class CustomVideoProgressBar extends StatefulWidget {
     this.onDragUpdate,
     this.draggableProgressBar = true,
     this.onPositionUpdate,
+    this.dragPosition,
   }) : colors = colors ?? ChewieProgressColors();
 
   final double barHeight;
@@ -981,6 +1090,7 @@ class CustomVideoProgressBar extends StatefulWidget {
   final Function()? onDragEnd;
   final Function()? onDragUpdate;
   final Function(Duration)? onPositionUpdate;
+  final Duration? dragPosition;
   final bool draggableProgressBar;
 
   @override
@@ -1017,9 +1127,14 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
 
   @override
   Widget build(BuildContext context) {
+    // 如果有拖动位置，创建一个修改过的VideoPlayerValue来显示拖动位置
+    final displayValue = widget.dragPosition != null
+        ? controller.value.copyWith(position: widget.dragPosition!)
+        : controller.value;
+
     final child = Center(
       child: StaticProgressBar(
-        value: controller.value,
+        value: displayValue,
         colors: widget.colors,
         barHeight: widget.barHeight,
         handleHeight: widget.handleHeight,
