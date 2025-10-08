@@ -250,7 +250,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       targetIndex = 0;
       return;
     }
-    currentEpisodeIndex = targetIndex;
+    setState(() {
+      currentEpisodeIndex = targetIndex;
+    });
     // 将 playTime 转换为 Duration 并传递给 updateVideoUrl
     final startAt = playTime > 0 ? Duration(seconds: playTime) : null;
     updateVideoUrl(currentDetail!.episodes[targetIndex], startAt: startAt);
@@ -2100,6 +2102,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         // 暂停时保存进度
                         _saveProgress(force: true);
                       },
+                      isLastEpisode: currentDetail != null && currentEpisodeIndex >= currentDetail!.episodes.length - 1,
                     ),
                     // 切换播放源/集数时的加载蒙版（只遮挡播放器）
                     SwitchLoadingOverlay(

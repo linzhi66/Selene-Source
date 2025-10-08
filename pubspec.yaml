@@ -52,8 +52,7 @@ dependencies:
   gal: ^2.3.0
   app_settings: ^6.1.1
   fvp: ^0.34.0
-  chewie: ^1.7.4
-  video_player: ^2.8.2
+  awesome_video_player: ^1.0.5
   scrollable_positioned_list: ^0.3.8
   wakelock_plus: ^1.2.8
   dlna_dart: ^0.1.0
