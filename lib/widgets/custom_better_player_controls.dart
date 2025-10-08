@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:awesome_video_player/awesome_video_player.dart';
 import 'video_player_widget.dart';
 import 'dlna_device_dialog.dart';
@@ -14,6 +15,7 @@ class CustomBetterPlayerControls extends StatefulWidget {
   final VideoPlayerWidgetController? playerController;
   final String videoUrl;
   final bool isLastEpisode;
+  final GlobalKey? betterPlayerKey;
 
   const CustomBetterPlayerControls({
     super.key,
@@ -26,6 +28,7 @@ class CustomBetterPlayerControls extends StatefulWidget {
     this.playerController,
     required this.videoUrl,
     this.isLastEpisode = false,
+    this.betterPlayerKey,
   });
 
   @override
@@ -45,17 +48,29 @@ class _CustomBetterPlayerControlsState
   bool _isSeekingViaSwipe = false;
   double _swipeStartX = 0;
   Duration _swipeStartPosition = Duration.zero;
+  bool _isPipSupported = false;
+  bool _isInPipMode = false;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addEventsListener(_onVideoStateChanged);
     widget.controller.videoPlayerController?.addListener(_onVideoPlayerUpdate);
+    _checkPipSupport();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _forceStartHideTimer();
       }
     });
+  }
+
+  Future<void> _checkPipSupport() async {
+    final isSupported = await widget.controller.isPictureInPictureSupported();
+    if (mounted) {
+      setState(() {
+        _isPipSupported = isSupported;
+      });
+    }
   }
 
   void _onVideoPlayerUpdate() {
@@ -80,12 +95,34 @@ class _CustomBetterPlayerControlsState
       if (mounted) {
         setState(() {});
       }
-    } else if (event.betterPlayerEventType == BetterPlayerEventType.hideFullscreen) {
+    } else if (event.betterPlayerEventType ==
+        BetterPlayerEventType.hideFullscreen) {
       widget.onFullscreenChange(false);
       // 触发重建以更新UI
       if (mounted) {
         setState(() {});
       }
+    }
+    // 监听 PiP 状态变化
+    else if (event.betterPlayerEventType == BetterPlayerEventType.pipStart) {
+      setState(() {
+        _isInPipMode = true;
+        _controlsVisible = false;
+      });
+      _hideTimer?.cancel();
+      widget.onControlsVisibilityChanged(false);
+    } else if (event.betterPlayerEventType == BetterPlayerEventType.pipStop) {
+      // 退出 PiP 模式时立即设置为竖屏
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+      setState(() {
+        _isInPipMode = false;
+        _controlsVisible = true;
+      });
+      _startHideTimer();
+      widget.onControlsVisibilityChanged(true);
     }
 
     final isPlaying = widget.controller.isPlaying() ?? false;
@@ -312,7 +349,9 @@ class _CustomBetterPlayerControlsState
 
       int attempts = 0;
       const maxAttempts = 20;
-      while (mounted && (widget.controller.isFullScreen ?? false) && attempts < maxAttempts) {
+      while (mounted &&
+          (widget.controller.isFullScreen ?? false) &&
+          attempts < maxAttempts) {
         await Future.delayed(const Duration(milliseconds: 100));
         attempts++;
       }
@@ -330,22 +369,33 @@ class _CustomBetterPlayerControlsState
   Widget build(BuildContext context) {
     final isFullscreen = widget.controller.isFullScreen ?? false;
 
+    // 在 PIP 模式下不显示任何控件 - 使用 VideoPlayerValue 的 isPip 方法
+    final isPipMode =
+        widget.controller.videoPlayerController?.value.isPip ?? false;
+    if (isPipMode) {
+      return IgnorePointer(
+        child: Container(color: Colors.transparent),
+      );
+    }
+
     return Stack(
       children: [
         // 背景层 - 处理长按和滑动手势
         Positioned.fill(
           child: GestureDetector(
-            onLongPressStart: _onLongPressStart,
-            onLongPressEnd: _onLongPressEnd,
-            onLongPressCancel: () {
-              if (_isLongPressing) {
-                _onLongPressEnd(const LongPressEndDetails());
-              }
-            },
-            onHorizontalDragStart: _onSwipeStart,
-            onHorizontalDragUpdate: _onSwipeUpdate,
-            onHorizontalDragEnd: _onSwipeEnd,
-            onTap: _onBlankAreaTap,
+            onLongPressStart: _isInPipMode ? null : _onLongPressStart,
+            onLongPressEnd: _isInPipMode ? null : _onLongPressEnd,
+            onLongPressCancel: _isInPipMode
+                ? null
+                : () {
+                    if (_isLongPressing) {
+                      _onLongPressEnd(const LongPressEndDetails());
+                    }
+                  },
+            onHorizontalDragStart: _isInPipMode ? null : _onSwipeStart,
+            onHorizontalDragUpdate: _isInPipMode ? null : _onSwipeUpdate,
+            onHorizontalDragEnd: _isInPipMode ? null : _onSwipeEnd,
+            onTap: _isInPipMode ? null : _onBlankAreaTap,
             behavior: HitTestBehavior.opaque,
             child: Container(
               color: Colors.transparent,
@@ -358,26 +408,24 @@ class _CustomBetterPlayerControlsState
             top: 10,
             left: 0,
             right: 0,
-            child: Container(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    '2x',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.fast_forward,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  '2x',
+                  style: TextStyle(
                     color: Colors.white,
-                    size: isFullscreen ? 64 : 48,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.fast_forward,
+                  color: Colors.white,
+                  size: isFullscreen ? 32 : 28,
+                ),
+              ],
             ),
           ),
         if (_controlsVisible)
@@ -557,6 +605,25 @@ class _CustomBetterPlayerControlsState
                         await _showSpeedDialog();
                       },
                     ),
+                    if (_isPipSupported && !isFullscreen)
+                      GestureDetector(
+                        onTap: () {
+                          _onUserInteraction();
+                          if (widget.betterPlayerKey != null) {
+                            widget.controller.enablePictureInPicture(
+                                widget.betterPlayerKey!);
+                          }
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.picture_in_picture_alt,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
                     GestureDetector(
                       onTap: () {
                         _onUserInteraction();

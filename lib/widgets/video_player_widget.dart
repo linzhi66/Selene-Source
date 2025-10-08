@@ -40,7 +40,8 @@ class VideoPlayerWidgetController {
   VideoPlayerWidgetController._(this._state);
 
   /// 动态更新视频数据源
-  Future<void> updateDataSource(BetterPlayerDataSource dataSource, {Duration? startAt}) async {
+  Future<void> updateDataSource(BetterPlayerDataSource dataSource,
+      {Duration? startAt}) async {
     await _state.updateDataSource(dataSource, startAt: startAt);
   }
 
@@ -52,12 +53,14 @@ class VideoPlayerWidgetController {
 
   /// 获取当前播放位置
   Duration? get currentPosition {
-    return _state._betterPlayerController?.videoPlayerController?.value.position;
+    return _state
+        ._betterPlayerController?.videoPlayerController?.value.position;
   }
 
   /// 获取视频总时长
   Duration? get duration {
-    return _state._betterPlayerController?.videoPlayerController?.value.duration;
+    return _state
+        ._betterPlayerController?.videoPlayerController?.value.duration;
   }
 
   /// 获取播放状态
@@ -95,7 +98,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   final List<VoidCallback> _progressListeners = [];
   double _cachedPlaybackSpeed = 1.0;
   BetterPlayerDataSource? _currentDataSource;
-  OverlayEntry? _fullscreenOverlay;
+  final GlobalKey _betterPlayerKey = GlobalKey();
 
   @override
   void initState() {
@@ -132,7 +135,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Future<void> _initializePlayer() async {
     if (!mounted) return;
-    
+
     // 如果 _currentDataSource 为 null 则停止初始化直接返回
     if (_currentDataSource == null) return;
 
@@ -158,6 +161,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             playerController: VideoPlayerWidgetController._(this),
             videoUrl: _currentDataSource?.url ?? '',
             isLastEpisode: widget.isLastEpisode,
+            betterPlayerKey: _betterPlayerKey,
           );
         },
       ),
@@ -170,7 +174,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     );
 
     _betterPlayerController!.addEventsListener(_onPlayerEvent);
-    
+
     // 监听全屏状态变化
     _betterPlayerController!.addEventsListener((event) {
       if (event.betterPlayerEventType == BetterPlayerEventType.openFullscreen) {
@@ -179,7 +183,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             _isFullscreen = true;
           });
         }
-      } else if (event.betterPlayerEventType == BetterPlayerEventType.hideFullscreen) {
+      } else if (event.betterPlayerEventType ==
+          BetterPlayerEventType.hideFullscreen) {
         if (mounted && _isFullscreen) {
           setState(() {
             _isFullscreen = false;
@@ -220,7 +225,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
   }
 
-  Future<void> updateDataSource(BetterPlayerDataSource dataSource, {Duration? startAt}) async {
+  Future<void> updateDataSource(BetterPlayerDataSource dataSource,
+      {Duration? startAt}) async {
     if (!mounted) return;
 
     setState(() {
@@ -231,17 +237,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_isInitialized && _betterPlayerController != null) {
       try {
         if (_betterPlayerController!.videoPlayerController != null) {
-          _cachedPlaybackSpeed = _betterPlayerController!.videoPlayerController!.value.speed;
+          _cachedPlaybackSpeed =
+              _betterPlayerController!.videoPlayerController!.value.speed;
         }
 
         await _betterPlayerController!.setupDataSource(dataSource);
-        
+
         if (startAt != null) {
           await _betterPlayerController!.seekTo(startAt);
         }
-        
+
         _betterPlayerController!.setSpeed(_cachedPlaybackSpeed);
-        
+
         setState(() {
           _hasCompleted = false;
         });
@@ -318,6 +325,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       child: _isInitialized && _betterPlayerController != null
           ? BetterPlayer(
               controller: _betterPlayerController!,
+              key: _betterPlayerKey,
             )
           : const Center(
               child: CircularProgressIndicator(
