@@ -7,6 +7,10 @@ class DLNADeviceDialog extends StatefulWidget {
   final Function(DLNADevice)? onCastStarted;
   final DLNADevice? currentDevice;
   final Duration? resumePosition;
+  final String? videoTitle;
+  final int? currentEpisodeIndex;
+  final int? totalEpisodes;
+  final String? sourceName;
 
   const DLNADeviceDialog({
     super.key, 
@@ -14,6 +18,10 @@ class DLNADeviceDialog extends StatefulWidget {
     this.onCastStarted,
     this.currentDevice,
     this.resumePosition,
+    this.videoTitle,
+    this.currentEpisodeIndex,
+    this.totalEpisodes,
+    this.sourceName,
   });
 
   @override
@@ -330,10 +338,23 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
 
   void _castToDevice(DLNADevice device) async {
     try {
+      // 构建标题：{title} - {第 x 集} - {sourceName}
+      // 如果总集数为 1，则不显示集数
+      String formattedTitle = widget.videoTitle ?? '视频';
+      if (widget.sourceName != null) {
+        if (widget.totalEpisodes != null && widget.totalEpisodes! > 1 && widget.currentEpisodeIndex != null) {
+          final episodeNumber = widget.currentEpisodeIndex! + 1;
+          formattedTitle = '${widget.videoTitle} - 第 $episodeNumber 集 - ${widget.sourceName}';
+        } else {
+          formattedTitle = '${widget.videoTitle} - ${widget.sourceName}';
+        }
+      }
+      
       // 设置设备URL并播放
       debugPrint('widget.currentUrl: ${widget.currentUrl}');
+      debugPrint('formattedTitle: $formattedTitle');
       debugPrint('widget.resumePosition: ${widget.resumePosition?.inSeconds ?? 0}秒');
-      device.setUrl(widget.currentUrl);
+      device.setUrl(widget.currentUrl, title: formattedTitle);
       device.play();
 
       if (mounted) {
@@ -342,15 +363,6 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
 
         // 通知父组件投屏已开始，传递设备对象
         widget.onCastStarted?.call(device);
-
-        // 显示投屏成功提示
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('正在投屏到 ${device.info.friendlyName}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {

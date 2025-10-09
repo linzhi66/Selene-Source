@@ -20,6 +20,10 @@ class CustomBetterPlayerControls extends StatefulWidget {
   final GlobalKey? betterPlayerKey;
   final bool isLoadingVideo;
   final Function(dynamic)? onCastStarted;
+  final String? videoTitle;
+  final int? currentEpisodeIndex;
+  final int? totalEpisodes;
+  final String? sourceName;
 
   const CustomBetterPlayerControls({
     super.key,
@@ -35,6 +39,10 @@ class CustomBetterPlayerControls extends StatefulWidget {
     this.betterPlayerKey,
     this.isLoadingVideo = false,
     this.onCastStarted,
+    this.videoTitle,
+    this.currentEpisodeIndex,
+    this.totalEpisodes,
+    this.sourceName,
   });
 
   @override
@@ -337,7 +345,7 @@ class _CustomBetterPlayerControlsState
   Future<void> _showDLNADialog() async {
     // 获取当前播放位置
     final resumePos = widget.controller.videoPlayerController?.value.position;
-    
+
     if (widget.controller.isPlaying() == true) {
       widget.controller.pause();
       widget.onPause?.call();
@@ -363,6 +371,10 @@ class _CustomBetterPlayerControlsState
         builder: (context) => DLNADeviceDialog(
           currentUrl: widget.videoUrl,
           resumePosition: resumePos,
+          videoTitle: widget.videoTitle,
+          currentEpisodeIndex: widget.currentEpisodeIndex,
+          totalEpisodes: widget.totalEpisodes,
+          sourceName: widget.sourceName,
           onCastStarted: widget.onCastStarted,
         ),
       );
@@ -857,11 +869,14 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
       },
       onHorizontalDragEnd: (details) {
         if (_isDragging) {
-          _isDragging = false;
-          widget.onDragEnd?.call();
           final seekPosition = Duration(
               milliseconds: (_dragValue * duration.inMilliseconds).round());
           widget.controller.seekTo(seekPosition);
+          
+          setState(() {
+            _isDragging = false;
+          });
+          widget.onDragEnd?.call();
         }
       },
       onTapDown: (details) {
@@ -870,6 +885,7 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
         final seekPosition = Duration(
             milliseconds: (_dragValue * duration.inMilliseconds).round());
         widget.controller.seekTo(seekPosition);
+        widget.onDragEnd?.call();
       },
       child: Container(
         height: 24,

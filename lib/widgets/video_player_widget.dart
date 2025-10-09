@@ -15,6 +15,10 @@ class VideoPlayerWidget extends StatefulWidget {
   final VoidCallback? onPause;
   final bool isLastEpisode;
   final Function(dynamic)? onCastStarted;
+  final String? videoTitle;
+  final int? currentEpisodeIndex;
+  final int? totalEpisodes;
+  final String? sourceName;
 
   const VideoPlayerWidget({
     super.key,
@@ -28,6 +32,10 @@ class VideoPlayerWidget extends StatefulWidget {
     this.onPause,
     this.isLastEpisode = false,
     this.onCastStarted,
+    this.videoTitle,
+    this.currentEpisodeIndex,
+    this.totalEpisodes,
+    this.sourceName,
   });
 
   @override
@@ -160,6 +168,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             betterPlayerKey: _betterPlayerKey,
             isLoadingVideo: _isLoadingVideo,
             onCastStarted: widget.onCastStarted,
+            videoTitle: widget.videoTitle,
+            currentEpisodeIndex: widget.currentEpisodeIndex,
+            totalEpisodes: widget.totalEpisodes,
+            sourceName: widget.sourceName,
           );
         },
       ),

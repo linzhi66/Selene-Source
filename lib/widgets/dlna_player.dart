@@ -5,6 +5,21 @@ import 'package:dlna_dart/dlna.dart';
 import 'package:dlna_dart/xmlParser.dart';
 import 'dlna_player_controls.dart';
 
+/// DLNAPlayer 的控制器，用于外部控制播放器
+class DLNAPlayerController {
+  final _DLNAPlayerState _state;
+
+  DLNAPlayerController._(this._state);
+
+  /// 更新视频 URL
+  void updateVideoUrl(String url, String title, {Duration? startAt}) {
+    _state.updateVideoUrl(url, title, startAt: startAt);
+  }
+
+  /// 获取当前播放位置
+  Duration get currentPosition => _state._position;
+}
+
 class DLNAPlayer extends StatefulWidget {
   final DLNADevice device;
   final double aspectRatio;
@@ -14,6 +29,11 @@ class DLNAPlayer extends StatefulWidget {
   final VoidCallback? onChangeDevice;
   final Duration? resumePosition;
   final Function(Duration)? onStopCasting;
+  final Function(Duration position, Duration duration)? onProgressUpdate;
+  final VoidCallback? onPause;
+  final VoidCallback? onReady;
+  final Function(DLNAPlayerController)? onControllerCreated;
+  final VoidCallback? onVideoCompleted;
 
   const DLNAPlayer({
     super.key,
@@ -25,6 +45,11 @@ class DLNAPlayer extends StatefulWidget {
     this.onChangeDevice,
     this.resumePosition,
     this.onStopCasting,
+    this.onProgressUpdate,
+    this.onPause,
+    this.onReady,
+    this.onControllerCreated,
+    this.onVideoCompleted,
   });
 
   @override
@@ -46,6 +71,7 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
     _resumePosition = widget.resumePosition ?? Duration.zero;
     _setPortraitOrientation();
     _startStatusPolling();
+    widget.onControllerCreated?.call(DLNAPlayerController._(this));
   }
 
   void _setPortraitOrientation() {
@@ -65,7 +91,7 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
   }
 
   void _startStatusPolling() {
-    _statusTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+    _statusTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
       _updateStatus();
     });
   }
@@ -79,23 +105,46 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
       final p = PositionParser(positionStr);
 
       position = p;
-      _position = Duration(seconds: position?.RelTimeInt ?? 0);
-      _duration = Duration(seconds: position?.TrackDurationInt ?? 0);
+      final newPosition = Duration(seconds: position?.RelTimeInt ?? 0);
+      final newDuration = Duration(seconds: position?.TrackDurationInt ?? 0);
 
       final transportStr = await widget.device.getTransportInfo();
       final t = TransportInfoParser(transportStr);
 
       _isPlaying = t.CurrentTransportState == "PLAYING";
 
+      // 检查进度是否发生变化
+      final positionChanged = newPosition != _position;
+      final durationChanged = newDuration != _duration;
+
+      _position = newPosition;
+      _duration = newDuration;
+
       // 如果获取到有效的 duration，则不再是加载状态
       if (_duration.inMilliseconds > 0) {
-        _isLoading = false;
+        if (_isPlaying && _isLoading) {
+          _isLoading = false;
+          widget.onReady?.call();
+          // 不再是加载状态时，检查 resumePosition，如果不为 0 则跳转并清空
+          if (_resumePosition.inSeconds > 0) {
+            debugPrint('DLNA加载完成，跳转到恢复位置: ${_resumePosition.inSeconds}秒');
+            _seekTo(_resumePosition);
+            _resumePosition = Duration.zero; // 清空 resumePosition
+          }
+        }
 
-        // 不再是加载状态时，检查 resumePosition，如果不为 0 则跳转并清空
-        if (_resumePosition.inSeconds > 0) {
-          debugPrint('DLNA加载完成，跳转到恢复位置: ${_resumePosition.inSeconds}秒');
-          _seekTo(_resumePosition);
-          _resumePosition = Duration.zero; // 清空 resumePosition
+        // 如果进度发生变化，通知父组件
+        if (!_isLoading && (positionChanged || durationChanged)) {
+          widget.onProgressUpdate?.call(_position, _duration);
+        }
+
+        // 检查视频是否播放完成（当前位置 >= 总时长 - 1秒）
+        if (!_isLoading && _duration.inSeconds > 0 &&
+            _position.inSeconds >= _duration.inSeconds - 1 &&
+            !_isPlaying) {
+          debugPrint('DLNA视频播放完成');
+          widget.device.pause();
+          widget.onVideoCompleted?.call();
         }
       }
 
@@ -111,6 +160,8 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
     if (_isPlaying) {
       widget.device.pause();
       _isPlaying = false;
+      // 暂停时保存进度
+      widget.onPause?.call();
     } else {
       widget.device.play();
       _isPlaying = true;
@@ -140,7 +191,30 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
     widget.device.volume(volumeInt);
   }
 
-  Duration get currentPosition => _position;
+  /// 更新视频 URL
+  void updateVideoUrl(String url, String title, {Duration? startAt}) {
+    debugPrint('DLNA 更新视频 URL: $url, startAt: ${startAt?.inSeconds ?? 0}秒');
+
+    widget.device.pause();
+    _isPlaying = false;
+
+    // 关闭状态轮询
+    _statusTimer?.cancel();
+
+    setState(() {
+      _isLoading = true;
+      _resumePosition = startAt ?? Duration.zero;
+    });
+
+    // 设置新的 URL
+    widget.device.setUrl(url, title:title);
+
+    // 开始播放
+    widget.device.play();
+
+    // 重新启动状态轮询
+    _startStatusPolling();
+  }
 
   @override
   void dispose() {

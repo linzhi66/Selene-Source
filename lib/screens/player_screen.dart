@@ -105,6 +105,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isCasting = false;
   dynamic _dlnaDevice;
   Duration? _castStartPosition;
+  Duration? _dlnaCurrentPosition; // DLNA 当前播放位置
+  Duration? _dlnaCurrentDuration; // DLNA 视频总时长
+  DLNAPlayerController? _dlnaPlayerController;
 
   // 选集相关状态
   bool _isEpisodesReversed = false;
@@ -390,7 +393,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// 保存播放进度（同步函数，提前获取参数避免异步问题）
   void _saveProgress({bool force = false}) {
     try {
-      if (currentDetail == null || _videoPlayerController == null) return;
+      if (currentDetail == null) return;
 
       // 如果不是强制保存，检查时间间隔
       if (!force) {
@@ -404,9 +407,22 @@ class _PlayerScreenState extends State<PlayerScreen>
       // 更新最后保存时间
       _lastSaveTime = DateTime.now();
 
+      // 获取当前播放位置和总时长
+      Duration? currentPosition;
+      Duration? duration;
+
+      if (_isCasting) {
+        // 投屏状态：从 DLNA 播放器获取
+        currentPosition = _dlnaCurrentPosition;
+        duration = _dlnaCurrentDuration;
+      } else {
+        // 本地播放：从视频播放器获取
+        if (_videoPlayerController == null) return;
+        currentPosition = _videoPlayerController!.currentPosition;
+        duration = _videoPlayerController!.duration;
+      }
+
       // 提前获取所有需要的参数，避免异步执行时参数被改变
-      final currentPosition = _videoPlayerController!.currentPosition;
-      final duration = _videoPlayerController!.duration;
       final currentIDSnapshot = currentID;
       final currentSourceSnapshot = currentSource;
       final videoTitleSnapshot = videoTitle;
@@ -520,14 +536,32 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 动态更新视频数据源
   Future<void> updateVideoUrl(String newUrl, {Duration? startAt}) async {
+    print("newUrl: $newUrl, startAt: $startAt");
     try {
-      final dataSource = BetterPlayerDataSource(
-        BetterPlayerDataSourceType.network,
-        newUrl,
-        videoFormat: BetterPlayerVideoFormat.hls,
-      );
-      await _videoPlayerController?.updateDataSource(dataSource,
-          startAt: startAt);
+      if (_isCasting) {
+        // 构建标题：{title} - {第 x 集} - {sourceName}
+        // 如果总集数为 1，则不显示集数
+        final sourceName = currentDetail?.sourceName ?? currentSource;
+        String formattedTitle;
+        if (totalEpisodes > 1) {
+          final episodeNumber = currentEpisodeIndex + 1;
+          formattedTitle = '$videoTitle - 第 $episodeNumber 集 - $sourceName';
+        } else {
+          formattedTitle = '$videoTitle - $sourceName';
+        }
+        // 投屏状态：调用 DLNA 播放器的 updateVideoUrl
+        _dlnaPlayerController?.updateVideoUrl(newUrl, formattedTitle,
+            startAt: startAt);
+      } else {
+        // 本地播放：调用视频播放器的 updateDataSource
+        final dataSource = BetterPlayerDataSource(
+          BetterPlayerDataSourceType.network,
+          newUrl,
+          videoFormat: BetterPlayerVideoFormat.hls,
+        );
+        await _videoPlayerController?.updateDataSource(dataSource,
+            startAt: startAt);
+      }
     } catch (e) {
       // 静默处理错误
     }
@@ -549,17 +583,13 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 获取当前播放位置
   Duration? get currentPosition {
-    return _videoPlayerController?.currentPosition;
-  }
-
-  /// 获取视频总时长
-  Duration? get duration {
-    return _videoPlayerController?.duration;
-  }
-
-  /// 获取播放状态
-  bool get isPlaying {
-    return _videoPlayerController?.isPlaying ?? false;
+    if (_isCasting) {
+      // 投屏状态：从 DLNA 播放器获取
+      return _dlnaCurrentPosition;
+    } else {
+      // 本地播放：从视频播放器获取
+      return _videoPlayerController?.currentPosition;
+    }
   }
 
   /// 处理视频播放器 ready 事件
@@ -625,7 +655,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     setState(() {
       currentEpisodeIndex = nextIndex;
     });
-    updateVideoUrl(currentDetail!.episodes[nextIndex]);
+    updateVideoUrl(currentDetail!.episodes[nextIndex], startAt: Duration.zero);
     _scrollToCurrentEpisode();
   }
 
@@ -653,7 +683,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     setState(() {
       currentEpisodeIndex = nextIndex;
     });
-    updateVideoUrl(currentDetail!.episodes[nextIndex]);
+    updateVideoUrl(currentDetail!.episodes[nextIndex], startAt: Duration.zero);
     _scrollToCurrentEpisode();
   }
 
@@ -894,6 +924,10 @@ class _PlayerScreenState extends State<PlayerScreen>
             isLastEpisode: currentDetail != null &&
                 currentEpisodeIndex >= currentDetail!.episodes.length - 1,
             onCastStarted: _onCastStarted,
+            videoTitle: videoTitle,
+            currentEpisodeIndex: currentEpisodeIndex,
+            totalEpisodes: totalEpisodes,
+            sourceName: currentDetail?.sourceName ?? currentSource,
           ),
         if (_isCasting && _dlnaDevice != null)
           DLNAPlayer(
@@ -901,11 +935,21 @@ class _PlayerScreenState extends State<PlayerScreen>
             aspectRatio: 16 / 9,
             onBackPressed: _onBackPressed,
             onNextEpisode: _onNextEpisode,
+            onVideoCompleted: _onVideoCompleted,
             isLastEpisode: currentDetail != null &&
                 currentEpisodeIndex >= currentDetail!.episodes.length - 1,
             onChangeDevice: _onChangeDevice,
             resumePosition: _castStartPosition,
             onStopCasting: _onStopCasting,
+            onProgressUpdate: _onDLNAProgressUpdate,
+            onPause: () {
+              // 暂停时保存进度
+              _saveProgress(force: true);
+            },
+            onReady: _onVideoPlayerReady,
+            onControllerCreated: (controller) {
+              _dlnaPlayerController = controller;
+            },
           ),
         // 切换播放源/集数时的加载蒙版（只遮挡播放器）
         SwitchLoadingOverlay(
@@ -932,6 +976,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
+  /// DLNA 进度更新回调
+  void _onDLNAProgressUpdate(Duration position, Duration duration) {
+    _dlnaCurrentPosition = position;
+    _dlnaCurrentDuration = duration;
+    // 检查并保存进度
+    _checkAndSaveProgress();
+  }
+
   /// 停止投屏回调
   void _onStopCasting(Duration currentPosition) {
     debugPrint('停止投屏，当前位置: ${currentPosition.inSeconds}秒');
@@ -944,6 +996,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       _isCasting = false;
       _dlnaDevice = null;
       _castStartPosition = null;
+      _dlnaCurrentPosition = null;
+      _dlnaCurrentDuration = null;
       _showSwitchLoadingOverlay = true;
       _switchLoadingMessage = '视频加载中...';
     });
@@ -972,6 +1026,10 @@ class _PlayerScreenState extends State<PlayerScreen>
         currentUrl: currentUrl,
         currentDevice: _dlnaDevice,
         resumePosition: _castStartPosition,
+        videoTitle: videoTitle,
+        currentEpisodeIndex: currentEpisodeIndex,
+        totalEpisodes: totalEpisodes,
+        sourceName: currentDetail?.sourceName ?? currentSource,
         onCastStarted: (device) {
           setState(() {
             _dlnaDevice = device;
