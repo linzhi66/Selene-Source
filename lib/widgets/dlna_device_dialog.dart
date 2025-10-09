@@ -4,8 +4,17 @@ import 'package:dlna_dart/dlna.dart';
 
 class DLNADeviceDialog extends StatefulWidget {
   final String currentUrl;
+  final Function(DLNADevice)? onCastStarted;
+  final DLNADevice? currentDevice;
+  final Duration? resumePosition;
 
-  const DLNADeviceDialog({super.key, required this.currentUrl});
+  const DLNADeviceDialog({
+    super.key, 
+    required this.currentUrl,
+    this.onCastStarted,
+    this.currentDevice,
+    this.resumePosition,
+  });
 
   @override
   State<DLNADeviceDialog> createState() => _DLNADeviceDialogState();
@@ -90,7 +99,7 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
         height: MediaQuery.of(context).size.height * 0.7,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Theme.of(context).dialogBackgroundColor,
+          color: Theme.of(context).dialogTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -120,7 +129,7 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -167,7 +176,7 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
                           Icon(
                             Icons.devices_other,
                             size: 64,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -183,7 +192,7 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
                               '请确保设备与手机在同一网络下',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -195,24 +204,58 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
                       itemBuilder: (context, index) {
                         final deviceEntry = _devices.entries.elementAt(index);
                         final device = deviceEntry.value;
+                        final isCurrentDevice = widget.currentDevice != null && 
+                            device.info.friendlyName == widget.currentDevice!.info.friendlyName;
                         
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            color: isCurrentDevice 
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(8),
+                            border: isCurrentDevice 
+                                ? Border.all(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 2,
+                                  )
+                                : null,
                           ),
                           child: ListTile(
                             leading: Icon(
                               _getDeviceIcon(device.info.friendlyName),
-                              color: Theme.of(context).colorScheme.primary,
+                              color: isCurrentDevice 
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.primary,
                             ),
-                            title: Text(
-                              device.info.friendlyName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).textTheme.titleMedium?.color,
-                              ),
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    device.info.friendlyName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: Theme.of(context).textTheme.titleMedium?.color,
+                                    ),
+                                  ),
+                                ),
+                                if (isCurrentDevice)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '当前设备',
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onPrimary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                             subtitle: Text(
                               '活跃时间: ${_formatTime(device.activeTime)}',
@@ -220,10 +263,13 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
                                 color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
-                            onTap: () {
-                              // 直接连接设备
-                              _showConnectionDialog(device);
-                            },
+                            onTap: isCurrentDevice 
+                                ? null 
+                                : () {
+                                    // 直接连接设备
+                                    _showConnectionDialog(device);
+                                  },
+                            enabled: !isCurrentDevice,
                           ),
                         );
                       },
@@ -285,13 +331,17 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
   void _castToDevice(DLNADevice device) async {
     try {
       // 设置设备URL并播放
-      print('widget.currentUrl: ${widget.currentUrl}');
+      debugPrint('widget.currentUrl: ${widget.currentUrl}');
+      debugPrint('widget.resumePosition: ${widget.resumePosition?.inSeconds ?? 0}秒');
       device.setUrl(widget.currentUrl);
       device.play();
 
       if (mounted) {
         Navigator.of(context).pop(); // 关闭连接对话框
         Navigator.of(context).pop(); // 关闭设备选择对话框
+
+        // 通知父组件投屏已开始，传递设备对象
+        widget.onCastStarted?.call(device);
 
         // 显示投屏成功提示
         ScaffoldMessenger.of(context).showSnackBar(

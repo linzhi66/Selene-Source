@@ -14,6 +14,8 @@ import '../services/page_cache_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/image_url.dart';
 import '../widgets/switch_loading_overlay.dart';
+import '../widgets/dlna_player.dart';
+import '../widgets/dlna_device_dialog.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String? source;
@@ -51,7 +53,8 @@ class SourceSpeed {
   });
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _PlayerScreenState extends State<PlayerScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late SystemUiOverlayStyle _originalStyle;
   bool _isInitialized = false;
   String? _errorMessage;
@@ -78,37 +81,42 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   bool needPrefer = false;
   int totalEpisodes = 0;
   int currentEpisodeIndex = 0;
-  
+
   // 豆瓣详情数据
   DoubanMovieDetails? doubanDetails;
-  
+
   // 所有源信息
   List<SearchResult> allSources = [];
   // 所有源测速结果
   Map<String, SourceSpeed> allSourcesSpeed = {};
-  
+
   // VideoPlayerWidget 的控制器
   VideoPlayerWidgetController? _videoPlayerController;
 
   // 收藏状态
   bool _isFavorite = false;
-  
+
   // 切换播放源/集数时的加载蒙版状态
   bool _showSwitchLoadingOverlay = false;
   String _switchLoadingMessage = '切换播放源...';
   late AnimationController _switchLoadingAnimationController;
-  
+
+  // 投屏状态
+  bool _isCasting = false;
+  dynamic _dlnaDevice;
+  Duration? _castStartPosition;
+
   // 选集相关状态
   bool _isEpisodesReversed = false;
   final ScrollController _episodesScrollController = ScrollController();
-  
+
   // 换源相关状态
   final ScrollController _sourcesScrollController = ScrollController();
-  
+
   // 刷新相关状态
   bool _isRefreshing = false;
   late AnimationController _refreshAnimationController;
-  
+
   // 保存进度相关状态
   DateTime? _lastSaveTime;
   static const Duration _saveProgressInterval = Duration(seconds: 10);
@@ -157,12 +165,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   void initVideoData() async {
-    if (widget.source == null && widget.id == null && widget.title.isEmpty && widget.stitle == null) {
+    if (widget.source == null &&
+        widget.id == null &&
+        widget.title.isEmpty &&
+        widget.stitle == null) {
       showError('缺少必要参数');
       return;
     }
 
-    if (widget.source != null && widget.id != null && (widget.prefer == null || widget.prefer != 'true')) {
+    if (widget.source != null &&
+        widget.id != null &&
+        (widget.prefer == null || widget.prefer != 'true')) {
       updateLoadingMessage('正在获取播放源详情...');
       updateLoadingProgress(0.5);
       updateLoadingEmoji('🔍');
@@ -174,24 +187,27 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     // 初始化参数
     initParam();
-    
+
     // 执行查询
-    allSources = await fetchSourcesData((searchTitle.isNotEmpty) 
-        ? searchTitle 
-        : videoTitle);
-    if (currentSource.isNotEmpty && currentID.isNotEmpty && !allSources.any((source) => source.source == currentSource && source.id == currentID)) {
+    allSources = await fetchSourcesData(
+        (searchTitle.isNotEmpty) ? searchTitle : videoTitle);
+    if (currentSource.isNotEmpty &&
+        currentID.isNotEmpty &&
+        !allSources.any((source) =>
+            source.source == currentSource && source.id == currentID)) {
       allSources = await fetchSourceDetail(currentSource, currentID);
     }
     if (allSources.isEmpty) {
       showError('未找到匹配结果');
       return;
     }
-    
+
     // 指定源和id且无需优选
     currentDetail = allSources.first;
     if (currentSource.isNotEmpty && currentID.isNotEmpty && !needPrefer) {
-     final target = allSources.where((source) => source.source == currentSource && source.id == currentID);
-     currentDetail = target.isNotEmpty ? target.first : null;
+      final target = allSources.where(
+          (source) => source.source == currentSource && source.id == currentID);
+      currentDetail = target.isNotEmpty ? target.first : null;
     }
     if (currentDetail == null) {
       showError('未找到匹配结果');
@@ -216,7 +232,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     final allPlayRecords = await PageCacheService().getPlayRecords(context);
     // 查找是否有当前视频的播放记录
     if (allPlayRecords.success && allPlayRecords.data != null) {
-      final matchingRecords = allPlayRecords.data!.where((record) => record.id == currentID && record.source == currentSource);
+      final matchingRecords = allPlayRecords.data!.where(
+          (record) => record.id == currentID && record.source == currentSource);
       if (matchingRecords.isNotEmpty) {
         playEpisodeIndex = matchingRecords.first.index - 1;
         playTime = matchingRecords.first.playTime;
@@ -285,16 +302,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         }
         doubanIDCount[tmpDoubanID] = (doubanIDCount[tmpDoubanID] ?? 0) + 1;
       }
-      videoDoubanID = doubanIDCount.entries.isEmpty 
-          ? 0 
-          : doubanIDCount.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+      videoDoubanID = doubanIDCount.entries.isEmpty
+          ? 0
+          : doubanIDCount.entries
+              .reduce((a, b) => a.value > b.value ? a : b)
+              .key;
     }
-    
+
     // 如果豆瓣ID发生变化且有效，获取豆瓣详情
     if (videoDoubanID != oldVideoDoubanID && videoDoubanID > 0) {
       _fetchDoubanDetails();
     }
-    
+
     // 延迟调用自动滚动，确保UI已更新
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentEpisode();
@@ -308,18 +327,20 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       doubanDetails = null;
       return;
     }
-    
+
     try {
       final response = await DoubanService.getDoubanDetails(
         context,
         doubanId: videoDoubanID.toString(),
       );
-      
+
       if (response.success && response.data != null) {
         setState(() {
           doubanDetails = response.data;
           // 如果当前视频描述为空或是"暂无简介"，使用豆瓣的描述
-          if ((videoDesc.isEmpty || videoDesc == '暂无简介') && response.data!.summary != null && response.data!.summary!.isNotEmpty) {
+          if ((videoDesc.isEmpty || videoDesc == '暂无简介') &&
+              response.data!.summary != null &&
+              response.data!.summary!.isNotEmpty) {
             videoDesc = response.data!.summary!;
           }
         });
@@ -334,7 +355,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   Future<SearchResult> preferBestSource() async {
     final m3u8Service = M3U8Service();
     final result = await m3u8Service.preferBestSource(allSources);
-    
+
     // 更新测速结果
     final speedResults = result['allSourcesSpeed'] as Map<String, dynamic>;
     for (final entry in speedResults.entries) {
@@ -345,12 +366,22 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         pingTime: speedData['pingTime'] as String,
       );
     }
-    
+
     return result['bestSource'] as SearchResult;
   }
 
   // 处理返回按钮点击
   void _onBackPressed() {
+    // 如果正在投屏，停止投屏
+    if (_isCasting && _dlnaDevice != null) {
+      try {
+        _dlnaDevice.stop();
+        debugPrint('退出页面，停止投屏');
+      } catch (e) {
+        debugPrint('停止投屏失败: $e');
+      }
+    }
+
     // 关闭页面前保存进度
     _saveProgress(force: true);
     Navigator.of(context).pop();
@@ -360,11 +391,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void _saveProgress({bool force = false}) {
     try {
       if (currentDetail == null || _videoPlayerController == null) return;
-      
+
       // 如果不是强制保存，检查时间间隔
       if (!force) {
         final now = DateTime.now();
-        if (_lastSaveTime != null && 
+        if (_lastSaveTime != null &&
             now.difference(_lastSaveTime!) < _saveProgressInterval) {
           return; // 时间间隔不够，跳过保存
         }
@@ -372,7 +403,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
       // 更新最后保存时间
       _lastSaveTime = DateTime.now();
-      
+
       // 提前获取所有需要的参数，避免异步执行时参数被改变
       final currentPosition = _videoPlayerController!.currentPosition;
       final duration = _videoPlayerController!.duration;
@@ -385,17 +416,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       final totalEpisodesSnapshot = totalEpisodes;
       final searchTitleSnapshot = searchTitle;
       final sourceNameSnapshot = currentDetail?.sourceName ?? currentSource;
-      
+
       if (currentPosition == null || duration == null) return;
 
       // 如果播放进度小于 1 s，则不保存
       if (currentPosition.inSeconds < 1) {
         return;
       }
-      
+
       final playTime = currentPosition.inSeconds;
       final totalTime = duration.inSeconds;
-      
+
       // 创建播放记录对象
       final playRecord = PlayRecord(
         id: currentIDSnapshot,
@@ -411,10 +442,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         saveTime: DateTime.now().millisecondsSinceEpoch, // 当前时间戳（毫秒）
         searchTitle: searchTitleSnapshot,
       );
-      
+
       // 异步保存播放记录（不等待结果）
       PageCacheService().savePlayRecord(playRecord, context).then((_) {
-        debugPrint('保存播放进度: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: ${playTime}秒');
+        debugPrint(
+            '保存播放进度: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: ${playTime}秒');
       }).catchError((e) {
         debugPrint('保存播放进度失败: $e');
       });
@@ -432,7 +464,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
@@ -494,7 +526,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         newUrl,
         videoFormat: BetterPlayerVideoFormat.hls,
       );
-      await _videoPlayerController?.updateDataSource(dataSource, startAt: startAt);
+      await _videoPlayerController?.updateDataSource(dataSource,
+          startAt: startAt);
     } catch (e) {
       // 静默处理错误
     }
@@ -538,10 +571,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       // 隐藏切换加载蒙版
       _showSwitchLoadingOverlay = false;
     });
-    
+
     // 重置最后保存时间，允许立即保存
     _lastSaveTime = null;
-    
+
     // 添加视频播放状态监听器来触发保存检查
     _addVideoProgressListener();
   }
@@ -571,22 +604,22 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 处理下一集按钮点击
   void _onNextEpisode() {
     if (currentDetail == null) return;
-    
+
     // 检查是否为最后一集
     if (currentEpisodeIndex >= currentDetail!.episodes.length - 1) {
       _showToast('已经是最后一集了');
       return;
     }
-    
+
     // 显示切换加载蒙版
     setState(() {
       _showSwitchLoadingOverlay = true;
       _switchLoadingMessage = '切换选集...';
     });
-    
+
     // 集数切换前保存进度
     _saveProgress(force: true);
-    
+
     // 播放下一集
     final nextIndex = currentEpisodeIndex + 1;
     setState(() {
@@ -599,22 +632,22 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 处理视频播放完成
   void _onVideoCompleted() {
     if (currentDetail == null) return;
-    
+
     // 检查是否为最后一集
     if (currentEpisodeIndex >= currentDetail!.episodes.length - 1) {
       _showToast('播放完成');
       return;
     }
-    
+
     // 显示切换加载蒙版
     setState(() {
       _showSwitchLoadingOverlay = true;
       _switchLoadingMessage = '自动播放下一集...';
     });
-    
+
     // 集数切换前保存进度
     _saveProgress(force: true);
-    
+
     // 自动播放下一集
     final nextIndex = currentEpisodeIndex + 1;
     setState(() {
@@ -640,7 +673,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void _checkFavoriteStatus() {
     if (currentSource.isNotEmpty && currentID.isNotEmpty) {
       final cacheService = PageCacheService();
-      final isFavorited = cacheService.isFavoritedSync(currentSource, currentID);
+      final isFavorited =
+          cacheService.isFavoritedSync(currentSource, currentID);
       setState(() {
         _isFavorite = isFavorited;
       });
@@ -650,12 +684,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 切换收藏状态
   void _toggleFavorite() async {
     if (currentSource.isEmpty || currentID.isEmpty) return;
-    
+
     final cacheService = PageCacheService();
-    
+
     if (_isFavorite) {
       // 取消收藏
-      final result = await cacheService.removeFavorite(currentSource, currentID, context);
+      final result =
+          await cacheService.removeFavorite(currentSource, currentID, context);
       if (result.success) {
         setState(() {
           _isFavorite = false;
@@ -671,8 +706,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         'total_episodes': totalEpisodes,
         'year': videoYear,
       };
-      
-      final result = await cacheService.addFavorite(currentSource, currentID, favoriteData, context);
+
+      final result = await cacheService.addFavorite(
+          currentSource, currentID, favoriteData, context);
       if (result.success) {
         setState(() {
           _isFavorite = true;
@@ -690,11 +726,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _scrollToCurrentEpisode();
   }
 
-
   /// 滚动到当前源
   void _scrollToCurrentSource() {
     if (currentDetail == null) return;
-    
+
     // 换源已收起，直接执行滚动
     _performScrollToCurrentSource();
   }
@@ -705,8 +740,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     // 找到当前源在allSources中的索引
     final currentSourceIndex = allSources.indexWhere(
-      (source) => source.source == currentSource && source.id == currentID
-    );
+        (source) => source.source == currentSource && source.id == currentID);
 
     if (currentSourceIndex == -1) return;
 
@@ -726,7 +760,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     // 计算需要滚动的距离，使选中项的中心对准可视区域的中心
     // 注意：要减去第一个item的左边距（因为ListView有左padding）
-    final targetOffset = (currentSourceIndex * (cardWidth + itemMargin)) - (visibleCenter - itemCenter - listViewPadding);
+    final targetOffset = (currentSourceIndex * (cardWidth + itemMargin)) -
+        (visibleCenter - itemCenter - listViewPadding);
 
     // 确保不滚动到负值或超出范围
     final maxScrollExtent = _sourcesScrollController.position.maxScrollExtent;
@@ -746,15 +781,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       _showSwitchLoadingOverlay = true;
       _switchLoadingMessage = '切换播放源...';
     });
-    
+
     // 保存当前播放进度
     final currentProgress = currentPosition?.inSeconds ?? 0;
     final currentEpisode = currentEpisodeIndex;
-    
+
     // 记录旧的源信息，用于删除播放记录
     final oldSource = currentSource;
     final oldID = currentID;
-    
+
     setState(() {
       currentDetail = newSource;
       currentSource = newSource.source;
@@ -763,9 +798,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       totalEpisodes = newSource.episodes.length;
       _isEpisodesReversed = false;
     });
-    
+
     // 删除之前的播放记录（如果源发生了变化）
-    if (oldSource.isNotEmpty && oldID.isNotEmpty && 
+    if (oldSource.isNotEmpty &&
+        oldID.isNotEmpty &&
         (oldSource != newSource.source || oldID != newSource.id)) {
       try {
         await PageCacheService().deletePlayRecord(oldSource, oldID, context);
@@ -774,16 +810,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         debugPrint('删除旧源播放记录失败: $e');
       }
     }
-    
+
     // 更新视频信息
     setInfosByDetail(newSource);
-    
+
     // 重新检查收藏状态（因为源和ID可能已改变）
     _checkFavoriteStatus();
-    
+
     // 开始播放新源，使用当前播放器的进度
     startPlay(currentEpisode, currentProgress);
-    
+
     // 延迟滚动到当前源，等待UI更新完成
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentSource();
@@ -793,7 +829,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 自动滚动到当前集数
   void _scrollToCurrentEpisode() {
     if (currentDetail == null) return;
-    
+
     // 如果选集展开，先收起选集，然后滚动到当前集数
     _performScrollToCurrentEpisode();
   }
@@ -822,7 +858,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     // 计算需要滚动的距离，使选中项的中心对准可视区域的中心
     // 注意：要减去第一个item的左边距（因为ListView有左padding）
-    final targetOffset = (targetIndex * (buttonWidth + itemMargin)) - (visibleCenter - itemCenter - listViewPadding);
+    final targetOffset = (targetIndex * (buttonWidth + itemMargin)) -
+        (visibleCenter - itemCenter - listViewPadding);
 
     // 确保不滚动到负值或超出范围
     final maxScrollExtent = _episodesScrollController.position.maxScrollExtent;
@@ -835,10 +872,119 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
+  /// 构建播放器组件
+  Widget _buildPlayerWidget() {
+    return Stack(
+      children: [
+        if (!_isCasting)
+          VideoPlayerWidget(
+            dataSource: null,
+            aspectRatio: 16 / 9,
+            onBackPressed: _onBackPressed,
+            onControllerCreated: (controller) {
+              _videoPlayerController = controller;
+            },
+            onReady: _onVideoPlayerReady,
+            onNextEpisode: _onNextEpisode,
+            onVideoCompleted: _onVideoCompleted,
+            onPause: () {
+              // 暂停时保存进度
+              _saveProgress(force: true);
+            },
+            isLastEpisode: currentDetail != null &&
+                currentEpisodeIndex >= currentDetail!.episodes.length - 1,
+            onCastStarted: _onCastStarted,
+          ),
+        if (_isCasting && _dlnaDevice != null)
+          DLNAPlayer(
+            device: _dlnaDevice,
+            aspectRatio: 16 / 9,
+            onBackPressed: _onBackPressed,
+            onNextEpisode: _onNextEpisode,
+            isLastEpisode: currentDetail != null &&
+                currentEpisodeIndex >= currentDetail!.episodes.length - 1,
+            onChangeDevice: _onChangeDevice,
+            resumePosition: _castStartPosition,
+            onStopCasting: _onStopCasting,
+          ),
+        // 切换播放源/集数时的加载蒙版（只遮挡播放器）
+        SwitchLoadingOverlay(
+          isVisible: _showSwitchLoadingOverlay,
+          message: _switchLoadingMessage,
+          animationController: _switchLoadingAnimationController,
+        ),
+      ],
+    );
+  }
+
+  /// 投屏开始回调
+  void _onCastStarted(dynamic device) {
+    // 保存当前播放位置
+    final currentPos = _videoPlayerController?.currentPosition;
+
+    setState(() {
+      _isCasting = true;
+      _dlnaDevice = device;
+      _castStartPosition = currentPos;
+      // 销毁视频播放器
+      _videoPlayerController?.dispose();
+      _videoPlayerController = null;
+    });
+  }
+
+  /// 停止投屏回调
+  void _onStopCasting(Duration currentPosition) {
+    debugPrint('停止投屏，当前位置: ${currentPosition.inSeconds}秒');
+
+    // 先保存需要恢复的位置和集数，避免异步回调中值丢失
+    final resumeSeconds = currentPosition.inSeconds;
+    final resumeEpisodeIndex = currentEpisodeIndex;
+
+    setState(() {
+      _isCasting = false;
+      _dlnaDevice = null;
+      _castStartPosition = null;
+      _showSwitchLoadingOverlay = true;
+      _switchLoadingMessage = '视频加载中...';
+    });
+
+    // 等待下一帧，确保 VideoPlayerWidget 已经重新创建
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && currentDetail != null) {
+        debugPrint('恢复播放: 第${resumeEpisodeIndex + 1}集, ${resumeSeconds}秒');
+        // 调用 startPlay 重新初始化播放器
+        startPlay(resumeEpisodeIndex, resumeSeconds);
+      }
+    });
+  }
+
+  /// 换设备回调
+  void _onChangeDevice() async {
+    if (currentDetail == null) return;
+
+    // 获取当前播放的 URL
+    final currentUrl = currentDetail!.episodes[currentEpisodeIndex];
+
+    // 显示设备选择对话框
+    await showDialog(
+      context: context,
+      builder: (context) => DLNADeviceDialog(
+        currentUrl: currentUrl,
+        currentDevice: _dlnaDevice,
+        resumePosition: _castStartPosition,
+        onCastStarted: (device) {
+          setState(() {
+            _dlnaDevice = device;
+          });
+        },
+      ),
+    );
+  }
+
   /// 构建视频详情展示区域
   Widget _buildVideoDetailSection(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     if (currentDetail == null) {
       return Container(
         color: Colors.transparent,
@@ -847,158 +993,175 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ),
       );
     }
-    
+
     return Container(
       color: Colors.transparent,
       child: SingleChildScrollView(
         child: Column(
           children: [
-          // 标题和收藏按钮行
-          Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 0),
-            child: Row(
-              children: [
-                Expanded(
+            // 标题和收藏按钮行
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: 16, right: 16, top: 16, bottom: 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      videoTitle,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color:
+                            isDarkMode ? Colors.white : const Color(0xFF2c3e50),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _toggleFavorite,
+                    child: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: _isFavorite
+                          ? const Color(0xFFe74c3c)
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 源名称、年份和分类信息行
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: 16, right: 16, top: 12, bottom: 16),
+              child: Row(
+                children: [
+                  // 源名称（带边框样式）
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color:
+                            isDarkMode ? Colors.grey[600]! : Colors.grey[400]!,
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      currentDetail!.sourceName,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDarkMode ? Colors.grey[300] : Colors.black87,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // 年份
+                  if (videoYear.isNotEmpty && videoYear != 'unknown')
+                    Text(
+                      videoYear,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDarkMode ? Colors.grey[300] : Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                  if (videoYear.isNotEmpty && videoYear != 'unknown')
+                    const SizedBox(width: 12),
+
+                  // 分类信息（绿色文字样式）
+                  if (currentDetail!.class_ != null &&
+                      currentDetail!.class_!.isNotEmpty)
+                    Text(
+                      currentDetail!.class_!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF2ecc71),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                  const Spacer(),
+
+                  // 详情按钮
+                  GestureDetector(
+                    onTap: () {
+                      _showDetailsPanel();
+                    },
+                    child: Stack(
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '详情',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                            const SizedBox(width: 18),
+                          ],
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 4,
+                          child: Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 视频描述行
+            if (videoDesc.isNotEmpty ||
+                (doubanDetails?.summary != null &&
+                    doubanDetails!.summary!.isNotEmpty))
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 16, right: 16, top: 0, bottom: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
                   child: Text(
-                    videoTitle,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : const Color(0xFF2c3e50),
+                    (videoDesc.isNotEmpty && videoDesc != '暂无简介')
+                        ? videoDesc
+                        : (doubanDetails?.summary ?? '暂无简介'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 12,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _toggleFavorite,
-                  child: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _isFavorite ? const Color(0xFFe74c3c) : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-                    size: 28,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // 源名称、年份和分类信息行
-          Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 16),
-            child: Row(
-              children: [
-                // 源名称（带边框样式）
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isDarkMode ? Colors.grey[600]! : Colors.grey[400]!,
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    currentDetail!.sourceName,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDarkMode ? Colors.grey[300] : Colors.black87,
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(width: 12),
-                
-                // 年份
-                if (videoYear.isNotEmpty && videoYear != 'unknown')
-                  Text(
-                    videoYear,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isDarkMode ? Colors.grey[300] : Colors.black87,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                
-                if (videoYear.isNotEmpty && videoYear != 'unknown')
-                  const SizedBox(width: 12),
-                
-                // 分类信息（绿色文字样式）
-                if (currentDetail!.class_ != null && currentDetail!.class_!.isNotEmpty)
-                  Text(
-                    currentDetail!.class_!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF2ecc71),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                
-                const Spacer(),
-                
-                // 详情按钮
-                GestureDetector(
-                  onTap: () {
-                    _showDetailsPanel();
-                  },
-                  child: Stack(
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '详情',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                        ],
-                      ),
-                      Positioned(
-                        right: 0,
-                        top: 4,
-                        child: Icon(
-                          Icons.arrow_forward_ios,
-                          size: 14,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // 视频描述行
-          if (videoDesc.isNotEmpty || (doubanDetails?.summary != null && doubanDetails!.summary!.isNotEmpty))
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 0, bottom: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  (videoDesc.isNotEmpty && videoDesc != '暂无简介') ? videoDesc : (doubanDetails?.summary ?? '暂无简介'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                    fontSize: 12,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
-            ),
-          
-          // 选集区域
-          _buildEpisodesSection(theme),
-          
-          const SizedBox(height: 16),
 
-          // 换源区域
-          _buildSourcesSection(theme),
-          
-          const SizedBox(height: 16),
-          
-          // 相关推荐区域
-          _buildRecommendsSection(theme),
-        ],
+            // 选集区域
+            _buildEpisodesSection(theme),
+
+            const SizedBox(height: 16),
+
+            // 换源区域
+            _buildSourcesSection(theme),
+
+            const SizedBox(height: 16),
+
+            // 相关推荐区域
+            _buildRecommendsSection(theme),
+          ],
         ),
       ),
     );
@@ -1010,12 +1173,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     if (doubanDetails == null || doubanDetails!.recommends.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     return Column(
       children: [
         // 推荐标题行
         Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 0),
+          padding:
+              const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -1029,7 +1193,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        
+
         const SizedBox(height: 16),
         // 推荐卡片网格
         _buildRecommendsGrid(theme)
@@ -1040,18 +1204,19 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 构建推荐卡片网格
   Widget _buildRecommendsGrid(ThemeData theme) {
     final recommends = doubanDetails!.recommends;
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final double screenWidth = constraints.maxWidth;
         final double padding = 16.0;
         final double spacing = 12.0;
-        final double availableWidth = screenWidth - (padding * 2) - (spacing * 2);
+        final double availableWidth =
+            screenWidth - (padding * 2) - (spacing * 2);
         final double minItemWidth = 80.0;
         final double calculatedItemWidth = availableWidth / 3;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
-        
+
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: GridView.builder(
@@ -1068,7 +1233,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             itemBuilder: (context, index) {
               final recommend = recommends[index];
               final videoInfo = recommend.toVideoInfo();
-              
+
               return VideoCard(
                 videoInfo: videoInfo,
                 from: 'douban',
@@ -1088,7 +1253,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     if (_videoPlayerController?.isPlaying == true) {
       _videoPlayerController?.pause();
     }
-    
+
     // 跳转到新的播放页，只传递title参数
     Navigator.push(
       context,
@@ -1103,12 +1268,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 构建选集区域
   Widget _buildEpisodesSection(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     // 如果总集数只有一集，则不展示选集区域
     if (totalEpisodes <= 1) {
       return const SizedBox.shrink();
     }
-    
+
     return Column(
       children: [
         // 选集标题行
@@ -1125,7 +1290,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // 正序/倒序按钮
               GestureDetector(
                 onTap: _toggleEpisodesOrder,
@@ -1145,7 +1310,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     Transform.translate(
                       offset: const Offset(0, 3),
                       child: Icon(
-                        _isEpisodesReversed ? Icons.arrow_upward : Icons.arrow_downward,
+                        _isEpisodesReversed
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
                         size: 16,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
@@ -1153,9 +1320,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   ],
                 ),
               ),
-              
+
               const Spacer(),
-              
+
               // 滚动到当前集数按钮
               Transform.translate(
                 offset: const Offset(0, 3.5),
@@ -1167,7 +1334,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                        color:
+                            isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
                         width: 1,
                       ),
                     ),
@@ -1177,16 +1345,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 20),
-              
+
               // 展开按钮
               GestureDetector(
                 onTap: _showEpisodesPanel,
@@ -1198,7 +1367,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       child: Text(
                         '展开',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
                           fontWeight: FontWeight.w300,
                         ),
                       ),
@@ -1215,7 +1385,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        
+
         const SizedBox(height: 2),
 
         // 集数卡片横向滚动区域
@@ -1227,7 +1397,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             final availableWidth = screenWidth - horizontalPadding;
             final buttonWidth = (availableWidth / 3.2) - 6; // 减去右边距6
             final buttonHeight = buttonWidth * 1.8 / 3; // 稍微减少高度
-            
+
             return SizedBox(
               height: buttonHeight,
               child: Padding(
@@ -1237,21 +1407,23 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   scrollDirection: Axis.horizontal,
                   itemCount: currentDetail!.episodes.length,
                   itemBuilder: (context, index) {
-                    final episodeIndex = _isEpisodesReversed 
-                        ? currentDetail!.episodes.length - 1 - index 
+                    final episodeIndex = _isEpisodesReversed
+                        ? currentDetail!.episodes.length - 1 - index
                         : index;
                     final episode = currentDetail!.episodes[episodeIndex];
-                    final isCurrentEpisode = episodeIndex == currentEpisodeIndex;
-                    
+                    final isCurrentEpisode =
+                        episodeIndex == currentEpisodeIndex;
+
                     // 获取集数名称，如果episodesTitles为空或长度不够，则使用默认格式
                     String episodeTitle = '';
-                    if (currentDetail!.episodesTitles.isNotEmpty && 
+                    if (currentDetail!.episodesTitles.isNotEmpty &&
                         episodeIndex < currentDetail!.episodesTitles.length) {
-                      episodeTitle = currentDetail!.episodesTitles[episodeIndex];
+                      episodeTitle =
+                          currentDetail!.episodesTitles[episodeIndex];
                     } else {
                       episodeTitle = '第${episodeIndex + 1}集';
                     }
-                    
+
                     return Container(
                       width: buttonWidth,
                       margin: const EdgeInsets.only(right: 6),
@@ -1264,10 +1436,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                               _showSwitchLoadingOverlay = true;
                               _switchLoadingMessage = '切换选集...';
                             });
-                            
+
                             // 集数切换前保存进度
                             _saveProgress(force: true);
-                            
+
                             setState(() {
                               currentEpisodeIndex = episodeIndex;
                             });
@@ -1276,11 +1448,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isCurrentEpisode 
-                                  ? Colors.green.withOpacity(0.2) 
-                                  : (isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+                              color: isCurrentEpisode
+                                  ? Colors.green.withOpacity(0.2)
+                                  : (isDarkMode
+                                      ? Colors.grey[700]
+                                      : Colors.grey[300]),
                               borderRadius: BorderRadius.circular(8),
-                              border: isCurrentEpisode 
+                              border: isCurrentEpisode
                                   ? Border.all(color: Colors.green, width: 2)
                                   : null,
                             ),
@@ -1293,7 +1467,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                   child: Text(
                                     '${episodeIndex + 1}',
                                     style: TextStyle(
-                                      color: isCurrentEpisode ? Colors.green : (isDarkMode ? Colors.white : Colors.black),
+                                      color: isCurrentEpisode
+                                          ? Colors.green
+                                          : (isDarkMode
+                                              ? Colors.white
+                                              : Colors.black),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w300,
                                     ),
@@ -1302,11 +1480,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                 // 中间集数名称
                                 Center(
                                   child: Padding(
-                                    padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
+                                    padding: const EdgeInsets.only(
+                                        top: 6, left: 4, right: 4),
                                     child: Text(
                                       episodeTitle,
                                       style: TextStyle(
-                                        color: isCurrentEpisode ? Colors.green : (isDarkMode ? Colors.white : Colors.black),
+                                        color: isCurrentEpisode
+                                            ? Colors.green
+                                            : (isDarkMode
+                                                ? Colors.white
+                                                : Colors.black),
                                         fontSize: 13,
                                         fontWeight: FontWeight.w400,
                                       ),
@@ -1361,7 +1544,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 onEpisodeTap: (index) {
                   // 先关闭弹窗
                   Navigator.pop(context);
-                  
+
                   // 在下一帧显示切换加载蒙版
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     this.setState(() {
@@ -1369,10 +1552,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       _switchLoadingMessage = '切换选集...';
                     });
                   });
-                  
+
                   // 集数切换前保存进度
                   _saveProgress(force: true);
-                  
+
                   this.setState(() {
                     currentEpisodeIndex = index;
                   });
@@ -1427,7 +1610,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 构建换源区域
   Widget _buildSourcesSection(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Column(
       children: [
         // 换源标题行
@@ -1443,9 +1626,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              
+
               const Spacer(),
-              
+
               // 刷新按钮
               Transform.translate(
                 offset: const Offset(0, 2.6),
@@ -1456,14 +1639,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     child: Icon(
                       Icons.refresh,
                       size: 20,
-                      color: _isRefreshing ? Colors.green : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      color: _isRefreshing
+                          ? Colors.green
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 20),
-              
+
               // 滚动到当前源按钮
               Transform.translate(
                 offset: const Offset(0, 3.5),
@@ -1475,7 +1660,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                        color:
+                            isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
                         width: 1,
                       ),
                     ),
@@ -1485,16 +1671,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 20),
-              
+
               // 展开按钮
               GestureDetector(
                 onTap: _showSourcesPanel,
@@ -1506,7 +1693,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       child: Text(
                         '展开',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          color:
+                              isDarkMode ? Colors.grey[400] : Colors.grey[600],
                           fontWeight: FontWeight.w300,
                         ),
                       ),
@@ -1523,7 +1711,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        
+
         const SizedBox(height: 2),
 
         // 源卡片横向滚动区域
@@ -1535,7 +1723,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 构建源卡片横向滚动区域
   Widget _buildSourcesHorizontalScroll(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // 计算卡片宽度：屏幕宽度减去左右padding，除以3.2，再减去间距
@@ -1544,7 +1732,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         final availableWidth = screenWidth - horizontalPadding;
         final cardWidth = (availableWidth / 3.2) - 6; // 减去右边距6
         final cardHeight = cardWidth * 1.8 / 3; // 稍微减少高度
-        
+
         return SizedBox(
           height: cardHeight,
           child: Padding(
@@ -1555,24 +1743,28 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               itemCount: allSources.length,
               itemBuilder: (context, index) {
                 final source = allSources[index];
-                final isCurrentSource = source.source == currentSource && source.id == currentID;
+                final isCurrentSource =
+                    source.source == currentSource && source.id == currentID;
                 final sourceKey = '${source.source}_${source.id}';
                 final speedInfo = allSourcesSpeed[sourceKey];
-                
+
                 return Container(
                   width: cardWidth,
                   margin: const EdgeInsets.only(right: 6),
                   child: AspectRatio(
                     aspectRatio: 3 / 2, // 严格保持3:2宽高比
                     child: GestureDetector(
-                      onTap: isCurrentSource ? null : () => _switchSource(source),
+                      onTap:
+                          isCurrentSource ? null : () => _switchSource(source),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isCurrentSource 
-                              ? Colors.green.withOpacity(0.2) 
-                              : (isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+                          color: isCurrentSource
+                              ? Colors.green.withOpacity(0.2)
+                              : (isDarkMode
+                                  ? Colors.grey[700]
+                                  : Colors.grey[300]),
                           borderRadius: BorderRadius.circular(8),
-                          border: isCurrentSource 
+                          border: isCurrentSource
                               ? Border.all(color: Colors.green, width: 2)
                               : null,
                         ),
@@ -1580,27 +1772,36 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                           children: [
                             // 右上角集数信息
                             if (source.episodes.length > 1)
-                            Positioned(
-                              top: 4,
-                              right: 6,
-                              child: Text(
-                                '${source.episodes.length}集',
-                                style: TextStyle(
-                                  color: isCurrentSource ? Colors.green : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w400,
+                              Positioned(
+                                top: 4,
+                                right: 6,
+                                child: Text(
+                                  '${source.episodes.length}集',
+                                  style: TextStyle(
+                                    color: isCurrentSource
+                                        ? Colors.green
+                                        : (isDarkMode
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600]),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
                               ),
-                            ),
-                            
+
                             // 中间源名称
                             Center(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 child: Text(
                                   source.sourceName,
                                   style: TextStyle(
-                                    color: isCurrentSource ? Colors.green : (isDarkMode ? Colors.white : Colors.black),
+                                    color: isCurrentSource
+                                        ? Colors.green
+                                        : (isDarkMode
+                                            ? Colors.white
+                                            : Colors.black),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w400,
                                   ),
@@ -1610,37 +1811,49 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                 ),
                               ),
                             ),
-                            
+
                             // 左下角分辨率信息
-                            if (speedInfo != null && speedInfo.quality.toLowerCase() != '未知')
+                            if (speedInfo != null &&
+                                speedInfo.quality.toLowerCase() != '未知')
                               Positioned(
                                 bottom: 4,
                                 left: 6,
                                 child: Text(
                                   speedInfo.quality,
                                   style: TextStyle(
-                                    color: isCurrentSource ? Colors.green : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                                    color: isCurrentSource
+                                        ? Colors.green
+                                        : (isDarkMode
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600]),
                                     fontSize: 10,
                                     fontWeight: FontWeight.w400,
                                   ),
                                 ),
                               ),
-                            
+
                             // 右下角速率信息
-                            if (speedInfo != null && speedInfo.loadSpeed.isNotEmpty && !speedInfo.loadSpeed.toLowerCase().contains('超时'))
+                            if (speedInfo != null &&
+                                speedInfo.loadSpeed.isNotEmpty &&
+                                !speedInfo.loadSpeed
+                                    .toLowerCase()
+                                    .contains('超时'))
                               Positioned(
                                 bottom: 4,
                                 right: 6,
                                 child: Text(
                                   speedInfo.loadSpeed,
                                   style: TextStyle(
-                                    color: isCurrentSource ? Colors.green : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                                    color: isCurrentSource
+                                        ? Colors.green
+                                        : (isDarkMode
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600]),
                                     fontSize: 10,
                                     fontWeight: FontWeight.w400,
                                   ),
                                 ),
                               ),
-                            
                           ],
                         ),
                       ),
@@ -1654,7 +1867,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       },
     );
   }
-
 
   /// 构建换源列表
   void _showSourcesPanel() {
@@ -1708,9 +1920,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 刷新所有源的测速结果
   Future<void> _refreshSourcesSpeed([StateSetter? stateSetter]) async {
     if (allSources.isEmpty) return;
-    
+
     final aSetState = stateSetter ?? setState;
-    
+
     // 如果是从外部调用（非面板），设置刷新状态
     if (stateSetter == null) {
       setState(() {
@@ -1722,10 +1934,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     try {
       // 清空之前的测速结果
       allSourcesSpeed.clear();
-      
+
       // 立即更新UI显示，让用户看到测速信息被清空
       aSetState(() {});
-      
+
       // 使用新的实时测速方法
       final m3u8Service = M3U8Service();
       await m3u8Service.testSourcesWithCallback(
@@ -1737,13 +1949,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             loadSpeed: speedData['loadSpeed'] as String,
             pingTime: speedData['pingTime'] as String,
           );
-          
+
           // 立即更新UI显示
           aSetState(() {});
         },
         timeout: const Duration(seconds: 10), // 自定义超时时间
       );
-      
     } catch (e) {
       // 静默处理错误
     } finally {
@@ -1758,30 +1969,29 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     }
   }
 
-
   /// 构建错误覆盖层
   Widget _buildErrorOverlay(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Container(
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        gradient: isDarkMode 
-          ? null
-          : const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFe6f3fb),
-                Color(0xFFeaf3f7),
-                Color(0xFFf7f7f3),
-                Color(0xFFe9ecef),
-                Color(0xFFdbe3ea),
-                Color(0xFFd3dde6),
-              ],
-              stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-            ),
+        gradient: isDarkMode
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFe6f3fb),
+                  Color(0xFFeaf3f7),
+                  Color(0xFFf7f7f3),
+                  Color(0xFFe9ecef),
+                  Color(0xFFdbe3ea),
+                  Color(0xFFd3dde6),
+                ],
+                stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+              ),
         color: isDarkMode ? Colors.black : null,
       ),
       child: Stack(
@@ -1823,7 +2033,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               ),
             ),
           ),
-          
+
           // 主要内容
           Center(
             child: Column(
@@ -1856,7 +2066,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // 错误标题
                 Text(
                   '哎呀, 出现了一些问题',
@@ -1868,11 +2078,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                
+
                 // 错误信息框
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFF8B4513).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1892,7 +2103,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // 提示文字
                 Text(
                   '请检查网络连接或尝试刷新页面',
@@ -1903,7 +2114,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
-                
+
                 // 按钮组
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1937,7 +2148,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 12),
-                      
+
                       // 重试按钮
                       SizedBox(
                         width: double.infinity,
@@ -1945,8 +2156,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                         child: ElevatedButton(
                           onPressed: hideError,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isDarkMode ? const Color(0xFF2D3748) : const Color(0xFFE2E8F0),
-                            foregroundColor: isDarkMode ? Colors.white : const Color(0xFF3182CE),
+                            backgroundColor: isDarkMode
+                                ? const Color(0xFF2D3748)
+                                : const Color(0xFFE2E8F0),
+                            foregroundColor: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF3182CE),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -1958,7 +2173,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: isDarkMode ? Colors.white : const Color(0xFF3182CE),
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : const Color(0xFF3182CE),
                             ),
                           ),
                         ),
@@ -1974,7 +2191,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-
   /// 获取视频详情
   Future<List<SearchResult>> fetchSourceDetail(String source, String id) async {
     return await ApiService.fetchSourceDetail(source, id);
@@ -1983,17 +2199,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   /// 搜索视频源数据（带过滤）
   Future<List<SearchResult>> fetchSourcesData(String query) async {
     final results = await ApiService.fetchSourcesData(query);
-    
+
     // 直接在这里展开过滤逻辑
     return results.where((result) {
       // 标题匹配检查
-      final titleMatch = result.title.replaceAll(' ', '').toLowerCase() == 
+      final titleMatch = result.title.replaceAll(' ', '').toLowerCase() ==
           (widget.title.replaceAll(' ', '').toLowerCase());
-      
+
       // 年份匹配检查
-      final yearMatch = widget.year == null || 
+      final yearMatch = widget.year == null ||
           result.year.toLowerCase() == widget.year!.toLowerCase();
-      
+
       // 类型匹配检查
       bool typeMatch = true;
       if (widget.stype != null) {
@@ -2003,11 +2219,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           typeMatch = result.episodes.length == 1;
         }
       }
-      
+
       return titleMatch && yearMatch && typeMatch;
     }).toList();
   }
-
 
   @override
   void didChangeDependencies() {
@@ -2018,15 +2233,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       final isDarkMode = theme.brightness == Brightness.dark;
       _originalStyle = SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        statusBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: theme.scaffoldBackgroundColor,
-        systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
       );
       _isInitialized = true;
     }
   }
-
 
   @override
   void dispose() {
@@ -2043,12 +2259,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     // 释放滚动控制器
     _episodesScrollController.dispose();
     _sourcesScrollController.dispose();
-      // 释放动画控制器
-      _refreshAnimationController.dispose();
-      _loadingAnimationController.dispose();
-      _textAnimationController.dispose();
-      _switchLoadingAnimationController.dispose();
-      super.dispose();
+    // 释放动画控制器
+    _refreshAnimationController.dispose();
+    _loadingAnimationController.dispose();
+    _textAnimationController.dispose();
+    _switchLoadingAnimationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -2061,15 +2277,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         statusBarColor: Colors.black,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: isDarkMode ? Colors.black : theme.scaffoldBackgroundColor,
-        systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor:
+            isDarkMode ? Colors.black : theme.scaffoldBackgroundColor,
+        systemNavigationBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         // 其余代码保持不变
         backgroundColor: Colors.transparent,
         body: Container(
           decoration: BoxDecoration(
-            gradient: isDarkMode 
+            gradient: isDarkMode
                 ? null
                 : const LinearGradient(
                     begin: Alignment.topCenter,
@@ -2088,50 +2306,24 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           ),
           child: Stack(
             children: [
-            // 主要内容
-            Column(
-              children: [
-                Container(
-                  height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
-                  color: Colors.black,
-                ),
-                Stack(
-                  children: [
-                    VideoPlayerWidget(
-                      dataSource: null,
-                      aspectRatio: 16 / 9,
-                      onBackPressed: _onBackPressed,
-                      onControllerCreated: (controller) {
-                        _videoPlayerController = controller;
-                      },
-                      onReady: _onVideoPlayerReady,
-                      onNextEpisode: _onNextEpisode,
-                      onVideoCompleted: _onVideoCompleted,
-                      onPause: () {
-                        // 暂停时保存进度
-                        _saveProgress(force: true);
-                      },
-                      isLastEpisode: currentDetail != null && currentEpisodeIndex >= currentDetail!.episodes.length - 1,
-                    ),
-                    // 切换播放源/集数时的加载蒙版（只遮挡播放器）
-                    SwitchLoadingOverlay(
-                      isVisible: _showSwitchLoadingOverlay,
-                      message: _switchLoadingMessage,
-                      animationController: _switchLoadingAnimationController,
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: _buildVideoDetailSection(theme),
-                ),
-              ],
-            ),
-            // 错误覆盖层
-            if (_showError && _errorMessage != null)
-              _buildErrorOverlay(theme),
-            // 加载覆盖层
-            if (_isLoading)
-              _buildLoadingOverlay(theme),
+              // 主要内容
+              Column(
+                children: [
+                  Container(
+                    height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
+                    color: Colors.black,
+                  ),
+                  _buildPlayerWidget(),
+                  Expanded(
+                    child: _buildVideoDetailSection(theme),
+                  ),
+                ],
+              ),
+              // 错误覆盖层
+              if (_showError && _errorMessage != null)
+                _buildErrorOverlay(theme),
+              // 加载覆盖层
+              if (_isLoading) _buildLoadingOverlay(theme),
             ],
           ),
         ),
@@ -2147,21 +2339,21 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        gradient: isDarkMode 
-          ? null
-          : const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFe6f3fb),
-                Color(0xFFeaf3f7),
-                Color(0xFFf7f7f3),
-                Color(0xFFe9ecef),
-                Color(0xFFdbe3ea),
-                Color(0xFFd3dde6),
-              ],
-              stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-            ),
+        gradient: isDarkMode
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFe6f3fb),
+                  Color(0xFFeaf3f7),
+                  Color(0xFFf7f7f3),
+                  Color(0xFFe9ecef),
+                  Color(0xFFdbe3ea),
+                  Color(0xFFd3dde6),
+                ],
+                stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+              ),
         color: isDarkMode ? Colors.black : null,
       ),
       child: Center(
@@ -2234,7 +2426,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: (isDarkMode ? Colors.white70 : Colors.black54).withOpacity(
+                    color: (isDarkMode ? Colors.white70 : Colors.black54)
+                        .withOpacity(
                       0.3 + (_textAnimationController.value * 0.7),
                     ),
                   ),
@@ -2290,7 +2483,7 @@ class _DetailsPanel extends StatelessWidget {
           ),
           Expanded(
             // child: _buildCurrentDetailPanel(isDarkMode),
-            child: doubanDetails != null 
+            child: doubanDetails != null
                 ? _buildDoubanDetailsPanel(isDarkMode)
                 : _buildCurrentDetailPanel(isDarkMode),
           ),
@@ -2339,8 +2532,9 @@ class _DetailsPanel extends StatelessWidget {
                               future: getImageUrl(cover, 'douban'),
                               builder: (context, snapshot) {
                                 final String imageUrl = snapshot.data ?? cover;
-                                final headers = getImageRequestHeaders(imageUrl, 'douban');
-                                
+                                final headers =
+                                    getImageRequestHeaders(imageUrl, 'douban');
+
                                 return CachedNetworkImage(
                                   imageUrl: imageUrl,
                                   fit: BoxFit.cover,
@@ -2348,31 +2542,46 @@ class _DetailsPanel extends StatelessWidget {
                                   height: 160,
                                   cacheKey: imageUrl,
                                   httpHeaders: headers,
-                                  memCacheWidth: (120 * MediaQuery.of(context).devicePixelRatio).round(),
-                                  memCacheHeight: (160 * MediaQuery.of(context).devicePixelRatio).round(),
+                                  memCacheWidth: (120 *
+                                          MediaQuery.of(context)
+                                              .devicePixelRatio)
+                                      .round(),
+                                  memCacheHeight: (160 *
+                                          MediaQuery.of(context)
+                                              .devicePixelRatio)
+                                      .round(),
                                   placeholder: (context, url) => Container(
                                     width: 120,
                                     height: 160,
                                     decoration: BoxDecoration(
-                                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                      color: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
+                                  errorWidget: (context, url, error) =>
+                                      Container(
                                     width: 120,
                                     height: 160,
-                                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                    color: isDarkMode
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
                                     child: const Icon(Icons.movie, size: 50),
                                   ),
-                                  fadeInDuration: const Duration(milliseconds: 200),
-                                  fadeOutDuration: const Duration(milliseconds: 100),
+                                  fadeInDuration:
+                                      const Duration(milliseconds: 200),
+                                  fadeOutDuration:
+                                      const Duration(milliseconds: 100),
                                 );
                               },
                             )
                           : Container(
                               width: 120,
                               height: 160,
-                              color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                              color: isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
                               child: const Icon(Icons.movie, size: 50),
                             ),
                     ),
@@ -2399,11 +2608,15 @@ class _DetailsPanel extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       // 原标题（如果存在且与标题不同）
-                      if (originalTitle != null && originalTitle.isNotEmpty && originalTitle != title)
+                      if (originalTitle != null &&
+                          originalTitle.isNotEmpty &&
+                          originalTitle != title)
                         Text(
                           originalTitle,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
                             fontStyle: FontStyle.italic,
                           ),
                           maxLines: 1,
@@ -2423,7 +2636,9 @@ class _DetailsPanel extends StatelessWidget {
                                 if (languages.isNotEmpty) languages.join(' | '),
                               ].join(' | '),
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           const SizedBox(height: 4),
@@ -2431,7 +2646,9 @@ class _DetailsPanel extends StatelessWidget {
                           Text(
                             year,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -2440,7 +2657,9 @@ class _DetailsPanel extends StatelessWidget {
                             Text(
                               duration,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           if (duration != null && duration.isNotEmpty)
@@ -2450,7 +2669,9 @@ class _DetailsPanel extends StatelessWidget {
                             Text(
                               '全${totalEpisodes}集',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           if (totalEpisodes != null && totalEpisodes > 1)
@@ -2460,7 +2681,9 @@ class _DetailsPanel extends StatelessWidget {
                             Text(
                               releaseDate,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                         ],
@@ -2503,19 +2726,26 @@ class _DetailsPanel extends StatelessWidget {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: genres.map((genre) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      genre,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                      ),
-                    ),
-                  )).toList(),
+                  children: genres
+                      .map((genre) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.grey[700]
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              genre,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDarkMode
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ],
             ),
@@ -2596,8 +2826,9 @@ class _DetailsPanel extends StatelessWidget {
                               future: getImageUrl(cover, currentDetail?.source),
                               builder: (context, snapshot) {
                                 final String imageUrl = snapshot.data ?? cover;
-                                final headers = getImageRequestHeaders(imageUrl, currentDetail?.source);
-                                
+                                final headers = getImageRequestHeaders(
+                                    imageUrl, currentDetail?.source);
+
                                 return CachedNetworkImage(
                                   imageUrl: imageUrl,
                                   fit: BoxFit.cover,
@@ -2605,31 +2836,46 @@ class _DetailsPanel extends StatelessWidget {
                                   height: 160,
                                   cacheKey: imageUrl,
                                   httpHeaders: headers,
-                                  memCacheWidth: (120 * MediaQuery.of(context).devicePixelRatio).round(),
-                                  memCacheHeight: (160 * MediaQuery.of(context).devicePixelRatio).round(),
+                                  memCacheWidth: (120 *
+                                          MediaQuery.of(context)
+                                              .devicePixelRatio)
+                                      .round(),
+                                  memCacheHeight: (160 *
+                                          MediaQuery.of(context)
+                                              .devicePixelRatio)
+                                      .round(),
                                   placeholder: (context, url) => Container(
                                     width: 120,
                                     height: 160,
                                     decoration: BoxDecoration(
-                                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                      color: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
+                                  errorWidget: (context, url, error) =>
+                                      Container(
                                     width: 120,
                                     height: 160,
-                                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                    color: isDarkMode
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
                                     child: const Icon(Icons.movie, size: 50),
                                   ),
-                                  fadeInDuration: const Duration(milliseconds: 200),
-                                  fadeOutDuration: const Duration(milliseconds: 100),
+                                  fadeInDuration:
+                                      const Duration(milliseconds: 200),
+                                  fadeOutDuration:
+                                      const Duration(milliseconds: 100),
                                 );
                               },
                             )
                           : Container(
                               width: 120,
                               height: 160,
-                              color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                              color: isDarkMode
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
                               child: const Icon(Icons.movie, size: 50),
                             ),
                     ),
@@ -2664,15 +2910,21 @@ class _DetailsPanel extends StatelessWidget {
                           // 源名称
                           if (sourceName != null && sourceName.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                border: Border.all(color: isDarkMode ? Colors.grey[600]! : Colors.grey[400]!),
+                                border: Border.all(
+                                    color: isDarkMode
+                                        ? Colors.grey[600]!
+                                        : Colors.grey[400]!),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 sourceName,
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                  color: isDarkMode
+                                      ? Colors.grey[300]
+                                      : Colors.grey[700],
                                 ),
                               ),
                             ),
@@ -2682,7 +2934,9 @@ class _DetailsPanel extends StatelessWidget {
                           Text(
                             year,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -2691,7 +2945,9 @@ class _DetailsPanel extends StatelessWidget {
                             Text(
                               '全${totalEpisodes}集',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                         ],
@@ -2719,19 +2975,27 @@ class _DetailsPanel extends StatelessWidget {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: class_.split(',').map((category) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      category.trim(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
-                      ),
-                    ),
-                  )).toList(),
+                  children: class_
+                      .split(',')
+                      .map((category) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.grey[700]
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              category.trim(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDarkMode
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ],
             ),
@@ -2769,7 +3033,7 @@ class _DetailsPanel extends StatelessWidget {
       final double fiveStarRating = rating / 2.0;
       final int fullStars = fiveStarRating.floor();
       final bool hasHalfStar = (fiveStarRating - fullStars) >= 0.5;
-      
+
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(5, (index) {
@@ -2801,17 +3065,19 @@ class _DetailsPanel extends StatelessWidget {
       // 如果解析失败，显示5颗空星
       return Row(
         mainAxisSize: MainAxisSize.min,
-        children: List.generate(5, (index) => Icon(
-          Icons.star,
-          color: Colors.grey[400],
-          size: 16,
-        )),
+        children: List.generate(
+            5,
+            (index) => Icon(
+                  Icons.star,
+                  color: Colors.grey[400],
+                  size: 16,
+                )),
       );
     }
   }
 
-
-  Widget _buildProductionInfo(List<String> directors, List<String> writers, List<String> actors, bool isDarkMode) {
+  Widget _buildProductionInfo(List<String> directors, List<String> writers,
+      List<String> actors, bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2824,7 +3090,9 @@ class _DetailsPanel extends StatelessWidget {
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
                 ),
                 children: [
-                  TextSpan(text: '导演: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(
+                      text: '导演: ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   TextSpan(text: directors.join(' / ')),
                 ],
               ),
@@ -2839,7 +3107,9 @@ class _DetailsPanel extends StatelessWidget {
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
                 ),
                 children: [
-                  TextSpan(text: '编剧: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(
+                      text: '编剧: ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   TextSpan(text: writers.join(' / ')),
                 ],
               ),
@@ -2854,7 +3124,9 @@ class _DetailsPanel extends StatelessWidget {
                   color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
                 ),
                 children: [
-                  TextSpan(text: '主演: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(
+                      text: '主演: ',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   TextSpan(text: actors.join(' / ')),
                 ],
               ),
@@ -2863,7 +3135,6 @@ class _DetailsPanel extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _EpisodesGridPanel extends StatefulWidget {
@@ -2918,28 +3189,29 @@ class _EpisodesGridPanelState extends State<_EpisodesGridPanel> {
     final targetIndex = widget.isReversed
         ? widget.episodes.length - 1 - widget.currentEpisodeIndex
         : widget.currentEpisodeIndex;
-    
+
     const crossAxisCount = 2;
     const mainAxisSpacing = 12.0;
     const childAspectRatio = 3.0;
-    
-    final itemWidth = (gridBox.size.width - (crossAxisCount - 1) * 12) / crossAxisCount;
+
+    final itemWidth =
+        (gridBox.size.width - (crossAxisCount - 1) * 12) / crossAxisCount;
     final itemHeight = itemWidth / childAspectRatio;
 
     final row = (targetIndex / crossAxisCount).floor();
     final offset = row * (itemHeight + mainAxisSpacing);
 
     _scrollController.animateTo(
-        offset.clamp(0.0, _scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+      offset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.theme.brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1c1c1e) : Colors.white,
@@ -2965,7 +3237,7 @@ class _EpisodesGridPanelState extends State<_EpisodesGridPanel> {
               ],
             ),
           ),
-          
+
           // 集数网格
           Expanded(
             child: GridView.builder(
@@ -2983,15 +3255,17 @@ class _EpisodesGridPanelState extends State<_EpisodesGridPanel> {
                 final episodeIndex = widget.isReversed
                     ? widget.episodes.length - 1 - index
                     : index;
-                final isCurrentEpisode = episodeIndex == widget.currentEpisodeIndex;
-                
+                final isCurrentEpisode =
+                    episodeIndex == widget.currentEpisodeIndex;
+
                 String episodeTitle = '';
-                if (widget.episodesTitles.isNotEmpty && episodeIndex < widget.episodesTitles.length) {
+                if (widget.episodesTitles.isNotEmpty &&
+                    episodeIndex < widget.episodesTitles.length) {
                   episodeTitle = widget.episodesTitles[episodeIndex];
                 } else {
                   episodeTitle = '第${episodeIndex + 1}集';
                 }
-                
+
                 return GestureDetector(
                   onTap: () => widget.onEpisodeTap(episodeIndex),
                   child: Container(
@@ -3014,7 +3288,9 @@ class _EpisodesGridPanelState extends State<_EpisodesGridPanel> {
                             style: TextStyle(
                               color: isCurrentEpisode
                                   ? Colors.green
-                                  : (isDarkMode ? Colors.white70 : Colors.black87),
+                                  : (isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black87),
                               fontSize: 14,
                               fontWeight: FontWeight.w300,
                             ),
@@ -3031,7 +3307,9 @@ class _EpisodesGridPanelState extends State<_EpisodesGridPanel> {
                               style: TextStyle(
                                 color: isCurrentEpisode
                                     ? Colors.green
-                                    : (isDarkMode ? Colors.white : Colors.black),
+                                    : (isDarkMode
+                                        ? Colors.white
+                                        : Colors.black),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 14,
                               ),
@@ -3078,7 +3356,8 @@ class _SourcesGridPanel extends StatefulWidget {
   State<_SourcesGridPanel> createState() => _SourcesGridPanelState();
 }
 
-class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerProviderStateMixin {
+class _SourcesGridPanelState extends State<_SourcesGridPanel>
+    with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
   bool _isRefreshing = false;
   late ScrollController _scrollController;
@@ -3091,7 +3370,7 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
       vsync: this,
     );
     _scrollController = ScrollController();
-    
+
     // 延迟滚动到当前源
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentSource();
@@ -3116,22 +3395,21 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
 
   void _scrollToCurrentSource() {
     if (!_scrollController.hasClients) return;
-    
+
     // 找到当前源在列表中的索引
-    final currentIndex = widget.sources.indexWhere(
-      (source) => source.source == widget.currentSource && source.id == widget.currentId
-    );
-    
+    final currentIndex = widget.sources.indexWhere((source) =>
+        source.source == widget.currentSource && source.id == widget.currentId);
+
     if (currentIndex == -1) return;
-    
+
     // 计算每个项目的高度（包括间距）
     const itemHeight = 100.0; // 每个卡片的高度
     const itemSpacing = 12.0; // 卡片间距
     const totalItemHeight = itemHeight + itemSpacing;
-    
+
     // 计算目标位置
     final targetOffset = currentIndex * totalItemHeight;
-    
+
     // 滚动到目标位置
     _scrollController.animateTo(
       targetOffset,
@@ -3187,7 +3465,11 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
                         turns: _rotationController,
                         child: Icon(
                           Icons.refresh,
-                          color: _isRefreshing ? Colors.green : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                          color: _isRefreshing
+                              ? Colors.green
+                              : (isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600]),
                         ),
                       ),
                       onPressed: _isRefreshing ? null : _handleRefresh,
@@ -3208,8 +3490,10 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
               itemCount: widget.sources.length,
               itemBuilder: (context, index) {
                 final source = widget.sources[index];
-                final isCurrent = source.source == widget.currentSource && source.id == widget.currentId;
-                final speedInfo = widget.sourcesSpeed['${source.source}_${source.id}'];
+                final isCurrent = source.source == widget.currentSource &&
+                    source.id == widget.currentId;
+                final speedInfo =
+                    widget.sourcesSpeed['${source.source}_${source.id}'];
 
                 return GestureDetector(
                   onTap: () => widget.onSourceTap(source),
@@ -3240,29 +3524,34 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) => Container(
                                         decoration: BoxDecoration(
-                                          color: isDarkMode 
+                                          color: isDarkMode
                                               ? const Color(0xFF333333)
                                               : Colors.grey[300],
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                       ),
-                                      errorWidget: (context, url, error) => Container(
+                                      errorWidget: (context, url, error) =>
+                                          Container(
                                         decoration: BoxDecoration(
-                                          color: isDarkMode 
+                                          color: isDarkMode
                                               ? const Color(0xFF333333)
                                               : Colors.grey[300],
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Icon(
                                           Icons.movie,
-                                          color: isDarkMode 
+                                          color: isDarkMode
                                               ? const Color(0xFF666666)
                                               : Colors.grey,
                                           size: 40,
                                         ),
                                       ),
-                                      fadeInDuration: const Duration(milliseconds: 200),
-                                      fadeOutDuration: const Duration(milliseconds: 100),
+                                      fadeInDuration:
+                                          const Duration(milliseconds: 200),
+                                      fadeOutDuration:
+                                          const Duration(milliseconds: 100),
                                     ),
                                   ),
                                 ),
@@ -3270,74 +3559,108 @@ class _SourcesGridPanelState extends State<_SourcesGridPanel> with SingleTickerP
                                 // Right side: Info
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Title
                                       Text(
                                         source.title,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: widget.theme.textTheme.bodyLarge?.copyWith(
+                                        style: widget.theme.textTheme.bodyLarge
+                                            ?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
                                       // Source Name
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 3),
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: isDarkMode ? Colors.grey[600]! : Colors.grey[400]!),
-                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                              color: isDarkMode
+                                                  ? Colors.grey[600]!
+                                                  : Colors.grey[400]!),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           source.sourceName,
-                                          style: widget.theme.textTheme.bodyMedium,
+                                          style:
+                                              widget.theme.textTheme.bodyMedium,
                                         ),
                                       ),
                                       const Spacer(),
-                                  // Bottom row
-                                  Row(
-                                    children: [
-                                      if (speedInfo != null) ...[
-                                        if (speedInfo.loadSpeed.isNotEmpty && !speedInfo.loadSpeed.toLowerCase().contains('超时'))
+                                      // Bottom row
+                                      Row(
+                                        children: [
+                                          if (speedInfo != null) ...[
+                                            if (speedInfo
+                                                    .loadSpeed.isNotEmpty &&
+                                                !speedInfo.loadSpeed
+                                                    .toLowerCase()
+                                                    .contains('超时'))
                                               Text(
                                                 speedInfo.loadSpeed,
-                                                style: widget.theme.textTheme.bodyMedium?.copyWith(color: Colors.green),
+                                                style: widget
+                                                    .theme.textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                        color: Colors.green),
                                               ),
-                                        if (speedInfo.loadSpeed.isNotEmpty && !speedInfo.loadSpeed.toLowerCase().contains('超时') && 
-                                            speedInfo.pingTime.isNotEmpty && !speedInfo.pingTime.toLowerCase().contains('超时'))
-                                          const SizedBox(width: 8),
-                                        if (speedInfo.pingTime.isNotEmpty && !speedInfo.pingTime.toLowerCase().contains('超时'))
-                                          Text(
-                                            speedInfo.pingTime,
-                                            style: widget.theme.textTheme.bodyMedium?.copyWith(color: Colors.orange),
-                                          ),
-                                      ],
-                                      const Spacer(),
-                                      if (source.episodes.length > 1)
-                                      Text(
-                                        '${source.episodes.length} 集',
-                                        style: widget.theme.textTheme.bodyMedium,
+                                            if (speedInfo
+                                                    .loadSpeed.isNotEmpty &&
+                                                !speedInfo.loadSpeed
+                                                    .toLowerCase()
+                                                    .contains('超时') &&
+                                                speedInfo.pingTime.isNotEmpty &&
+                                                !speedInfo.pingTime
+                                                    .toLowerCase()
+                                                    .contains('超时'))
+                                              const SizedBox(width: 8),
+                                            if (speedInfo.pingTime.isNotEmpty &&
+                                                !speedInfo.pingTime
+                                                    .toLowerCase()
+                                                    .contains('超时'))
+                                              Text(
+                                                speedInfo.pingTime,
+                                                style: widget
+                                                    .theme.textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                        color: Colors.orange),
+                                              ),
+                                          ],
+                                          const Spacer(),
+                                          if (source.episodes.length > 1)
+                                            Text(
+                                              '${source.episodes.length} 集',
+                                              style: widget
+                                                  .theme.textTheme.bodyMedium,
+                                            ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
                             // Resolution tag in top right
-                            if (speedInfo != null && speedInfo.quality.isNotEmpty && speedInfo.quality.toLowerCase() != '未知')
+                            if (speedInfo != null &&
+                                speedInfo.quality.isNotEmpty &&
+                                speedInfo.quality.toLowerCase() != '未知')
                               Positioned(
                                 top: 0,
                                 right: 0,
-                                  child: Text(
-                                    speedInfo.quality,
-                                    style: widget.theme.textTheme.bodyMedium?.copyWith(
-                                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                child: Text(
+                                  speedInfo.quality,
+                                  style: widget.theme.textTheme.bodyMedium
+                                      ?.copyWith(
+                                    color: isDarkMode
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
                                   ),
+                                ),
                               ),
                           ],
                         ),

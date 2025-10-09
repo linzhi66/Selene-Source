@@ -14,6 +14,7 @@ class VideoPlayerWidget extends StatefulWidget {
   final VoidCallback? onVideoCompleted;
   final VoidCallback? onPause;
   final bool isLastEpisode;
+  final Function(dynamic)? onCastStarted;
 
   const VideoPlayerWidget({
     super.key,
@@ -26,6 +27,7 @@ class VideoPlayerWidget extends StatefulWidget {
     this.onVideoCompleted,
     this.onPause,
     this.isLastEpisode = false,
+    this.onCastStarted,
   });
 
   @override
@@ -126,7 +128,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     ]);
   }
 
-  Future<void> _initializePlayer() async {
+  Future<void> _initializePlayer({Duration? startAt}) async {
     if (!mounted) return;
 
     // 如果 _currentDataSource 为 null 则停止初始化直接返回
@@ -141,6 +143,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       fit: BoxFit.contain,
       autoDetectFullscreenDeviceOrientation: true,
       allowedScreenSleep: false,
+      startAt: startAt,
       controlsConfiguration: BetterPlayerControlsConfiguration(
         playerTheme: BetterPlayerTheme.custom,
         customControlsBuilder: (controller, onControlsVisibilityChanged) {
@@ -156,6 +159,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             isLastEpisode: widget.isLastEpisode,
             betterPlayerKey: _betterPlayerKey,
             isLoadingVideo: _isLoadingVideo,
+            onCastStarted: widget.onCastStarted,
           );
         },
       ),
@@ -267,7 +271,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     // 如果没有初始化则直接调用 _initializePlayer 执行初始化
-    await _initializePlayer();
+    await _initializePlayer(startAt: startAt);
   }
 
   Future<void> seekTo(Duration position) async {
