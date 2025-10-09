@@ -1,6 +1,13 @@
 PODS:
   - app_settings (5.1.1):
     - Flutter
+  - awesome_video_player (1.0.0):
+    - Cache (~> 6.0.0)
+    - Flutter
+    - GCDWebServer
+    - HLSCachingReverseProxyServer
+    - PINCache
+  - Cache (6.0.0)
   - Flutter (1.0.0)
   - fvp (0.34.0):
     - Flutter
@@ -9,12 +16,26 @@ PODS:
   - gal (1.0.0):
     - Flutter
     - FlutterMacOS
+  - GCDWebServer (3.5.4):
+    - GCDWebServer/Core (= 3.5.4)
+  - GCDWebServer/Core (3.5.4)
+  - HLSCachingReverseProxyServer (0.1.0):
+    - GCDWebServer (~> 3.5)
+    - PINCache (>= 3.0.1-beta.3)
   - mdk (0.34.0)
   - package_info_plus (0.4.5):
     - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - PINCache (3.0.4):
+    - PINCache/Arc-exception-safe (= 3.0.4)
+    - PINCache/Core (= 3.0.4)
+  - PINCache/Arc-exception-safe (3.0.4):
+    - PINCache/Core
+  - PINCache/Core (3.0.4):
+    - PINOperation (~> 1.2.3)
+  - PINOperation (1.2.3)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -31,6 +52,7 @@ PODS:
 
 DEPENDENCIES:
   - app_settings (from `.symlinks/plugins/app_settings/ios`)
+  - awesome_video_player (from `.symlinks/plugins/awesome_video_player/ios`)
   - Flutter (from `Flutter`)
   - fvp (from `.symlinks/plugins/fvp/darwin`)
   - gal (from `.symlinks/plugins/gal/darwin`)
@@ -44,11 +66,18 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - Cache
+    - GCDWebServer
+    - HLSCachingReverseProxyServer
     - mdk
+    - PINCache
+    - PINOperation
 
 EXTERNAL SOURCES:
   app_settings:
     :path: ".symlinks/plugins/app_settings/ios"
+  awesome_video_player:
+    :path: ".symlinks/plugins/awesome_video_player/ios"
   Flutter:
     :path: Flutter
   fvp:
@@ -72,12 +101,18 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   app_settings: 5127ae0678de1dcc19f2293271c51d37c89428b2
+  awesome_video_player: c002b796acf4aa68ddb125a99726922882fd28e6
+  Cache: 4ca7e00363fca5455f26534e5607634c820ffc2d
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   fvp: 48709d265d435e8b2989e07aeb253989514d03e3
   gal: baecd024ebfd13c441269ca7404792a7152fde89
+  GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
+  HLSCachingReverseProxyServer: 59935e1e0244ad7f3375d75b5ef46e8eb26ab181
   mdk: c54ab482a3457f754b2bf6b4b615c117379f5885
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  PINCache: d9a87a0ff397acffe9e2f0db972ac14680441158
+  PINOperation: fb563bcc9c32c26d6c78aaff967d405aa2ee74a7
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d

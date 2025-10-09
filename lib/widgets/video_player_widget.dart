@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:awesome_video_player/awesome_video_player.dart';
-import 'dlna_device_dialog.dart';
 import 'custom_better_player_controls.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -99,6 +98,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   double _cachedPlaybackSpeed = 1.0;
   BetterPlayerDataSource? _currentDataSource;
   final GlobalKey _betterPlayerKey = GlobalKey();
+  bool _isLoadingVideo = false; // 视频加载状态
 
   @override
   void initState() {
@@ -114,13 +114,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
-    ]);
-  }
-
-  void _setLandscapeOrientation() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
   }
 
@@ -162,6 +155,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             videoUrl: _currentDataSource?.url ?? '',
             isLastEpisode: widget.isLastEpisode,
             betterPlayerKey: _betterPlayerKey,
+            isLoadingVideo: _isLoadingVideo,
           );
         },
       ),
@@ -213,6 +207,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // 监听播放器初始化完成事件
     if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+      // 隐藏加载状态
+      if (mounted && _isLoadingVideo) {
+        setState(() {
+          _isLoadingVideo = false;
+        });
+      }
       widget.onReady?.call();
     }
 
@@ -229,8 +229,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       {Duration? startAt}) async {
     if (!mounted) return;
 
+    // 显示加载状态
     setState(() {
       _currentDataSource = dataSource;
+      _isLoadingVideo = true;
     });
 
     // 如果播放器已经初始化完成则直接 change Data Source 即可，无需重复初始化
@@ -254,6 +256,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         });
       } catch (e) {
         debugPrint('Error changing data source: $e');
+        // 出错时也隐藏加载状态
+        if (mounted) {
+          setState(() {
+            _isLoadingVideo = false;
+          });
+        }
       }
       return;
     }
