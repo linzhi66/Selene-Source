@@ -50,6 +50,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   String? _errorMessage;
   bool _showError = false;
 
+  // 缓存设备类型，避免分辨率变化时改变布局
+  late bool _isTablet;
+  late bool _isPortraitTablet;
+
   // 加载状态
   bool _isLoading = true;
   String _loadingMessage = '正在搜索播放源...';
@@ -786,8 +790,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     const listViewPadding = 16.0; // ListView的左右padding
     const itemMargin = 6.0; // 每个item的右边距
     final availableWidth = screenWidth - (listViewPadding * 2); // 减去左右padding
-    final isTablet = DeviceUtils.isTablet(context);
-    final cardsPerView = isTablet ? 6.2 : 3.2;
+    final cardsPerView = _isTablet ? 6.2 : 3.2;
     final cardWidth = (availableWidth / cardsPerView) - itemMargin; // 减去右边距
 
     // 计算选中项在可视区域中央的偏移量
@@ -882,8 +885,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     const listViewPadding = 16.0; // ListView的左右padding
     const itemMargin = 6.0; // 每个item的右边距
     final availableWidth = screenWidth - (listViewPadding * 2); // 减去左右padding
-    final isTablet = DeviceUtils.isTablet(context);
-    final cardsPerView = isTablet ? 6.2 : 3.2;
+    final cardsPerView = _isTablet ? 6.2 : 3.2;
     final buttonWidth = (availableWidth / cardsPerView) - itemMargin; // 减去右边距
 
     final targetIndex = _isEpisodesReversed
@@ -1155,8 +1157,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   const Spacer(),
 
                   // 详情按钮（平板横屏模式下不显示）
-                  if (!(DeviceUtils.isTablet(context) &&
-                      !DeviceUtils.isPortraitTablet(context)))
+                  if (!(_isTablet && !_isPortraitTablet))
                     GestureDetector(
                       onTap: () {
                         _showDetailsPanel();
@@ -1280,8 +1281,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         final double screenWidth = constraints.maxWidth;
         final double padding = 16.0;
         final double spacing = 12.0;
-        final isTablet = DeviceUtils.isTablet(context);
-        final crossAxisCount = isTablet ? 6 : 3;
+        final crossAxisCount = _isTablet ? 6 : 3;
         final double availableWidth =
             screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
         final double minItemWidth = 80.0;
@@ -1467,8 +1467,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             final screenWidth = constraints.maxWidth;
             final horizontalPadding = 32.0; // 左右各16
             final availableWidth = screenWidth - horizontalPadding;
-            final isTablet = DeviceUtils.isTablet(context);
-            final cardsPerView = isTablet ? 6.2 : 3.2;
+            final cardsPerView = _isTablet ? 6.2 : 3.2;
             final buttonWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
             final buttonHeight = buttonWidth * 1.8 / 3; // 稍微减少高度
 
@@ -1595,22 +1594,20 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final isTablet = DeviceUtils.isTablet(context);
-    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
 
     // 确定列数：竖屏平板4列，横屏平板3列，手机2列
-    final crossAxisCount = isPortraitTablet ? 4 : (isTablet ? 3 : 2);
+    final crossAxisCount = _isPortraitTablet ? 4 : (_isTablet ? 3 : 2);
 
     // 平板模式：使用 showGeneralDialog
-    if (isTablet) {
-      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
-      final panelHeight = isPortraitTablet
+    if (_isTablet) {
+      final panelWidth = _isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = _isPortraitTablet
           ? (screenHeight - statusBarHeight) * 0.5
           : screenHeight;
       final alignment =
-          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+          _isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
       final slideBegin =
-          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+          _isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
 
       showGeneralDialog(
         context: context,
@@ -1732,19 +1729,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final isTablet = DeviceUtils.isTablet(context);
-    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
 
     // 平板模式：使用 showGeneralDialog
-    if (isTablet) {
-      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
-      final panelHeight = isPortraitTablet
+    if (_isTablet) {
+      final panelWidth = _isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = _isPortraitTablet
           ? (screenHeight - statusBarHeight) * 0.5
           : screenHeight;
       final alignment =
-          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+          _isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
       final slideBegin =
-          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+          _isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
 
       showGeneralDialog(
         context: context,
@@ -1933,8 +1928,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         final screenWidth = constraints.maxWidth;
         final horizontalPadding = 32.0; // 左右各16
         final availableWidth = screenWidth - horizontalPadding;
-        final isTablet = DeviceUtils.isTablet(context);
-        final cardsPerView = isTablet ? 6.2 : 3.2;
+        final cardsPerView = _isTablet ? 6.2 : 3.2;
         final cardWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
         final cardHeight = cardWidth * 1.8 / 3; // 稍微减少高度
 
@@ -2079,19 +2073,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final isTablet = DeviceUtils.isTablet(context);
-    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
 
     // 平板模式：使用 showGeneralDialog
-    if (isTablet) {
-      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
-      final panelHeight = isPortraitTablet
+    if (_isTablet) {
+      final panelWidth = _isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = _isPortraitTablet
           ? (screenHeight - statusBarHeight) * 0.5
           : screenHeight;
       final alignment =
-          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+          _isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
       final slideBegin =
-          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+          _isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
 
       showGeneralDialog(
         context: context,
@@ -2504,9 +2496,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
+      // 缓存设备类型，避免分辨率变化时改变布局
+      _isTablet = DeviceUtils.isTablet(context);
+      _isPortraitTablet = DeviceUtils.isPortraitTablet(context);
+
       // 设置屏幕方向（平板除外）
       // 如果是平板，不强制竖屏
-      if (!DeviceUtils.isTablet(context)) {
+      if (!_isTablet) {
         _setPortraitOrientation();
       }
       // 保存当前的系统UI样式
@@ -2557,8 +2553,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final isTablet = DeviceUtils.isTablet(context);
-    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -2594,10 +2588,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           child: Stack(
             children: [
               // 主要内容
-              if (isTablet && !isPortraitTablet)
+              if (_isTablet && !_isPortraitTablet)
                 // 平板横屏模式：左右布局
                 _buildTabletLandscapeLayout(theme)
-              else if (isPortraitTablet)
+              else if (_isPortraitTablet)
                 // 平板竖屏模式：上下布局，播放器占50%高度
                 _buildPortraitTabletLayout(theme)
               else
