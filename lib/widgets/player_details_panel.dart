@@ -9,6 +9,7 @@ class PlayerDetailsPanel extends StatelessWidget {
   final DoubanMovieDetails? doubanDetails;
   final SearchResult? currentDetail;
   final bool showCloseButton;
+  final bool showTitle;
 
   const PlayerDetailsPanel({
     super.key,
@@ -16,6 +17,7 @@ class PlayerDetailsPanel extends StatelessWidget {
     this.doubanDetails,
     this.currentDetail,
     this.showCloseButton = true,
+    this.showTitle = true,
   });
 
   @override
@@ -31,25 +33,28 @@ class PlayerDetailsPanel extends StatelessWidget {
       child: Column(
         children: [
           // 标题栏
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '详情',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+          if (showTitle)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '详情',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                if (showCloseButton)
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-              ],
+                  if (showCloseButton)
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                ],
+              ),
             ),
-          ),
+          if (!showTitle)
+            const SizedBox(height: 8),
           Expanded(
             child: doubanDetails != null
                 ? _buildDoubanDetailsPanel(context, isDarkMode)

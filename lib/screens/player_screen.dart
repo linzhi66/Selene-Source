@@ -2694,6 +2694,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     doubanDetails: doubanDetails,
                     currentDetail: currentDetail,
                     showCloseButton: false,
+                    showTitle: false,
                   ),
                 ),
               ),
