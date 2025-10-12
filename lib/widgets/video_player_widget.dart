@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:awesome_video_player/awesome_video_player.dart';
 import 'custom_better_player_controls.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final BetterPlayerDataSource? dataSource;
-  final double aspectRatio;
   final VoidCallback? onBackPressed;
   final Function(VideoPlayerWidgetController)? onControllerCreated;
   final VoidCallback? onReady;
@@ -23,7 +21,6 @@ class VideoPlayerWidget extends StatefulWidget {
   const VideoPlayerWidget({
     super.key,
     this.dataSource,
-    this.aspectRatio = 16 / 9,
     this.onBackPressed,
     this.onControllerCreated,
     this.onReady,
@@ -341,9 +338,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: widget.aspectRatio,
-      child: _buildPlayerContent(isFullscreen: _isFullscreen),
-    );
+    return _buildPlayerContent(isFullscreen: _isFullscreen);
   }
 }

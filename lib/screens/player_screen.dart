@@ -786,7 +786,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     const listViewPadding = 16.0; // ListView的左右padding
     const itemMargin = 6.0; // 每个item的右边距
     final availableWidth = screenWidth - (listViewPadding * 2); // 减去左右padding
-    final cardWidth = (availableWidth / 3.2) - itemMargin; // 减去右边距
+    final isTablet = DeviceUtils.isTablet(context);
+    final cardsPerView = isTablet ? 6.2 : 3.2;
+    final cardWidth = (availableWidth / cardsPerView) - itemMargin; // 减去右边距
 
     // 计算选中项在可视区域中央的偏移量
     // 可视区域中心 = (屏幕宽度 - ListView左右padding) / 2
@@ -880,7 +882,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     const listViewPadding = 16.0; // ListView的左右padding
     const itemMargin = 6.0; // 每个item的右边距
     final availableWidth = screenWidth - (listViewPadding * 2); // 减去左右padding
-    final buttonWidth = (availableWidth / 3.2) - itemMargin; // 减去右边距
+    final isTablet = DeviceUtils.isTablet(context);
+    final cardsPerView = isTablet ? 6.2 : 3.2;
+    final buttonWidth = (availableWidth / cardsPerView) - itemMargin; // 减去右边距
 
     final targetIndex = _isEpisodesReversed
         ? currentDetail!.episodes.length - 1 - currentEpisodeIndex
@@ -916,7 +920,6 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (!_isCasting)
           VideoPlayerWidget(
             dataSource: null,
-            aspectRatio: 16 / 9,
             onBackPressed: _onBackPressed,
             onControllerCreated: (controller) {
               _videoPlayerController = controller;
@@ -1151,42 +1154,44 @@ class _PlayerScreenState extends State<PlayerScreen>
 
                   const Spacer(),
 
-                  // 详情按钮
-                  GestureDetector(
-                    onTap: () {
-                      _showDetailsPanel();
-                    },
-                    child: Stack(
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '详情',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDarkMode
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                                fontWeight: FontWeight.w300,
+                  // 详情按钮（平板横屏模式下不显示）
+                  if (!(DeviceUtils.isTablet(context) &&
+                      !DeviceUtils.isPortraitTablet(context)))
+                    GestureDetector(
+                      onTap: () {
+                        _showDetailsPanel();
+                      },
+                      child: Stack(
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '详情',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 18),
-                          ],
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 4,
-                          child: Icon(
-                            Icons.arrow_forward_ios,
-                            size: 14,
-                            color: isDarkMode
-                                ? Colors.grey[400]
-                                : Colors.grey[600],
+                              const SizedBox(width: 18),
+                            ],
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            right: 0,
+                            top: 4,
+                            child: Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -1275,10 +1280,12 @@ class _PlayerScreenState extends State<PlayerScreen>
         final double screenWidth = constraints.maxWidth;
         final double padding = 16.0;
         final double spacing = 12.0;
+        final isTablet = DeviceUtils.isTablet(context);
+        final crossAxisCount = isTablet ? 6 : 3;
         final double availableWidth =
-            screenWidth - (padding * 2) - (spacing * 2);
+            screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
         final double minItemWidth = 80.0;
-        final double calculatedItemWidth = availableWidth / 3;
+        final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
 
@@ -1289,7 +1296,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
+              crossAxisCount: crossAxisCount,
               childAspectRatio: itemWidth / itemHeight,
               crossAxisSpacing: spacing,
               mainAxisSpacing: 4,
@@ -1456,11 +1463,13 @@ class _PlayerScreenState extends State<PlayerScreen>
         // 集数卡片横向滚动区域
         LayoutBuilder(
           builder: (context, constraints) {
-            // 计算按钮宽度：屏幕宽度减去左右padding，除以3.2，再减去间距
+            // 计算按钮宽度：根据设备类型调整
             final screenWidth = constraints.maxWidth;
             final horizontalPadding = 32.0; // 左右各16
             final availableWidth = screenWidth - horizontalPadding;
-            final buttonWidth = (availableWidth / 3.2) - 6; // 减去右边距6
+            final isTablet = DeviceUtils.isTablet(context);
+            final cardsPerView = isTablet ? 6.2 : 3.2;
+            final buttonWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
             final buttonHeight = buttonWidth * 1.8 / 3; // 稍微减少高度
 
             return SizedBox(
@@ -1586,6 +1595,87 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
+    final isTablet = DeviceUtils.isTablet(context);
+    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
+
+    // 确定列数：竖屏平板4列，横屏平板3列，手机2列
+    final crossAxisCount = isPortraitTablet ? 4 : (isTablet ? 3 : 2);
+
+    // 平板模式：使用 showGeneralDialog
+    if (isTablet) {
+      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = isPortraitTablet
+          ? (screenHeight - statusBarHeight) * 0.5
+          : screenHeight;
+      final alignment =
+          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+      final slideBegin =
+          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: alignment,
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: panelWidth,
+                height: panelHeight,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: slideBegin,
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  )),
+                  child: StatefulBuilder(
+                    builder: (BuildContext context, StateSetter setState) {
+                      return PlayerEpisodesPanel(
+                        theme: theme,
+                        episodes: currentDetail!.episodes,
+                        episodesTitles: currentDetail!.episodesTitles,
+                        currentEpisodeIndex: currentEpisodeIndex,
+                        isReversed: _isEpisodesReversed,
+                        crossAxisCount: crossAxisCount,
+                        onEpisodeTap: (index) {
+                          Navigator.pop(context);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            this.setState(() {
+                              _showSwitchLoadingOverlay = true;
+                              _switchLoadingMessage = '切换选集...';
+                            });
+                          });
+                          _saveProgress(force: true);
+                          this.setState(() {
+                            currentEpisodeIndex = index;
+                          });
+                          updateVideoUrl(currentDetail!.episodes[index]);
+                          _scrollToCurrentEpisode();
+                        },
+                        onToggleOrder: () {
+                          setState(() {
+                            _isEpisodesReversed = !_isEpisodesReversed;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // 手机模式：从底部弹出
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
@@ -1598,29 +1688,25 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return SizedBox(
+            return Container(
               height: panelHeight,
+              width: double.infinity,
               child: PlayerEpisodesPanel(
                 theme: theme,
                 episodes: currentDetail!.episodes,
                 episodesTitles: currentDetail!.episodesTitles,
                 currentEpisodeIndex: currentEpisodeIndex,
                 isReversed: _isEpisodesReversed,
+                crossAxisCount: crossAxisCount,
                 onEpisodeTap: (index) {
-                  // 先关闭弹窗
                   Navigator.pop(context);
-
-                  // 在下一帧显示切换加载蒙版
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     this.setState(() {
                       _showSwitchLoadingOverlay = true;
                       _switchLoadingMessage = '切换选集...';
                     });
                   });
-
-                  // 集数切换前保存进度
                   _saveProgress(force: true);
-
                   this.setState(() {
                     currentEpisodeIndex = index;
                   });
@@ -1646,6 +1732,57 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
+    final isTablet = DeviceUtils.isTablet(context);
+    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
+
+    // 平板模式：使用 showGeneralDialog
+    if (isTablet) {
+      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = isPortraitTablet
+          ? (screenHeight - statusBarHeight) * 0.5
+          : screenHeight;
+      final alignment =
+          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+      final slideBegin =
+          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: alignment,
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: panelWidth,
+                height: panelHeight,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: slideBegin,
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  )),
+                  child: PlayerDetailsPanel(
+                    theme: theme,
+                    doubanDetails: doubanDetails,
+                    currentDetail: currentDetail,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // 手机模式：从底部弹出
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
@@ -1658,8 +1795,9 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return SizedBox(
+            return Container(
               height: panelHeight,
+              width: double.infinity,
               child: PlayerDetailsPanel(
                 theme: theme,
                 doubanDetails: doubanDetails,
@@ -1791,11 +1929,13 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 计算卡片宽度：屏幕宽度减去左右padding，除以3.2，再减去间距
+        // 计算卡片宽度：根据设备类型调整
         final screenWidth = constraints.maxWidth;
         final horizontalPadding = 32.0; // 左右各16
         final availableWidth = screenWidth - horizontalPadding;
-        final cardWidth = (availableWidth / 3.2) - 6; // 减去右边距6
+        final isTablet = DeviceUtils.isTablet(context);
+        final cardsPerView = isTablet ? 6.2 : 3.2;
+        final cardWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
         final cardHeight = cardWidth * 1.8 / 3; // 稍微减少高度
 
         return SizedBox(
@@ -1939,6 +2079,76 @@ class _PlayerScreenState extends State<PlayerScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final statusBarHeight = MediaQuery.of(context).padding.top;
+    final isTablet = DeviceUtils.isTablet(context);
+    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
+
+    // 平板模式：使用 showGeneralDialog
+    if (isTablet) {
+      final panelWidth = isPortraitTablet ? screenWidth : screenWidth * 0.35;
+      final panelHeight = isPortraitTablet
+          ? (screenHeight - statusBarHeight) * 0.5
+          : screenHeight;
+      final alignment =
+          isPortraitTablet ? Alignment.bottomCenter : Alignment.centerRight;
+      final slideBegin =
+          isPortraitTablet ? const Offset(0, 1) : const Offset(1, 0);
+
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Align(
+            alignment: alignment,
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(
+                width: panelWidth,
+                height: panelHeight,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: slideBegin,
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  )),
+                  child: StatefulBuilder(
+                    builder: (BuildContext context, StateSetter setState) {
+                      return PlayerSourcesPanel(
+                        theme: theme,
+                        sources: allSources,
+                        currentSource: currentSource,
+                        currentId: currentID,
+                        sourcesSpeed: allSourcesSpeed,
+                        onSourceTap: (source) {
+                          this.setState(() {
+                            _switchSource(source);
+                          });
+                          Navigator.pop(context);
+                        },
+                        onRefresh: () async {
+                          await _refreshSourcesSpeed(setState);
+                        },
+                        videoCover: videoCover,
+                        videoTitle: videoTitle,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ).then((_) {
+        setState(() {});
+      });
+      return;
+    }
+
+    // 手机模式：从底部弹出
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
@@ -1951,8 +2161,9 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return SizedBox(
+            return Container(
               height: panelHeight,
+              width: double.infinity,
               child: PlayerSourcesPanel(
                 theme: theme,
                 sources: allSources,
@@ -2346,6 +2557,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final isTablet = DeviceUtils.isTablet(context);
+    final isPortraitTablet = DeviceUtils.isPortraitTablet(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -2358,7 +2571,6 @@ class _PlayerScreenState extends State<PlayerScreen>
             isDarkMode ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        // 其余代码保持不变
         backgroundColor: Colors.transparent,
         body: Container(
           decoration: BoxDecoration(
@@ -2368,7 +2580,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xFFe6f3fb), // 与首页保持一致的浅色模式渐变
+                      Color(0xFFe6f3fb),
                       Color(0xFFeaf3f7),
                       Color(0xFFf7f7f3),
                       Color(0xFFe9ecef),
@@ -2382,18 +2594,15 @@ class _PlayerScreenState extends State<PlayerScreen>
           child: Stack(
             children: [
               // 主要内容
-              Column(
-                children: [
-                  Container(
-                    height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
-                    color: Colors.black,
-                  ),
-                  _buildPlayerWidget(),
-                  Expanded(
-                    child: _buildVideoDetailSection(theme),
-                  ),
-                ],
-              ),
+              if (isTablet && !isPortraitTablet)
+                // 平板横屏模式：左右布局
+                _buildTabletLandscapeLayout(theme)
+              else if (isPortraitTablet)
+                // 平板竖屏模式：上下布局，播放器占50%高度
+                _buildPortraitTabletLayout(theme)
+              else
+                // 手机模式：保持原有布局
+                _buildPhoneLayout(theme),
               // 错误覆盖层
               if (_showError && _errorMessage != null)
                 _buildErrorOverlay(theme),
@@ -2403,6 +2612,89 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
         ),
       ),
+    );
+  }
+
+  /// 构建手机模式布局
+  Widget _buildPhoneLayout(ThemeData theme) {
+    return Column(
+      children: [
+        Container(
+          height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
+          color: Colors.black,
+        ),
+        _buildPlayerWidget(),
+        Expanded(
+          child: _buildVideoDetailSection(theme),
+        ),
+      ],
+    );
+  }
+
+  /// 构建平板竖屏模式布局
+  Widget _buildPortraitTabletLayout(ThemeData theme) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final playerHeight = (screenHeight - statusBarHeight) * 0.5;
+
+    return Column(
+      children: [
+        Container(
+          height: statusBarHeight,
+          color: Colors.black,
+        ),
+        SizedBox(
+          height: playerHeight,
+          width: double.infinity,
+          child: _buildPlayerWidget(),
+        ),
+        Expanded(
+          child: _buildVideoDetailSection(theme),
+        ),
+      ],
+    );
+  }
+
+  /// 构建平板横屏模式布局
+  Widget _buildTabletLandscapeLayout(ThemeData theme) {
+    return Column(
+      children: [
+        Container(
+          height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
+          color: Colors.black,
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              // 左侧：播放器和详情（65%）
+              Expanded(
+                flex: 65,
+                child: Column(
+                  children: [
+                    _buildPlayerWidget(),
+                    Expanded(
+                      child: _buildVideoDetailSection(theme),
+                    ),
+                  ],
+                ),
+              ),
+              // 右侧：详情面板（35%）
+              Expanded(
+                flex: 35,
+                child: Container(
+                  color: Colors.transparent,
+                  child: PlayerDetailsPanel(
+                    theme: theme,
+                    doubanDetails: doubanDetails,
+                    currentDetail: currentDetail,
+                    showCloseButton: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

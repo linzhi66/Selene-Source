@@ -8,6 +8,7 @@ class PlayerEpisodesPanel extends StatefulWidget {
   final bool isReversed;
   final Function(int) onEpisodeTap;
   final VoidCallback onToggleOrder;
+  final int crossAxisCount;
 
   const PlayerEpisodesPanel({
     super.key,
@@ -18,6 +19,7 @@ class PlayerEpisodesPanel extends StatefulWidget {
     required this.isReversed,
     required this.onEpisodeTap,
     required this.onToggleOrder,
+    this.crossAxisCount = 2,
   });
 
   @override
@@ -54,9 +56,11 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
         ? widget.episodes.length - 1 - widget.currentEpisodeIndex
         : widget.currentEpisodeIndex;
 
-    const crossAxisCount = 2;
+    final crossAxisCount = widget.crossAxisCount;
     const mainAxisSpacing = 12.0;
-    const childAspectRatio = 3.0;
+    final childAspectRatio = widget.crossAxisCount == 4 
+        ? 2.2 
+        : (widget.crossAxisCount == 3 ? 2.0 : 3.0);
 
     final itemWidth =
         (gridBox.size.width - (crossAxisCount - 1) * 12) / crossAxisCount;
@@ -108,11 +112,13 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
               key: _gridKey,
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: widget.crossAxisCount,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 3.0,
+                childAspectRatio: widget.crossAxisCount == 4 
+                    ? 2.2 
+                    : (widget.crossAxisCount == 3 ? 2.0 : 3.0),
               ),
               itemCount: widget.episodes.length,
               itemBuilder: (context, index) {
@@ -142,45 +148,25 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
                           ? Border.all(color: Colors.green, width: 2)
                           : null,
                     ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 4,
-                          left: 6,
-                          child: Text(
-                            '${episodeIndex + 1}',
-                            style: TextStyle(
-                              color: isCurrentEpisode
-                                  ? Colors.green
-                                  : (isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black87),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w300,
-                            ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Text(
+                          episodeTitle,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isCurrentEpisode
+                                ? Colors.green
+                                : (isDarkMode
+                                    ? Colors.white
+                                    : Colors.black),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              episodeTitle,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isCurrentEpisode
-                                    ? Colors.green
-                                    : (isDarkMode
-                                        ? Colors.white
-                                        : Colors.black),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 );

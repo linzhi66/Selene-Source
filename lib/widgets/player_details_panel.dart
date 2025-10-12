@@ -8,12 +8,14 @@ class PlayerDetailsPanel extends StatelessWidget {
   final ThemeData theme;
   final DoubanMovieDetails? doubanDetails;
   final SearchResult? currentDetail;
+  final bool showCloseButton;
 
   const PlayerDetailsPanel({
     super.key,
     required this.theme,
     this.doubanDetails,
     this.currentDetail,
+    this.showCloseButton = true,
   });
 
   @override
@@ -22,7 +24,9 @@ class PlayerDetailsPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1c1c1e) : Colors.white,
+        color: showCloseButton 
+            ? (isDarkMode ? const Color(0xFF1c1c1e) : Colors.white)
+            : Colors.transparent,
       ),
       child: Column(
         children: [
@@ -38,10 +42,11 @@ class PlayerDetailsPanel extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                if (showCloseButton)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
               ],
             ),
           ),

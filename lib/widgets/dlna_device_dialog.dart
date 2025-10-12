@@ -100,10 +100,17 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 平板模式下使用更小的宽度比例
+    final isTablet = screenWidth >= 600;
+    final dialogWidth = isTablet 
+        ? screenWidth * 0.5  // 平板：50%
+        : screenWidth * 0.9; // 手机：90%
+    
     return Dialog(
       backgroundColor: Colors.transparent,
         child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
+        width: dialogWidth,
         height: MediaQuery.of(context).size.height * 0.7,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
