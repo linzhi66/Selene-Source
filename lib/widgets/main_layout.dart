@@ -122,10 +122,15 @@ class _MainLayoutState extends State<MainLayout> {
 
   Widget _buildHeader(BuildContext context, ThemeService themeService) {
     final isTablet = DeviceUtils.isTablet(context);
+    
+    // macOS 下需要额外的顶部 padding 来避免与透明标题栏重叠
+    final topPadding = DeviceUtils.isMacOS() 
+        ? MediaQuery.of(context).padding.top + 32 
+        : MediaQuery.of(context).padding.top + 8;
 
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
+        top: topPadding,
         left: 16,
         right: 16,
         bottom: 8,
