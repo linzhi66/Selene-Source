@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Selene 构建脚本
-# 用于构建安卓 armv8 和 iOS 无签名版本，并将构建产物复制到根目录下
+# 用于构建安卓和 iOS 无签名版本，并将构建产物复制到根目录下
 
 set -e  # 遇到错误时退出
 
@@ -81,15 +81,16 @@ get_dependencies() {
     log_success "依赖获取完成"
 }
 
-# 构建安卓 armv8 版本
+# 构建安卓版本
 build_android() {
-    log_info "开始构建安卓 armv8 版本..."
+    log_info "开始构建安卓 armv8 和 armv7a 版本..."
     
     # 确保安卓构建目录存在
     mkdir -p build/android
     
     # 构建 APK
-    flutter build apk --release --target-platform android-arm64
+    flutter build apk --release --target-platform android-arm64 --split-per-abi
+    flutter build apk --release --target-platform android-arm --split-per-abi
     
     log_success "安卓构建完成"
 }
@@ -147,11 +148,17 @@ copy_artifacts() {
     mkdir -p dist
     
     # 复制安卓 APK
-    if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-        cp build/app/outputs/flutter-apk/app-release.apk "dist/selene-${APP_VERSION}-armv8.apk"
-        log_success "安卓 APK 已复制到 dist/selene-${APP_VERSION}-armv8.apk"
+    if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+        cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "dist/selene-${APP_VERSION}-armv8.apk"
+        log_success "安卓 arm64 APK 已复制到 dist/selene-${APP_VERSION}-armv8.apk"
     else
-        log_warning "安卓 APK 文件未找到"
+        log_warning "安卓 arm64 APK 文件未找到"
+    fi
+    if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
+        cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "dist/selene-${APP_VERSION}-armv7a.apk"
+        log_success "安卓 armv7a APK 已复制到 dist/selene-${APP_VERSION}-armv7a.apk"
+    else
+        log_warning "安卓 armv7a APK 文件未找到"
     fi
     
     # 复制 iOS 构建产物
