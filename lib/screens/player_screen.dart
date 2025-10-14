@@ -243,14 +243,16 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 获取播放记录
     int playEpisodeIndex = 0;
     int playTime = 0;
-    final allPlayRecords = await PageCacheService().getPlayRecords(context);
-    // 查找是否有当前视频的播放记录
-    if (allPlayRecords.success && allPlayRecords.data != null) {
-      final matchingRecords = allPlayRecords.data!.where(
-          (record) => record.id == currentID && record.source == currentSource);
-      if (matchingRecords.isNotEmpty) {
-        playEpisodeIndex = matchingRecords.first.index - 1;
-        playTime = matchingRecords.first.playTime;
+    if (mounted) {
+      final allPlayRecords = await PageCacheService().getPlayRecords(context);
+      // 查找是否有当前视频的播放记录
+      if (allPlayRecords.success && allPlayRecords.data != null) {
+        final matchingRecords = allPlayRecords.data!.where((record) =>
+            record.id == currentID && record.source == currentSource);
+        if (matchingRecords.isNotEmpty) {
+          playEpisodeIndex = matchingRecords.first.index - 1;
+          playTime = matchingRecords.first.playTime;
+        }
       }
     }
 
@@ -259,10 +261,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     updateLoadingMessage('准备就绪，即将开始播放...');
     updateLoadingEmoji('✨');
 
-    setState(() {
-      _showSwitchLoadingOverlay = true;
-      _switchLoadingMessage = '视频加载中...';
-    });
+    if (mounted) {
+      setState(() {
+        _showSwitchLoadingOverlay = true;
+        _switchLoadingMessage = '视频加载中...';
+      });
+    }
 
     // 延时 1 秒后隐藏加载界面
     Future.delayed(const Duration(seconds: 1), () {
@@ -282,9 +286,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       targetIndex = 0;
       return;
     }
-    setState(() {
-      currentEpisodeIndex = targetIndex;
-    });
+    if (mounted) {
+      setState(() {
+        currentEpisodeIndex = targetIndex;
+      });
+    }
     // 将 playTime 转换为 Duration 并传递给 updateVideoUrl
     final startAt = playTime > 0 ? Duration(seconds: playTime) : null;
     updateVideoUrl(currentDetail!.episodes[targetIndex], startAt: startAt);
@@ -348,7 +354,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         doubanId: videoDoubanID.toString(),
       );
 
-      if (response.success && response.data != null) {
+      if (response.success && response.data != null && mounted) {
         setState(() {
           doubanDetails = response.data;
           // 如果当前视频描述为空或是"暂无简介"，使用豆瓣的描述
@@ -510,39 +516,49 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 显示错误信息
   void showError(String message) {
-    setState(() {
-      _errorMessage = message;
-      _showError = true;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _errorMessage = message;
+        _showError = true;
+        _isLoading = false;
+      });
+    }
   }
 
   /// 隐藏错误信息
   void hideError() {
-    setState(() {
-      _showError = false;
-      _errorMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _showError = false;
+        _errorMessage = null;
+      });
+    }
   }
 
   void updateLoadingMessage(String message) {
-    setState(() {
-      _loadingMessage = message;
-    });
+    if (mounted) {
+      setState(() {
+        _loadingMessage = message;
+      });
+    }
   }
 
   /// 更新加载进度
   void updateLoadingProgress(double progress) {
-    setState(() {
-      _loadingProgress = progress.clamp(0.0, 1.0);
-    });
+    if (mounted) {
+      setState(() {
+        _loadingProgress = progress.clamp(0.0, 1.0);
+      });
+    }
   }
 
   /// 更新加载 emoji
   void updateLoadingEmoji(String emoji) {
-    setState(() {
-      _loadingEmoji = emoji;
-    });
+    if (mounted) {
+      setState(() {
+        _loadingEmoji = emoji;
+      });
+    }
   }
 
   /// 动态更新视频数据源
@@ -716,9 +732,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       final cacheService = PageCacheService();
       final isFavorited =
           cacheService.isFavoritedSync(currentSource, currentID);
-      setState(() {
-        _isFavorite = isFavorited;
-      });
+      if (mounted) {
+        setState(() {
+          _isFavorite = isFavorited;
+        });
+      }
     }
   }
 
@@ -967,6 +985,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           isVisible: _showSwitchLoadingOverlay,
           message: _switchLoadingMessage,
           animationController: _switchLoadingAnimationController,
+          onBackPressed: _onBackPressed,
         ),
       ],
     );
@@ -2610,10 +2629,13 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 构建手机模式布局
   Widget _buildPhoneLayout(ThemeData theme) {
+    final statusBarHeight = MediaQuery.maybeOf(context)?.padding.top ?? 0;
+    final macOSPadding = DeviceUtils.isMacOS() ? 24.0 : 0.0;
+
     return Column(
       children: [
         Container(
-          height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
+          height: statusBarHeight + macOSPadding,
           color: Colors.black,
         ),
         AspectRatio(
@@ -2631,12 +2653,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildPortraitTabletLayout(ThemeData theme) {
     final screenHeight = MediaQuery.of(context).size.height;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final playerHeight = (screenHeight - statusBarHeight) * 0.5;
+    final macOSPadding = DeviceUtils.isMacOS() ? 24.0 : 0.0;
+    final playerHeight = (screenHeight - statusBarHeight - macOSPadding) * 0.5;
 
     return Column(
       children: [
         Container(
-          height: statusBarHeight,
+          height: statusBarHeight + macOSPadding,
           color: Colors.black,
         ),
         Container(
@@ -2653,10 +2676,13 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 构建平板横屏模式布局
   Widget _buildTabletLandscapeLayout(ThemeData theme) {
+    final statusBarHeight = MediaQuery.maybeOf(context)?.padding.top ?? 0;
+    final macOSPadding = DeviceUtils.isMacOS() ? 24.0 : 0.0;
+
     return Column(
       children: [
         Container(
-          height: MediaQuery.maybeOf(context)?.padding.top ?? 0,
+          height: statusBarHeight + macOSPadding,
           color: Colors.black,
         ),
         Expanded(
@@ -2709,6 +2735,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildLoadingOverlay(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    // macOS 下需要额外的顶部 padding 来避免与透明标题栏重叠
+    final topPadding = DeviceUtils.isMacOS()
+        ? MediaQuery.of(context).padding.top + 32
+        : MediaQuery.of(context).padding.top + 8;
+
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -2730,86 +2761,114 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
         color: isDarkMode ? Colors.black : null,
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                // 旋转的背景方块（半透明绿色）
-                RotationTransition(
-                  turns: _loadingAnimationController,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2ecc71).withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          // PC 端左上角返回按钮
+          if (DeviceUtils.isPC())
+            Positioned(
+              top: topPadding + 4,
+              left: 16,
+              child: GestureDetector(
+                onTap: _onBackPressed,
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Center(
+                    child: Icon(
+                      Icons.arrow_back,
+                      color: isDarkMode
+                          ? const Color(0xFFffffff)
+                          : const Color(0xFF2c3e50),
+                      size: 24,
                     ),
                   ),
                 ),
-                // 中间的图标容器（减小尺寸，删除阴影）
+              ),
+            ),
+          // 中心加载内容
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 旋转的背景方块（半透明绿色）
+                    RotationTransition(
+                      turns: _loadingAnimationController,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2ecc71).withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    // 中间的图标容器（减小尺寸，删除阴影）
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF2ecc71), Color(0xFF27ae60)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _loadingEmoji,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                // 进度条
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 200,
+                  height: 4,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF2ecc71), Color(0xFF27ae60)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
+                    color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Center(
-                    child: Text(
-                      _loadingEmoji,
-                      style: const TextStyle(fontSize: 24),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _loadingProgress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2ecc71),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
+                ),
+                const SizedBox(height: 20),
+                // 加载文案
+                AnimatedBuilder(
+                  animation: _textAnimationController,
+                  builder: (context, child) {
+                    return Text(
+                      _loadingMessage,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: (isDarkMode ? Colors.white70 : Colors.black54)
+                            .withOpacity(
+                          0.3 + (_textAnimationController.value * 0.7),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 40),
-            // 进度条
-            Container(
-              width: 200,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: _loadingProgress,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2ecc71),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // 加载文案
-            AnimatedBuilder(
-              animation: _textAnimationController,
-              builder: (context, child) {
-                return Text(
-                  _loadingMessage,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: (isDarkMode ? Colors.white70 : Colors.black54)
-                        .withOpacity(
-                      0.3 + (_textAnimationController.value * 0.7),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
