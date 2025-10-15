@@ -70,6 +70,8 @@ clean_build() {
     # 清理自定义构建目录
     rm -rf ios-build
     rm -rf dist
+    rm -rf build-arm64
+    rm -rf build-x86_64
     
     log_success "构建清理完成"
 }
@@ -93,6 +95,103 @@ build_android() {
     flutter build apk --release --target-platform android-arm --split-per-abi
     
     log_success "安卓构建完成"
+}
+
+# 构建 macOS ARM64 版本
+build_macos_arm64() {
+    log_info "构建 macOS ARM64 版本..."
+    
+    # 检查是否在 macOS 上
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        log_warning "macOS 构建只能在 macOS 上进行，跳过 macOS ARM64 构建"
+        return
+    fi
+    
+    # 创建独立的构建目录
+    mkdir -p build-arm64/macos
+    
+    # 复制必要的文件到独立目录
+    rsync -a --exclude='build*' --exclude='.dart_tool' . build-arm64/
+    
+    cd build-arm64
+    
+    # 构建 ARM64 版本
+    flutter build macos --release --dart-define=FLUTTER_TARGET_PLATFORM=darwin-arm64
+    
+    # 备份 ARM64 构建产物
+    if [ -d "build/macos/Build/Products/Release/selene.app" ]; then
+        mkdir -p ../build/macos-arm64
+        cp -r build/macos/Build/Products/Release/selene.app ../build/macos-arm64/
+        log_success "macOS ARM64 构建完成"
+    fi
+    
+    cd ..
+}
+
+# 构建 macOS x86_64 版本
+build_macos_x86_64() {
+    log_info "构建 macOS x86_64 版本..."
+    
+    # 检查是否在 macOS 上
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        log_warning "macOS 构建只能在 macOS 上进行，跳过 macOS x86_64 构建"
+        return
+    fi
+    
+    # 创建独立的构建目录
+    mkdir -p build-x86_64/macos
+    
+    # 复制必要的文件到独立目录
+    rsync -a --exclude='build*' --exclude='.dart_tool' . build-x86_64/
+    
+    cd build-x86_64
+    
+    # 构建 x86_64 版本
+    flutter build macos --release --dart-define=FLUTTER_TARGET_PLATFORM=darwin-x64
+    
+    # 备份 x86_64 构建产物
+    if [ -d "build/macos/Build/Products/Release/selene.app" ]; then
+        mkdir -p ../build/macos-x86_64
+        cp -r build/macos/Build/Products/Release/selene.app ../build/macos-x86_64/
+        log_success "macOS x86_64 构建完成"
+    fi
+    
+    cd ..
+}
+
+# 构建 macOS 版本（顺序模式）
+build_macos() {
+    log_info "开始构建 macOS ARM64 和 x86_64 版本..."
+    
+    # 检查是否在 macOS 上
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        log_warning "macOS 构建只能在 macOS 上进行，跳过 macOS 构建"
+        return
+    fi
+    
+    build_macos_arm64
+    build_macos_x86_64
+    
+    log_success "macOS 所有架构构建完成"
+}
+
+# 构建 Windows 版本
+build_windows() {
+    log_info "开始构建 Windows x86 版本..."
+    
+    # 检查是否在 Windows 上
+    if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "win32" && "$OSTYPE" != "cygwin" ]]; then
+        log_warning "Windows 构建只能在 Windows 上进行，跳过 Windows 构建"
+        return
+    fi
+    
+    # 确保 Windows 构建目录存在
+    mkdir -p build/windows
+    
+    # 构建 Windows 版本
+    flutter build windows --release
+    
+    log_success "Windows 构建完成"
 }
 
 # 构建 iOS 无签名版本
@@ -169,6 +268,67 @@ copy_artifacts() {
         log_warning "iOS .ipa 文件未找到"
     fi
     
+    # 创建 macOS ARM64 DMG
+    if [ -d "build/macos-arm64/selene.app" ]; then
+        log_info "创建 macOS ARM64 DMG..."
+        
+        DMG_NAME="selene-${APP_VERSION}-macos-arm64.dmg"
+        DMG_PATH="dist/${DMG_NAME}"
+        
+        # 创建临时 DMG 目录
+        mkdir -p build/dmg-arm64
+        cp -r build/macos-arm64/selene.app build/dmg-arm64/
+        
+        # 创建 DMG
+        hdiutil create -volname "Selene ${APP_VERSION}" \
+            -srcfolder build/dmg-arm64 \
+            -ov -format UDZO \
+            "${DMG_PATH}"
+        
+        # 清理临时目录
+        rm -rf build/dmg-arm64
+        
+        log_success "macOS ARM64 DMG 已创建: ${DMG_PATH}"
+    else
+        log_warning "macOS ARM64 应用文件未找到"
+    fi
+    
+    # 创建 macOS x86_64 DMG
+    if [ -d "build/macos-x86_64/selene.app" ]; then
+        log_info "创建 macOS x86_64 DMG..."
+        
+        DMG_NAME="selene-${APP_VERSION}-macos-x86_64.dmg"
+        DMG_PATH="dist/${DMG_NAME}"
+        
+        # 创建临时 DMG 目录
+        mkdir -p build/dmg-x86_64
+        cp -r build/macos-x86_64/selene.app build/dmg-x86_64/
+        
+        # 创建 DMG
+        hdiutil create -volname "Selene ${APP_VERSION}" \
+            -srcfolder build/dmg-x86_64 \
+            -ov -format UDZO \
+            "${DMG_PATH}"
+        
+        # 清理临时目录
+        rm -rf build/dmg-x86_64
+        
+        log_success "macOS x86_64 DMG 已创建: ${DMG_PATH}"
+    else
+        log_warning "macOS x86_64 应用文件未找到"
+    fi
+    
+    # 复制 Windows 构建产物
+    if [ -d "build/windows/x64/runner/Release" ]; then
+        # 创建 zip 文件
+        cd build/windows/x64/runner/Release
+        zip -r "../../../../../dist/selene-${APP_VERSION}-windows-x64.zip" .
+        cd ../../../../../
+        log_success "Windows x64 应用已复制到 dist/selene-${APP_VERSION}-windows-x64.zip"
+    else
+        log_warning "Windows 应用文件未找到"
+    fi
+    
     log_success "构建产物复制完成"
 }
 
@@ -200,15 +360,38 @@ main() {
     # 检查参数
     BUILD_ANDROID=true
     BUILD_IOS=true
+    BUILD_MACOS=true
+    BUILD_WINDOWS=true
+    PARALLEL_BUILD=false
     
     while [[ $# -gt 0 ]]; do
         case $1 in
             --android-only)
                 BUILD_IOS=false
+                BUILD_MACOS=false
+                BUILD_WINDOWS=false
                 shift
                 ;;
             --ios-only)
                 BUILD_ANDROID=false
+                BUILD_MACOS=false
+                BUILD_WINDOWS=false
+                shift
+                ;;
+            --macos-only)
+                BUILD_ANDROID=false
+                BUILD_IOS=false
+                BUILD_WINDOWS=false
+                shift
+                ;;
+            --windows-only)
+                BUILD_ANDROID=false
+                BUILD_IOS=false
+                BUILD_MACOS=false
+                shift
+                ;;
+            --parallel)
+                PARALLEL_BUILD=true
                 shift
                 ;;
             --help)
@@ -216,6 +399,9 @@ main() {
                 echo "选项:"
                 echo "  --android-only    只构建安卓版本"
                 echo "  --ios-only       只构建 iOS 版本"
+                echo "  --macos-only     只构建 macOS 版本"
+                echo "  --windows-only   只构建 Windows 版本"
+                echo "  --parallel       并行构建所有平台（实验性功能）"
                 echo "  --help           显示此帮助信息"
                 exit 0
                 ;;
@@ -233,12 +419,60 @@ main() {
     clean_build
     get_dependencies
     
-    if [ "$BUILD_ANDROID" = true ]; then
-        build_android
-    fi
-    
-    if [ "$BUILD_IOS" = true ]; then
-        build_ios
+    # 并行构建模式
+    if [ "$PARALLEL_BUILD" = true ]; then
+        log_info "启用并行构建模式..."
+        
+        # 使用后台进程并行构建
+        pids=()
+        
+        if [ "$BUILD_ANDROID" = true ]; then
+            build_android &
+            pids+=($!)
+        fi
+        
+        if [ "$BUILD_IOS" = true ]; then
+            build_ios &
+            pids+=($!)
+        fi
+        
+        if [ "$BUILD_MACOS" = true ]; then
+            # macOS 的两个架构也并行构建
+            build_macos_arm64 &
+            pids+=($!)
+            build_macos_x86_64 &
+            pids+=($!)
+        fi
+        
+        if [ "$BUILD_WINDOWS" = true ]; then
+            build_windows &
+            pids+=($!)
+        fi
+        
+        # 等待所有后台进程完成
+        log_info "等待所有构建任务完成..."
+        for pid in "${pids[@]}"; do
+            wait $pid || log_warning "构建进程 $pid 失败"
+        done
+        
+        log_success "所有并行构建任务已完成"
+    else
+        # 顺序构建模式
+        if [ "$BUILD_ANDROID" = true ]; then
+            build_android
+        fi
+        
+        if [ "$BUILD_IOS" = true ]; then
+            build_ios
+        fi
+        
+        if [ "$BUILD_MACOS" = true ]; then
+            build_macos
+        fi
+        
+        if [ "$BUILD_WINDOWS" = true ]; then
+            build_windows
+        fi
     fi
     
     copy_artifacts
