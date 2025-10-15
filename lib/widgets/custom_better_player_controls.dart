@@ -54,7 +54,6 @@ class _CustomBetterPlayerControlsState
     extends State<CustomBetterPlayerControls> {
   Timer? _hideTimer;
   bool _controlsVisible = true;
-  Size? _screenSize;
   bool _lastPlayingState = false;
   bool _isLongPressing = false;
   double _originalPlaybackSpeed = 1.0;
@@ -84,11 +83,7 @@ class _CustomBetterPlayerControlsState
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _screenSize = MediaQuery.of(context).size;
-  }
+
 
   void _onVideoStateChanged(BetterPlayerEvent event) {
     if (!mounted) return;
@@ -516,32 +511,35 @@ class _CustomBetterPlayerControlsState
           if (isFullscreen && _controlsVisible)
             Positioned(
               right: 16.0,
-              top: _screenSize != null ? _screenSize!.height / 2 - 24 : null,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isLocked = !_isLocked;
-                    if (_isLocked) {
-                      // 锁定时启动自动隐藏计时器
-                      _startHideTimer();
-                    } else {
-                      // 解锁时显示控件并启动计时器
-                      _controlsVisible = true;
-                      _startHideTimer();
-                    }
-                  });
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Icon(
-                    _isLocked ? Icons.lock : Icons.lock_open,
-                    color: Colors.white,
-                    size: 24,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isLocked = !_isLocked;
+                      if (_isLocked) {
+                        // 锁定时启动自动隐藏计时器
+                        _startHideTimer();
+                      } else {
+                        // 解锁时显示控件并启动计时器
+                        _controlsVisible = true;
+                        _startHideTimer();
+                      }
+                    });
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Icon(
+                      _isLocked ? Icons.lock : Icons.lock_open,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
               ),
@@ -592,10 +590,8 @@ class _CustomBetterPlayerControlsState
             ),
           if (_controlsVisible && !_isLocked)
             Positioned(
-              top: isFullscreen && _screenSize != null
-                  ? _screenSize!.height / 2 - 32
-                  : 0,
-              bottom: isFullscreen ? null : 0,
+              top: 0,
+              bottom: 0,
               left: 0,
               right: 0,
               child: Center(
