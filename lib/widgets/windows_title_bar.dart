@@ -24,7 +24,7 @@ class _WindowsTitleBarState extends State<WindowsTitleBar> {
       builder: (context, themeService, child) {
         final isDark = themeService.isDarkMode;
         final backgroundColor = widget.forceBlack
-            ? Colors.black
+            ? Colors.transparent
             : (isDark 
                 ? const Color(0xFF1e1e1e).withOpacity(0.9)
                 : Colors.white.withOpacity(0.8));

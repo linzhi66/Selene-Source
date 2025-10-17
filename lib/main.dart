@@ -70,6 +70,18 @@ class SeleneApp extends StatelessWidget {
             darkTheme: themeService.darkTheme,
             themeMode: themeService.themeMode,
             home: const AppWrapper(),
+            builder: (context, child) {
+              // 为 Windows 平台改善字体渲染
+              if (Platform.isWindows) {
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: const TextScaler.linear(1.0),
+                  ),
+                  child: child!,
+                );
+              }
+              return child!;
+            },
           );
         },
       ),

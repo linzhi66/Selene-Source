@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+import 'dart:ui';
 import 'package:macos_window_utils/macos_window_utils.dart';
 
 class ThemeService extends ChangeNotifier {
@@ -86,13 +87,37 @@ class ThemeService extends ChangeNotifier {
           color: Color(0xFFffffff),
           elevation: 2,
         ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF2c3e50)),
-          bodyMedium: TextStyle(color: Color(0xFF2c3e50)),
-          bodySmall: TextStyle(color: Color(0xFF7f8c8d)),
-          titleLarge: TextStyle(color: Color(0xFF2c3e50)),
-          titleMedium: TextStyle(color: Color(0xFF2c3e50)),
-          titleSmall: TextStyle(color: Color(0xFF2c3e50)),
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(
+            color: const Color(0xFF2c3e50),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          bodyMedium: TextStyle(
+            color: const Color(0xFF2c3e50),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          bodySmall: TextStyle(
+            color: const Color(0xFF7f8c8d),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleLarge: TextStyle(
+            color: const Color(0xFF2c3e50),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleMedium: TextStyle(
+            color: const Color(0xFF2c3e50),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleSmall: TextStyle(
+            color: const Color(0xFF2c3e50),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
         ),
       );
 
@@ -113,13 +138,37 @@ class ThemeService extends ChangeNotifier {
           color: Color(0xFF1e1e1e),
           elevation: 2,
         ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFffffff)),
-          bodyMedium: TextStyle(color: Color(0xFFffffff)),
-          bodySmall: TextStyle(color: Color(0xFFb0b0b0)),
-          titleLarge: TextStyle(color: Color(0xFFffffff)),
-          titleMedium: TextStyle(color: Color(0xFFffffff)),
-          titleSmall: TextStyle(color: Color(0xFFffffff)),
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(
+            color: const Color(0xFFffffff),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          bodyMedium: TextStyle(
+            color: const Color(0xFFffffff),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          bodySmall: TextStyle(
+            color: const Color(0xFFb0b0b0),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleLarge: TextStyle(
+            color: const Color(0xFFffffff),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleMedium: TextStyle(
+            color: const Color(0xFFffffff),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
+          titleSmall: TextStyle(
+            color: const Color(0xFFffffff),
+            fontFeatures:
+                Platform.isWindows ? [const FontFeature.enable('liga')] : null,
+          ),
         ),
       );
 }
