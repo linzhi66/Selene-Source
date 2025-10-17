@@ -3,6 +3,9 @@
         "version": 1,
         "author": "xcode"
     },
+    "properties": {
+        "pre-rendered": false
+    },
     "images": [
         {
             "size": "16x16",
