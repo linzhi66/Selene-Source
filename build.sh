@@ -194,6 +194,51 @@ build_windows() {
     log_success "Windows 构建完成"
 }
 
+# 构建 Windows 安装包（使用 Inno Setup）
+build_windows_installer() {
+    log_info "开始构建 Windows 安装包..."
+    
+    # 检查是否在 Windows 上
+    if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "win32" && "$OSTYPE" != "cygwin" ]]; then
+        log_warning "Windows 安装包构建只能在 Windows 上进行"
+        return
+    fi
+    
+    # 检查 Inno Setup 是否安装
+    ISCC_PATH=""
+    
+    # 常见的 Inno Setup 安装路径
+    if [ -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]; then
+        ISCC_PATH="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+    elif [ -f "/c/Program Files/Inno Setup 6/ISCC.exe" ]; then
+        ISCC_PATH="/c/Program Files/Inno Setup 6/ISCC.exe"
+    elif command -v iscc &> /dev/null; then
+        ISCC_PATH="iscc"
+    else
+        log_error "未找到 Inno Setup 编译器 (ISCC.exe)"
+        log_info "请从以下地址下载并安装 Inno Setup: https://jrsoftware.org/isdl.php"
+        return 1
+    fi
+    
+    log_info "使用 Inno Setup: $ISCC_PATH"
+    
+    # 检查是否存在 logo.ico，如果不存在则从 logo.jpg 转换
+    if [ ! -f "logo.ico" ] && [ -f "logo.jpg" ]; then
+        log_warning "未找到 logo.ico，将跳过图标设置"
+        # 可以使用 ImageMagick 转换: convert logo.jpg -resize 256x256 logo.ico
+    fi
+    
+    # 编译安装程序
+    "$ISCC_PATH" /DMyAppVersion="$APP_VERSION" windows/installer.iss
+    
+    if [ $? -eq 0 ]; then
+        log_success "Windows 安装包构建完成"
+    else
+        log_error "Windows 安装包构建失败"
+        return 1
+    fi
+}
+
 # 构建 iOS 无签名版本
 build_ios() {
     log_info "开始构建 iOS 无签名版本..."
@@ -320,13 +365,18 @@ copy_artifacts() {
     
     # 复制 Windows 构建产物
     if [ -d "build/windows/x64/runner/Release" ]; then
-        # 创建 zip 文件
+        # 创建 zip 文件（便携版）
         cd build/windows/x64/runner/Release
-        zip -r "../../../../../dist/selene-${APP_VERSION}-windows-x64.zip" .
+        zip -r "../../../../../dist/selene-${APP_VERSION}-windows-x64-portable.zip" .
         cd ../../../../../
-        log_success "Windows x64 应用已复制到 dist/selene-${APP_VERSION}-windows-x64.zip"
+        log_success "Windows x64 便携版已复制到 dist/selene-${APP_VERSION}-windows-x64-portable.zip"
     else
         log_warning "Windows 应用文件未找到"
+    fi
+    
+    # Windows 安装包应该已经由 build_windows_installer 生成到 dist 目录
+    if [ -f "dist/selene-${APP_VERSION}-windows-x64-setup.exe" ]; then
+        log_success "Windows 安装包: dist/selene-${APP_VERSION}-windows-x64-setup.exe"
     fi
     
     log_success "构建产物复制完成"
@@ -499,6 +549,11 @@ main() {
         if [ "$BUILD_WINDOWS" = true ]; then
             build_windows
         fi
+    fi
+    
+    # 构建 Windows 安装包（必须在 Windows 构建完成后）
+    if [ "$BUILD_WINDOWS" = true ]; then
+        build_windows_installer
     fi
     
     copy_artifacts
