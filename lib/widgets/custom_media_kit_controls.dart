@@ -108,6 +108,12 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
   final GlobalKey _speedButtonKey = GlobalKey();
   bool _isHoveringSpeedButton = false;
   bool _isHoveringSpeedMenu = false;
+  bool _showVolumeMenu = false;
+  final GlobalKey _volumeButtonKey = GlobalKey();
+  bool _isHoveringVolumeButton = false;
+  bool _isHoveringVolumeMenu = false;
+  double _volumeBeforeMute = 1.0;
+  Timer? _volumeMenuHideTimer;
   final FocusNode _focusNode = FocusNode();
 
   @override
@@ -175,6 +181,7 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _volumeMenuHideTimer?.cancel();
     _playingSubscription?.cancel();
     _positionSubscription?.cancel();
     _focusNode.dispose();
@@ -183,8 +190,13 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    // 如果倍速菜单正在显示或鼠标悬停在速度按钮/菜单上，不启动隐藏定时器
-    if (_showSpeedMenu || _isHoveringSpeedButton || _isHoveringSpeedMenu) {
+    // 如果倍速菜单或音量菜单正在显示或鼠标悬停在按钮/菜单上，不启动隐藏定时器
+    if (_showSpeedMenu ||
+        _isHoveringSpeedButton ||
+        _isHoveringSpeedMenu ||
+        _showVolumeMenu ||
+        _isHoveringVolumeButton ||
+        _isHoveringVolumeMenu) {
       return;
     }
     if (widget.player.state.playing) {
@@ -217,6 +229,25 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {});
+      }
+    });
+  }
+
+  void _showVolumeMenuTemporarily() {
+    // 取消之前的定时器
+    _volumeMenuHideTimer?.cancel();
+
+    // 显示音量条
+    setState(() {
+      _showVolumeMenu = true;
+    });
+
+    // 1秒后自动隐藏
+    _volumeMenuHideTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted && !_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
+        setState(() {
+          _showVolumeMenu = false;
+        });
       }
     });
   }
@@ -420,6 +451,26 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
         _onUserInteraction();
         return KeyEventResult.handled;
       }
+      // 上方向键增加音量 10%
+      else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        final currentVolume = widget.player.state.volume;
+        final newVolume = (currentVolume + 10).clamp(0.0, 100.0);
+        widget.player.setVolume(newVolume);
+        // 显示控制栏和音量条
+        _onUserInteraction();
+        _showVolumeMenuTemporarily();
+        return KeyEventResult.handled;
+      }
+      // 下方向键减少音量 10%
+      else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        final currentVolume = widget.player.state.volume;
+        final newVolume = (currentVolume - 10).clamp(0.0, 100.0);
+        widget.player.setVolume(newVolume);
+        // 显示控制栏和音量条
+        _onUserInteraction();
+        _showVolumeMenuTemporarily();
+        return KeyEventResult.handled;
+      }
     }
     return KeyEventResult.ignored;
   }
@@ -481,12 +532,15 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
           _startHideTimer();
         },
         onExit: (_) {
-          // 鼠标移出时立即隐藏控制栏，但如果倍速菜单正在显示或鼠标在速度按钮/菜单上则不隐藏
+          // 鼠标移出时立即隐藏控制栏，但如果菜单正在显示或鼠标在按钮/菜单上则不隐藏
           _hideTimer?.cancel();
           if (_controlsVisible &&
               !_showSpeedMenu &&
               !_isHoveringSpeedButton &&
-              !_isHoveringSpeedMenu) {
+              !_isHoveringSpeedMenu &&
+              !_showVolumeMenu &&
+              !_isHoveringVolumeButton &&
+              !_isHoveringVolumeMenu) {
             setState(() {
               _controlsVisible = false;
             });
@@ -679,6 +733,69 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
                                 ),
                               ),
                             ),
+                          Transform.translate(
+                            offset: const Offset(-8, 0),
+                            child: MouseRegion(
+                              key: _volumeButtonKey,
+                              cursor: SystemMouseCursors.click,
+                              onEnter: (_) {
+                                setState(() {
+                                  _isHoveringVolumeButton = true;
+                                  _showVolumeMenu = true;
+                                  _controlsVisible = true;
+                                });
+                                _hideTimer?.cancel();
+                              },
+                              onExit: (_) {
+                                setState(() {
+                                  _isHoveringVolumeButton = false;
+                                });
+                                // 延迟检查是否需要隐藏菜单
+                                Future.delayed(
+                                    const Duration(milliseconds: 100), () {
+                                  if (mounted &&
+                                      !_isHoveringVolumeButton &&
+                                      !_isHoveringVolumeMenu) {
+                                    setState(() {
+                                      _showVolumeMenu = false;
+                                    });
+                                    _startHideTimer();
+                                  }
+                                });
+                              },
+                              child: GestureDetector(
+                                onTap: () {
+                                  _onUserInteraction();
+                                  final currentVolume =
+                                      widget.player.state.volume;
+                                  if (currentVolume > 0) {
+                                    // 静音
+                                    _volumeBeforeMute = currentVolume;
+                                    widget.player.setVolume(0);
+                                  } else {
+                                    // 恢复音量
+                                    widget.player.setVolume(_volumeBeforeMute);
+                                  }
+                                  setState(() {});
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: _isHoveringVolumeButton
+                                      ? BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.5),
+                                        )
+                                      : null,
+                                  child: Icon(
+                                    _getVolumeIcon(widget.player.state.volume),
+                                    color: Colors.white,
+                                    size: effectiveFullscreen ? 22 : 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                           Expanded(
                             child: _buildPositionIndicator(),
                           ),
@@ -764,10 +881,22 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
             ),
             // 倍速选择弹窗
             if (_showSpeedMenu) _buildSpeedMenu(),
+            // 音量调节弹窗
+            if (_showVolumeMenu) _buildVolumeMenu(),
           ],
         ),
       ),
     );
+  }
+
+  IconData _getVolumeIcon(double volume) {
+    if (volume == 0) {
+      return Icons.volume_off;
+    } else if (volume < 50) {
+      return Icons.volume_down;
+    } else {
+      return Icons.volume_up;
+    }
   }
 
   Widget _buildSpeedMenu() {
@@ -791,8 +920,7 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
     final menuLeft =
         buttonPosition.dx + (buttonSize.width / 2) - (menuWidth / 2);
     // 计算垂直位置：按钮顶部 - 弹框高度 - 间距
-    final menuTop =
-        buttonPosition.dy - menuHeight - (_isFullscreen ? 2 : 36);
+    final menuTop = buttonPosition.dy - menuHeight - (_isFullscreen ? 2 : 36);
 
     return Positioned(
       left: menuLeft,
@@ -850,6 +978,158 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
                     },
                   );
                 }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVolumeMenu() {
+    final currentVolume = widget.player.state.volume;
+
+    // 获取音量按钮的位置
+    final RenderBox? renderBox =
+        _volumeButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return const SizedBox.shrink();
+
+    final buttonPosition = renderBox.localToGlobal(Offset.zero);
+    final buttonSize = renderBox.size;
+
+    // 根据全屏状态调整弹窗大小 - 更高更瘦
+    final effectiveFullscreen = _isWebFullscreen || _isFullscreen;
+    final menuWidth = effectiveFullscreen ? 42.0 : 36.0;
+    final menuHeight = effectiveFullscreen ? 200.0 : 150.0;
+
+    // 计算水平居中位置：按钮中心 - 弹框宽度的一半
+    final menuLeft =
+        buttonPosition.dx + (buttonSize.width / 2) - (menuWidth / 2);
+    // 计算垂直位置：按钮顶部 - 弹框高度 - 间距
+    final menuTop = buttonPosition.dy - menuHeight - (_isFullscreen ? 2 : 36);
+
+    return Positioned(
+      left: menuLeft,
+      top: menuTop,
+      child: MouseRegion(
+        onEnter: (_) {
+          setState(() {
+            _isHoveringVolumeMenu = true;
+          });
+          _hideTimer?.cancel();
+        },
+        onExit: (_) {
+          setState(() {
+            _isHoveringVolumeMenu = false;
+          });
+          // 延迟检查是否需要隐藏菜单
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted && !_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
+              setState(() {
+                _showVolumeMenu = false;
+              });
+              _startHideTimer();
+            }
+          });
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: menuWidth,
+            height: menuHeight,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 音量百分比显示
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      '${currentVolume.round()}%',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: effectiveFullscreen ? 14 : 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // 垂直音量滑块
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 12.0),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onVerticalDragStart: (details) {
+                              final localY = details.localPosition.dy;
+                              final volume =
+                                  ((1 - (localY / constraints.maxHeight)) * 100)
+                                      .clamp(0.0, 100.0);
+                              widget.player.setVolume(volume);
+                              setState(() {});
+                            },
+                            onVerticalDragUpdate: (details) {
+                              final localY = details.localPosition.dy;
+                              final volume =
+                                  ((1 - (localY / constraints.maxHeight)) * 100)
+                                      .clamp(0.0, 100.0);
+                              widget.player.setVolume(volume);
+                              setState(() {});
+                            },
+                            onTapDown: (details) {
+                              final localY = details.localPosition.dy;
+                              final volume =
+                                  ((1 - (localY / constraints.maxHeight)) * 100)
+                                      .clamp(0.0, 100.0);
+                              widget.player.setVolume(volume);
+                              setState(() {});
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // 背景轨道
+                                Container(
+                                  width: effectiveFullscreen ? 5 : 4,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                        effectiveFullscreen ? 2.5 : 2),
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                // 音量指示器
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: FractionallySizedBox(
+                                    heightFactor: currentVolume / 100,
+                                    child: Container(
+                                      width: effectiveFullscreen ? 5 : 4,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                            effectiveFullscreen ? 2.5 : 2),
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
