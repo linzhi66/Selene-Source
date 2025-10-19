@@ -143,6 +143,8 @@ class _MobileVideoPlayerWidgetState extends State<MobileVideoPlayerWidget>
       autoDetectFullscreenDeviceOrientation: true,
       allowedScreenSleep: false,
       startAt: startAt,
+      // 启用画中画模式
+      handleLifecycle: false, // 禁用自动生命周期管理，让 PiP 在后台继续播放
       controlsConfiguration: BetterPlayerControlsConfiguration(
         playerTheme: BetterPlayerTheme.custom,
         customControlsBuilder: (controller, onControlsVisibilityChanged) {
@@ -330,6 +332,30 @@ class _MobileVideoPlayerWidgetState extends State<MobileVideoPlayerWidget>
 
   void _exitFullscreen() {
     _betterPlayerController?.exitFullScreen();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // 在 iOS 上，当 app 进入后台时，如果正在使用 PiP，不要暂停播放
+    // BetterPlayer 会自动处理 PiP 的状态，我们只需要确保不干扰它
+    if (_betterPlayerController == null) return;
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // app 进入后台或不活跃状态
+        // 不做任何操作，让 PiP 继续播放
+        break;
+      case AppLifecycleState.resumed:
+        // app 恢复到前台
+        // 不做任何操作，保持当前播放状态
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   @override
