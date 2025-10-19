@@ -67,6 +67,7 @@ class CustomMediaKitControls extends StatefulWidget {
   final String? sourceName;
   final Function(bool isFullscreen)? onDLNAButtonPressed;
   final Function(bool isWebFullscreen)? onWebFullscreenChanged;
+  final Function(VoidCallback)? onExitWebFullscreenCallbackReady;
 
   const CustomMediaKitControls({
     super.key,
@@ -86,6 +87,7 @@ class CustomMediaKitControls extends StatefulWidget {
     this.sourceName,
     this.onDLNAButtonPressed,
     this.onWebFullscreenChanged,
+    this.onExitWebFullscreenCallbackReady,
   });
 
   @override
@@ -120,6 +122,8 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
   void initState() {
     super.initState();
     _setupPlayerListeners();
+    // 注册退出网页全屏的回调
+    widget.onExitWebFullscreenCallbackReady?.call(exitWebFullscreen);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _forceStartHideTimer();
@@ -354,6 +358,18 @@ class _CustomMediaKitControlsState extends State<CustomMediaKitControls> {
     // 通知父组件网页全屏状态变化
     widget.onWebFullscreenChanged?.call(_isWebFullscreen);
     _onUserInteraction();
+  }
+
+  /// 退出网页全屏（公开方法，供外部调用）
+  void exitWebFullscreen() {
+    if (_isWebFullscreen) {
+      setState(() {
+        _isWebFullscreen = false;
+      });
+      // 通知父组件网页全屏状态变化
+      widget.onWebFullscreenChanged?.call(false);
+      _onUserInteraction();
+    }
   }
 
   Future<void> _showDLNADialog() async {

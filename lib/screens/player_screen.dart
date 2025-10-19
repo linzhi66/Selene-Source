@@ -203,9 +203,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 读取优选测速配置
     final preferSpeedTest = await UserDataService.getPreferSpeedTest();
 
-    if (!preferSpeedTest || (widget.source != null &&
-        widget.id != null &&
-        (widget.prefer == null || widget.prefer != 'true'))) {
+    if (!preferSpeedTest ||
+        (widget.source != null &&
+            widget.id != null &&
+            (widget.prefer == null || widget.prefer != 'true'))) {
       updateLoadingMessage('正在获取播放源详情...');
       updateLoadingProgress(0.5);
       updateLoadingEmoji('🔍');
@@ -425,6 +426,18 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 关闭页面前保存进度
     _saveProgress(force: true, scene: '返回按钮');
     Navigator.of(context).pop();
+  }
+
+  // 退出网页全屏
+  void _exitWebFullscreen() {
+    if (!DeviceUtils.isPC()) {
+      return;
+    }
+    // 通知播放器控件退出网页全屏
+    // 播放器控件会通过 onWebFullscreenChanged 回调来更新 _isWebFullscreen 状态
+    if (_pcVideoPlayerController != null) {
+      _pcVideoPlayerController!.exitWebFullscreen();
+    }
   }
 
   /// 保存播放进度（同步函数，提前获取参数避免异步问题）
@@ -1092,7 +1105,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           isVisible: _showSwitchLoadingOverlay,
           message: _switchLoadingMessage,
           animationController: _switchLoadingAnimationController,
-          onBackPressed: _onBackPressed,
+          onBackPressed: _isWebFullscreen ? _exitWebFullscreen : _onBackPressed,
         ),
       ],
     );

@@ -95,6 +95,11 @@ class PcVideoPlayerWidgetController {
   void dispose() {
     _state._player?.dispose();
   }
+
+  /// 退出网页全屏
+  void exitWebFullscreen() {
+    _state._exitWebFullscreen();
+  }
 }
 
 class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
@@ -110,7 +115,9 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
   StreamSubscription? _positionSubscription;
   StreamSubscription? _playingSubscription;
   StreamSubscription? _completedSubscription;
+  StreamSubscription? _durationSubscription;
   bool _shouldShowDLNAAfterExitFullscreen = false; // 退出全屏后是否显示 DLNA 对话框
+  VoidCallback? _exitWebFullscreenCallback; // 用于退出网页全屏的回调
 
   @override
   void initState() {
@@ -141,11 +148,10 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
 
     setState(() {
       _isInitialized = true;
-      _isLoadingVideo = false;
     });
 
     // 触发 ready 回调
-    widget.onReady?.call();
+    // widget.onReady?.call();
   }
 
   void _setupPlayerListeners() {
@@ -179,6 +185,19 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
         widget.onVideoCompleted?.call();
       }
     });
+
+    // 监听加载完成
+    _durationSubscription = _player!.stream.duration.listen((currentDuration) {
+      if (!mounted) return;
+      if (currentDuration == const Duration()) {
+        return;
+      }
+      setState(() {
+        _isLoadingVideo = false;
+      });
+      // 触发 ready 回调
+      widget.onReady?.call();
+    });
   }
 
   Future<void> updateDataSource(String url, {Duration? startAt}) async {
@@ -204,19 +223,12 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
 
         setState(() {
           _hasCompleted = false;
-          _isLoadingVideo = false;
         });
       } catch (e) {
         debugPrint('Error changing data source: $e');
-        // 出错时也隐藏加载状态
-        if (mounted) {
-          setState(() {
-            _isLoadingVideo = false;
-          });
-        }
       }
       // 触发 ready 回调
-      widget.onReady?.call();
+      // widget.onReady?.call();
       return;
     }
 
@@ -246,6 +258,11 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
     _progressListeners.remove(listener);
   }
 
+  /// 退出网页全屏
+  void _exitWebFullscreen() {
+    _exitWebFullscreenCallback?.call();
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -253,6 +270,7 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
     _positionSubscription?.cancel();
     _playingSubscription?.cancel();
     _completedSubscription?.cancel();
+    _durationSubscription?.cancel();
     _player?.dispose();
     super.dispose();
   }
@@ -280,7 +298,7 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
                     // 如果无法安全获取全屏状态，忽略错误
                   }
                 }
-                
+
                 return CustomMediaKitControls(
                   state: state,
                   player: _player!,
@@ -305,6 +323,9 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
                     }
                   },
                   onWebFullscreenChanged: widget.onWebFullscreenChanged,
+                  onExitWebFullscreenCallbackReady: (callback) {
+                    _exitWebFullscreenCallback = callback;
+                  },
                 );
               },
             )
@@ -318,9 +339,9 @@ class _PcVideoPlayerWidgetState extends State<PcVideoPlayerWidget>
 
   Future<void> _showDLNADialog(VideoState state) async {
     if (_player == null) return;
-    
+
     final resumePos = _player!.state.position;
-    
+
     if (mounted) {
       await showDialog(
         context: context,
