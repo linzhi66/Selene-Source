@@ -240,7 +240,13 @@ copy_artifacts() {
     else
         log_warning "安卓 armv7a APK 文件未找到"
     fi
-    
+    if [ -f "build/app/outputs/mapping/release/mapping.txt" ]; then
+        cp build/app/outputs/mapping/release/mapping.txt "dist/"
+        log_success "mapping.txt 已复制到 dist/mapping.txt"
+    else
+        log_warning "mapping.txt 未找到"
+    fi
+
     # 复制 iOS 构建产物
     if [ -f "ios-build/Runner.ipa" ]; then
         cp ios-build/Runner.ipa "dist/selene-${APP_VERSION}.ipa"
