@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/user_data_service.dart';
 import 'services/api_service.dart';
 import 'services/theme_service.dart';
 import 'services/douban_cache_service.dart';
+import 'services/local_mode_storage_service.dart';
+import 'services/subscription_service.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'dart:io' show Platform;
 import 'package:macos_window_utils/macos_window_utils.dart';
@@ -14,12 +17,12 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 初始化 media_kit (用于 PC 端播放器)
   MediaKit.ensureInitialized();
-  
+
   fvp.registerWith();
-  
+
   // 初始化 macOS 窗口配置
   if (Platform.isMacOS) {
     await WindowManipulator.initialize(enableWindowDelegate: true);
@@ -29,16 +32,16 @@ void main() async {
     // 隐藏标题栏中的 Title
     await WindowManipulator.hideTitle();
   }
-  
+
   // 初始化豆瓣缓存服务
   final cacheService = DoubanCacheService();
   await cacheService.init();
-  
+
   // 启动定期清理
   cacheService.startPeriodicCleanup();
-  
+
   runApp(const SeleneApp());
-  
+
   // 初始化 Windows 窗口配置
   if (Platform.isWindows) {
     doWhenWindowReady(() {
@@ -109,7 +112,7 @@ class _AppWrapperState extends State<AppWrapper> {
     try {
       // 检查是否有自动登录所需的数据
       final hasAutoLoginData = await UserDataService.hasAutoLoginData();
-      
+
       if (!hasAutoLoginData) {
         // 如果没有自动登录数据，直接进入登录页
         if (mounted) {
@@ -120,21 +123,52 @@ class _AppWrapperState extends State<AppWrapper> {
         return;
       }
 
-      // 有自动登录数据，尝试自动登录
+      // 检查是否是本地模式
+      final isLocalMode = await UserDataService.getIsLocalMode();
 
-      final loginResult = await ApiService.autoLogin();
-      
-      if (mounted) {
-        if (loginResult.success) {
-          // 自动登录成功，进入首页
+      if (isLocalMode) {
+        // 本地模式：尝试刷新订阅内容
+        try {
+          final subscriptionUrl =
+              await LocalModeStorageService.getSubscriptionUrl();
+          if (subscriptionUrl != null && subscriptionUrl.isNotEmpty) {
+            final response = await http.get(Uri.parse(subscriptionUrl));
+            if (response.statusCode == 200) {
+              final resources =
+                  await SubscriptionService.parseSubscriptionContent(
+                      response.body);
+              if (resources != null && resources.isNotEmpty) {
+                await LocalModeStorageService.saveSubscriptionContent(
+                    resources);
+              }
+            }
+          }
+        } catch (e) {
+          // 刷新失败也继续进入首页
+        }
+
+        // 无论刷新成功与否，都进入首页
+        if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
-        } else {
-          // 自动登录失败，进入登录页
-          setState(() {
-            _isLoading = false;
-          });
+        }
+      } else {
+        // 服务器模式：尝试自动登录
+        final loginResult = await ApiService.autoLogin();
+
+        if (mounted) {
+          if (loginResult.success) {
+            // 自动登录成功，进入首页
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else {
+            // 自动登录失败，进入登录页
+            setState(() {
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
@@ -155,10 +189,10 @@ class _AppWrapperState extends State<AppWrapper> {
           return Scaffold(
             body: Container(
               decoration: BoxDecoration(
-                color: themeService.isDarkMode 
+                color: themeService.isDarkMode
                     ? const Color(0xFF000000) // 深色模式纯黑色
                     : null,
-                gradient: themeService.isDarkMode 
+                gradient: themeService.isDarkMode
                     ? null
                     : const LinearGradient(
                         begin: Alignment.topCenter,
@@ -180,17 +214,16 @@ class _AppWrapperState extends State<AppWrapper> {
                   children: [
                     CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        themeService.isDarkMode 
-                            ? const Color(0xFFffffff)
-                            : const Color(0xFF2c3e50)
-                      ),
+                          themeService.isDarkMode
+                              ? const Color(0xFFffffff)
+                              : const Color(0xFF2c3e50)),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       '正在检查登录状态...',
                       style: TextStyle(
                         fontSize: 16,
-                        color: themeService.isDarkMode 
+                        color: themeService.isDarkMode
                             ? const Color(0xFFffffff)
                             : const Color(0xFF2c3e50),
                       ),
@@ -203,7 +236,7 @@ class _AppWrapperState extends State<AppWrapper> {
         },
       );
     }
-    
+
     return const LoginScreen();
   }
 }

@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:async';
-import 'package:bs58check/bs58check.dart' as bs58;
 import '../services/user_data_service.dart';
 import '../services/local_mode_storage_service.dart';
+import '../services/subscription_service.dart';
 import '../models/search_resource.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
@@ -40,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _urlController.addListener(_validateForm);
     _usernameController.addListener(_validateForm);
     _passwordController.addListener(_validateForm);
+    _subscriptionUrlController.addListener(_validateForm);
     _loadSavedUserData();
   }
 
@@ -60,10 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
       hasData = true;
     }
 
-    // 加载本地模式状态
-    final isLocalMode = await UserDataService.getIsLocalMode();
-
-    // 加载订阅链接
+    // 加载订阅链接（用于回填）
     final subscriptionUrl = await LocalModeStorageService.getSubscriptionUrl();
     if (subscriptionUrl != null && subscriptionUrl.isNotEmpty) {
       _subscriptionUrlController.text = subscriptionUrl;
@@ -72,13 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
     // 如果有数据被加载，更新UI状态
     if (hasData && mounted) {
       setState(() {
-        _isLocalMode = isLocalMode;
         // 触发表单验证
         _validateForm();
-      });
-    } else if (mounted) {
-      setState(() {
-        _isLocalMode = isLocalMode;
       });
     }
   }
@@ -361,41 +354,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<List<SearchResource>?> _parseSubscriptionContent(
-      String content) async {
-    try {
-      // Base58 解码
-      final decoded = bs58.base58.decode(content);
-      final jsonString = utf8.decode(decoded);
-
-      // 解析 JSON
-      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      final apiSite = jsonData['api_site'] as Map<String, dynamic>?;
-
-      if (apiSite == null) {
-        return null;
-      }
-
-      // 保持 map 中的顺序，转换为 List<SearchResource>
-      final resources = <SearchResource>[];
-      apiSite.forEach((key, value) {
-        final site = value as Map<String, dynamic>;
-        resources.add(SearchResource(
-          key: site['key'] as String? ?? key,
-          name: site['name'] as String? ?? '',
-          api: site['api'] as String? ?? '',
-          detail: site['detail'] as String? ?? '',
-          from: site['from'] as String? ?? '',
-          disabled: false,
-        ));
-      });
-
-      return resources;
-    } catch (e) {
-      return null;
-    }
-  }
-
   void _handleLocalModeLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -485,7 +443,8 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        final resources = await _parseSubscriptionContent(response.body);
+        final resources =
+            await SubscriptionService.parseSubscriptionContent(response.body);
 
         if (resources == null || resources.isEmpty) {
           setState(() {
