@@ -1,17 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:awesome_video_player/awesome_video_player.dart';
 import '../models/live_channel.dart';
 
-/// 直播预览播放器组件
-/// 在卡片上显示低分辨率的直播画面
+/// 直播频道预览组件
+/// 优先显示 Logo，可选启用实时预览
 class LivePreviewPlayer extends StatefulWidget {
   final LiveChannel channel;
   final Widget Function(BuildContext context) defaultBuilder;
+  final bool enableLivePreview; // 是否启用实时预览
 
   const LivePreviewPlayer({
     super.key,
     required this.channel,
     required this.defaultBuilder,
+    this.enableLivePreview = false, // 默认关闭实时预览
   });
 
   @override
@@ -19,52 +22,65 @@ class LivePreviewPlayer extends StatefulWidget {
 }
 
 class _LivePreviewPlayerState extends State<LivePreviewPlayer> {
-  AwesomeVideoPlayerController? _controller;
+  BetterPlayerController? _controller;
   bool _isInitialized = false;
-  bool _hasError = false;
+  bool _showLogo = true;
+  Timer? _initTimeout;
 
   @override
   void initState() {
     super.initState();
-    _initializePlayer();
+    // 只有启用实时预览且有视频源时才初始化播放器
+    if (widget.enableLivePreview && widget.channel.uris.isNotEmpty) {
+      // 延迟初始化，避免同时加载太多
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _initializePlayer();
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    _initTimeout?.cancel();
     _controller?.dispose();
     super.dispose();
   }
 
   Future<void> _initializePlayer() async {
-    if (widget.channel.uris.isEmpty) {
-      setState(() {
-        _hasError = true;
-      });
-      return;
-    }
-
     try {
       final videoUrl = widget.channel.uris[0];
       
-      // 创建数据源
+      // 设置5秒超时
+      _initTimeout = Timer(const Duration(seconds: 5), () {
+        if (mounted && !_isInitialized) {
+          setState(() {
+            _showLogo = true; // 超时后回退到 Logo
+          });
+          _controller?.dispose();
+          _controller = null;
+        }
+      });
+      
       final dataSource = BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
         videoUrl,
+        videoFormat: BetterPlayerVideoFormat.hls,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 1000,
-          maxBufferMs: 3000,
-          bufferForPlaybackMs: 500,
-          bufferForPlaybackAfterRebufferMs: 1000,
+          minBufferMs: 500,
+          maxBufferMs: 2000,
+          bufferForPlaybackMs: 250,
+          bufferForPlaybackAfterRebufferMs: 500,
         ),
         headers: widget.channel.headers,
       );
 
-      // 创建配置
       final configuration = BetterPlayerConfiguration(
         autoPlay: true,
         looping: true,
         controlsConfiguration: const BetterPlayerControlsConfiguration(
-          showControls: false, // 隐藏控制栏
+          showControls: false,
           enableMute: true,
           enableFullscreen: false,
           enablePip: false,
@@ -78,74 +94,78 @@ class _LivePreviewPlayerState extends State<LivePreviewPlayer> {
         autoDetectFullscreenAspectRatio: false,
         autoDetectFullscreenDeviceOrientation: false,
         allowedScreenSleep: true,
-        placeholder: widget.defaultBuilder(context),
-        showPlaceholderUntilPlay: true,
         errorBuilder: (context, errorMessage) {
-          return widget.defaultBuilder(context);
+          return _buildLogoOrDefault();
         },
       );
 
-      _controller = AwesomeVideoPlayerController(
-        dataSource: dataSource,
-        configuration: configuration,
-      );
+      _controller = BetterPlayerController(configuration);
+      await _controller!.setupDataSource(dataSource);
+      _controller!.setVolume(0);
 
-      // 监听初始化状态
-      _controller!.addListener(() {
-        if (_controller!.isVideoInitialized() && !_isInitialized) {
-          if (mounted) {
+      _controller!.addEventsListener((event) {
+        if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+          _initTimeout?.cancel();
+          if (mounted && !_isInitialized) {
             setState(() {
               _isInitialized = true;
+              _showLogo = false;
+            });
+          }
+        } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
+          // 播放失败，回退到 Logo
+          if (mounted) {
+            setState(() {
+              _showLogo = true;
             });
           }
         }
       });
-
-      // 静音播放
-      await _controller!.setVolume(0);
     } catch (e) {
-      print('初始化预览播放器失败: $e');
       if (mounted) {
         setState(() {
-          _hasError = true;
+          _showLogo = true;
         });
       }
     }
   }
 
+  Widget _buildLogoOrDefault() {
+    if (widget.channel.logo.isNotEmpty) {
+      return Image.network(
+        widget.channel.logo,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return widget.defaultBuilder(context);
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return widget.defaultBuilder(context);
+        },
+      );
+    }
+    return widget.defaultBuilder(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 如果有错误或没有控制器，显示默认内容
-    if (_hasError || _controller == null) {
-      return widget.defaultBuilder(context);
+    // 如果显示 Logo 或没有启用实时预览
+    if (_showLogo || !widget.enableLivePreview || _controller == null) {
+      return _buildLogoOrDefault();
     }
 
+    // 显示实时预览
     return Stack(
       children: [
-        // 播放器
         Positioned.fill(
-          child: AwesomeVideoPlayer(
-            controller: _controller!,
-            aspectRatio: 16 / 9,
-            placeholder: widget.defaultBuilder(context),
-          ),
+          child: BetterPlayer(controller: _controller!),
         ),
-        // 如果还没初始化，显示加载指示器
+        // 加载中显示 Logo
         if (!_isInitialized)
           Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.3),
-              child: const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-              ),
-            ),
+            child: _buildLogoOrDefault(),
           ),
       ],
     );

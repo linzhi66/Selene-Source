@@ -67,6 +67,7 @@ dependencies:
   screen_brightness: ^2.1.7
   gpt_markdown: ^1.1.4
   bs58check: ^1.0.2
+  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:
