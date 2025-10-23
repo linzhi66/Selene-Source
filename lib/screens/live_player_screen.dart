@@ -27,6 +27,8 @@ class LivePlayerScreen extends StatefulWidget {
 }
 
 class _LivePlayerScreenState extends State<LivePlayerScreen> {
+  late SystemUiOverlayStyle _originalStyle;
+  bool _isInitialized = false;
   late LiveChannel _currentChannel;
   int _currentSourceIndex = 0;
   List<EpgProgram>? _programs;
@@ -58,13 +60,35 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
     super.initState();
     _currentChannel = widget.channel;
     _currentSourceIndex = widget.channel.videoIndex;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     
-    // 缓存设备类型
-    _isTablet = DeviceUtils.isTablet(context);
-    _isPortraitTablet = DeviceUtils.isPortraitTablet(context);
-    
-    _loadAllChannels();
-    _loadEpgData();
+    if (!_isInitialized) {
+      // 缓存设备类型 - 在这里调用是安全的，因为 MediaQuery 已经可用
+      _isTablet = DeviceUtils.isTablet(context);
+      _isPortraitTablet = DeviceUtils.isPortraitTablet(context);
+      
+      // 保存当前的系统UI样式
+      final theme = Theme.of(context);
+      final isDarkMode = theme.brightness == Brightness.dark;
+      _originalStyle = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: theme.scaffoldBackgroundColor,
+        systemNavigationBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
+      );
+      _isInitialized = true;
+      
+      // 加载数据
+      _loadAllChannels();
+      _loadEpgData();
+    }
   }
 
   Future<void> _loadAllChannels() async {
@@ -94,6 +118,8 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
 
   @override
   void dispose() {
+    // 恢复原始的系统UI样式
+    SystemChrome.setSystemUIOverlayStyle(_originalStyle);
     _programScrollController.dispose();
     super.dispose();
   }
@@ -203,43 +229,44 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeService>(
-      builder: (context, themeService, child) {
-        final theme = Theme.of(context);
-        final isDarkMode = themeService.isDarkMode;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final themeService = context.watch<ThemeService>();
 
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.black,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.dark,
-            systemNavigationBarColor:
-                isDarkMode ? Colors.black : theme.scaffoldBackgroundColor,
-            systemNavigationBarIconBrightness:
-                isDarkMode ? Brightness.light : Brightness.dark,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.black,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor:
+            isDarkMode ? Colors.black : theme.scaffoldBackgroundColor,
+        systemNavigationBarIconBrightness:
+            isDarkMode ? Brightness.light : Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: isDarkMode
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFFe6f3fb),
+                      Color(0xFFeaf3f7),
+                      Color(0xFFf7f7f3),
+                      Color(0xFFe9ecef),
+                      Color(0xFFdbe3ea),
+                      Color(0xFFd3dde6),
+                    ],
+                    stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                  ),
+            color: isDarkMode ? theme.scaffoldBackgroundColor : null,
           ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: Container(
-              decoration: BoxDecoration(
-                gradient: isDarkMode
-                    ? null
-                    : const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFFe6f3fb),
-                          Color(0xFFeaf3f7),
-                          Color(0xFFf7f7f3),
-                          Color(0xFFe9ecef),
-                          Color(0xFFdbe3ea),
-                          Color(0xFFd3dde6),
-                        ],
-                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                      ),
-                color: isDarkMode ? theme.scaffoldBackgroundColor : null,
-              ),
-              child: Column(
+          child: Stack(
+            children: [
+              Column(
                 children: [
                   // Windows 自定义标题栏
                   if (Platform.isWindows)
@@ -264,10 +291,21 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
                   ),
                 ],
               ),
-            ),
+              // 状态栏黑色背景（覆盖在最上层）
+              if (!Platform.isWindows)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: MediaQuery.of(context).padding.top,
+                  child: Container(
+                    color: Colors.black,
+                  ),
+                ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -403,55 +441,59 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
         ),
         // 右侧：播放源和频道列表
         Expanded(
-          child: Container(
-            color: themeService.isDarkMode
-                ? const Color(0xFF1e1e1e)
-                : Colors.white,
-            child: Column(
-              children: [
-                // 顶部栏
-                Container(
-                  padding: EdgeInsets.only(
-                    top: statusBarHeight + macOSPadding + 16,
-                    left: 16,
-                    right: 16,
-                    bottom: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: themeService.isDarkMode
-                            ? const Color(0xFF333333)
-                            : const Color(0xFFe0e0e0),
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    '频道列表',
-                    style: FontUtils.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: themeService.isDarkMode
-                          ? Colors.white
-                          : const Color(0xFF2c3e50),
-                    ),
-                  ),
-                ),
-                // 内容区域
-                Expanded(
+          child: Column(
+            children: [
+              // 状态栏占位（保持透明，不遮挡状态栏）
+              SizedBox(height: statusBarHeight + macOSPadding),
+              // 右侧内容区域
+              Expanded(
+                child: Container(
+                  color: themeService.isDarkMode
+                      ? const Color(0xFF1e1e1e)
+                      : Colors.white,
                   child: Column(
                     children: [
-                      // 播放源选择器
-                      _buildSourceSelector(theme, themeService),
-                      // 频道列表
+                      // 顶部栏
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: themeService.isDarkMode
+                                  ? const Color(0xFF333333)
+                                  : const Color(0xFFe0e0e0),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          '频道列表',
+                          style: FontUtils.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: themeService.isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF2c3e50),
+                          ),
+                        ),
+                      ),
+                      // 内容区域
                       Expanded(
-                        child: _buildChannelList(theme, themeService),
+                        child: Column(
+                          children: [
+                            // 播放源选择器
+                            _buildSourceSelector(theme, themeService),
+                            // 频道列表
+                            Expanded(
+                              child: _buildChannelList(theme, themeService),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
