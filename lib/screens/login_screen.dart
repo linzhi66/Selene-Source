@@ -65,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final subscriptionUrl = await LocalModeStorageService.getSubscriptionUrl();
     if (subscriptionUrl != null && subscriptionUrl.isNotEmpty) {
       _subscriptionUrlController.text = subscriptionUrl;
+      hasData = true;
     }
 
     // 如果有数据被加载，更新UI状态
@@ -96,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_logoTapCount >= 10) {
       setState(() {
         _isLocalMode = !_isLocalMode;
+        _validateForm();
         _logoTapCount = 0;
       });
       _showToast(
@@ -122,6 +124,15 @@ class _LoginScreenState extends State<LoginScreen> {
             _passwordController.text.isNotEmpty;
       }
     });
+  }
+
+  // 处理回车键提交
+  void _handleSubmit() {
+    if (_isLocalMode) {
+      _handleLocalModeLogin();
+    } else {
+      _handleLogin();
+    }
   }
 
   Widget _buildLocalModeForm() {
@@ -177,6 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
             return null;
           },
           onChanged: (value) => _validateForm(),
+          onFieldSubmitted: (_) => _handleSubmit(),
         ),
         const SizedBox(height: 32),
 
@@ -612,6 +624,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                         return null;
                       },
+                      onFieldSubmitted: (_) => _handleSubmit(),
                     ),
                     const SizedBox(height: 20),
 
@@ -663,6 +676,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                         return null;
                       },
+                      onFieldSubmitted: (_) => _handleSubmit(),
                     ),
                     const SizedBox(height: 20),
 
@@ -729,6 +743,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                         return null;
                       },
+                      onFieldSubmitted: (_) => _handleSubmit(),
                     ),
                     const SizedBox(height: 32),
 
@@ -876,6 +891,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                           return null;
                         },
+                        onFieldSubmitted: (_) => _handleSubmit(),
                       ),
                       const SizedBox(height: 20),
 
@@ -927,6 +943,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                           return null;
                         },
+                        onFieldSubmitted: (_) => _handleSubmit(),
                       ),
                       const SizedBox(height: 20),
 
@@ -993,6 +1010,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                           return null;
                         },
+                        onFieldSubmitted: (_) => _handleSubmit(),
                       ),
                       const SizedBox(height: 32),
 
