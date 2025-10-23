@@ -104,6 +104,158 @@ class _LiveScreenState extends State<LiveScreen> {
     );
   }
 
+  /// 显示更多分类底部弹窗
+  void _showMoreGroupsBottomSheet(List<String> moreGroups, ThemeService themeService) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: themeService.isDarkMode
+                ? const Color(0xFF1e1e1e)
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部拖动条
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: themeService.isDarkMode
+                      ? const Color(0xFF666666)
+                      : const Color(0xFFe0e0e0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // 标题
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Text(
+                      '选择分类',
+                      style: FontUtils.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: themeService.isDarkMode
+                            ? Colors.white
+                            : const Color(0xFF2c3e50),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '共 ${moreGroups.length} 个分类',
+                      style: FontUtils.poppins(
+                        fontSize: 14,
+                        color: themeService.isDarkMode
+                            ? const Color(0xFF999999)
+                            : const Color(0xFF7f8c8d),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // 分类列表
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: moreGroups.length,
+                  itemBuilder: (context, index) {
+                    final group = moreGroups[index];
+                    final isSelected = _selectedGroup == group;
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _selectedGroup = group;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF27ae60).withOpacity(0.1)
+                              : Colors.transparent,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF27ae60)
+                                    : themeService.isDarkMode
+                                        ? const Color(0xFF2a2a2a)
+                                        : const Color(0xFFf5f5f5),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.category_outlined,
+                                  size: 20,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : themeService.isDarkMode
+                                          ? const Color(0xFF999999)
+                                          : const Color(0xFF7f8c8d),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                group,
+                                style: FontUtils.poppins(
+                                  fontSize: 15,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? const Color(0xFF27ae60)
+                                      : themeService.isDarkMode
+                                          ? Colors.white
+                                          : const Color(0xFF2c3e50),
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF27ae60),
+                                size: 24,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   List<LiveChannel> _getFilteredChannels() {
     if (_selectedGroup == '全部') {
       return _channelGroups.expand((g) => g.channels).toList();
@@ -141,7 +293,9 @@ class _LiveScreenState extends State<LiveScreen> {
   }
 
   Widget _buildTopBar(ThemeService themeService) {
-    final groups = ['全部', '收藏', ..._channelGroups.map((g) => g.name)];
+    final allGroups = ['全部', '收藏', ..._channelGroups.map((g) => g.name)];
+    final visibleGroups = ['全部', '收藏'];
+    final moreGroups = _channelGroups.map((g) => g.name).toList();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -161,51 +315,96 @@ class _LiveScreenState extends State<LiveScreen> {
       child: Row(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: groups.map((group) {
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                // 显示"全部"和"收藏"
+                ...visibleGroups.map((group) {
                   final isSelected = _selectedGroup == group;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedGroup = group;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedGroup = group;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF27ae60)
+                            : themeService.isDarkMode
+                                ? const Color(0xFF2a2a2a)
+                                : const Color(0xFFf5f5f5),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        group,
+                        style: FontUtils.poppins(
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                           color: isSelected
-                              ? const Color(0xFF27ae60)
+                              ? Colors.white
                               : themeService.isDarkMode
-                                  ? const Color(0xFF2a2a2a)
-                                  : const Color(0xFFf5f5f5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          group,
-                          style: FontUtils.poppins(
-                            fontSize: 14,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: isSelected
-                                ? Colors.white
-                                : themeService.isDarkMode
-                                    ? const Color(0xFFb0b0b0)
-                                    : const Color(0xFF7f8c8d),
-                          ),
+                                  ? const Color(0xFFb0b0b0)
+                                  : const Color(0xFF7f8c8d),
                         ),
                       ),
                     ),
                   );
-                }).toList(),
-              ),
+                }),
+                // 更多按钮
+                if (moreGroups.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _showMoreGroupsBottomSheet(moreGroups, themeService),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: themeService.isDarkMode
+                            ? const Color(0xFF2a2a2a)
+                            : const Color(0xFFf5f5f5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: themeService.isDarkMode
+                              ? const Color(0xFF333333)
+                              : const Color(0xFFe0e0e0),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '更多',
+                            style: FontUtils.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: themeService.isDarkMode
+                                  ? const Color(0xFFb0b0b0)
+                                  : const Color(0xFF7f8c8d),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: themeService.isDarkMode
+                                ? const Color(0xFFb0b0b0)
+                                : const Color(0xFF7f8c8d),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(width: 8),

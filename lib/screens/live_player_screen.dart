@@ -628,8 +628,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
         final channel = _allChannels[index];
         final isSelected = channel.id == _currentChannel.id;
         
+        // 只给当前频道添加 key，用于滚动定位
+        final itemKey = isSelected ? _currentChannelKey : ValueKey('channel_${channel.id}');
+        
         return ListTile(
-          key: isSelected ? _currentChannelKey : null, // 给当前频道添加 key
+          key: itemKey,
           selected: isSelected,
           selectedTileColor: const Color(0xFF27ae60).withOpacity(0.1),
           leading: channel.logo.isNotEmpty
@@ -720,8 +723,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
           Text(
             '播放源',
@@ -733,47 +735,240 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
                   : const Color(0xFF2c3e50),
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: List.generate(_currentChannel.uris.length, (index) {
-              final isSelected = index == _currentSourceIndex;
-              return GestureDetector(
-                onTap: () => _switchSource(index),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF27ae60)
-                        : themeService.isDarkMode
-                            ? const Color(0xFF2a2a2a)
-                            : const Color(0xFFf5f5f5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '源 ${index + 1}',
-                    style: FontUtils.poppins(
-                      fontSize: 14,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color: isSelected
-                          ? Colors.white
-                          : themeService.isDarkMode
-                              ? const Color(0xFFb0b0b0)
-                              : const Color(0xFF7f8c8d),
-                    ),
-                  ),
-                ),
-              );
-            }),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildSourceDropdown(themeService),
           ),
         ],
       ),
+    );
+  }
+
+  /// 构建播放源下拉菜单
+  Widget _buildSourceDropdown(ThemeService themeService) {
+    return GestureDetector(
+      onTap: () => _showSourceBottomSheet(themeService),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: themeService.isDarkMode
+              ? const Color(0xFF2a2a2a)
+              : const Color(0xFFf5f5f5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF27ae60).withOpacity(0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF27ae60).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_circle_outline,
+                    size: 16,
+                    color: Color(0xFF27ae60),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '源 ${_currentSourceIndex + 1}',
+                  style: FontUtils.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: themeService.isDarkMode
+                        ? Colors.white
+                        : const Color(0xFF2c3e50),
+                  ),
+                ),
+              ],
+            ),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: themeService.isDarkMode
+                  ? const Color(0xFF999999)
+                  : const Color(0xFF7f8c8d),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 显示播放源选择底部弹窗
+  void _showSourceBottomSheet(ThemeService themeService) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: themeService.isDarkMode
+                ? const Color(0xFF1e1e1e)
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部拖动条
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: themeService.isDarkMode
+                      ? const Color(0xFF666666)
+                      : const Color(0xFFe0e0e0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // 标题
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Text(
+                      '选择播放源',
+                      style: FontUtils.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: themeService.isDarkMode
+                            ? Colors.white
+                            : const Color(0xFF2c3e50),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '共 ${_currentChannel.uris.length} 个源',
+                      style: FontUtils.poppins(
+                        fontSize: 14,
+                        color: themeService.isDarkMode
+                            ? const Color(0xFF999999)
+                            : const Color(0xFF7f8c8d),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // 播放源列表
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _currentChannel.uris.length,
+                  itemBuilder: (context, index) {
+                    final isSelected = index == _currentSourceIndex;
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _switchSource(index);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF27ae60).withOpacity(0.1)
+                              : Colors.transparent,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF27ae60)
+                                    : themeService.isDarkMode
+                                        ? const Color(0xFF2a2a2a)
+                                        : const Color(0xFFf5f5f5),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${index + 1}',
+                                  style: FontUtils.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : themeService.isDarkMode
+                                            ? const Color(0xFF999999)
+                                            : const Color(0xFF7f8c8d),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '播放源 ${index + 1}',
+                                    style: FontUtils.poppins(
+                                      fontSize: 15,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? const Color(0xFF27ae60)
+                                          : themeService.isDarkMode
+                                              ? Colors.white
+                                              : const Color(0xFF2c3e50),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _currentChannel.uris[index],
+                                    style: FontUtils.poppins(
+                                      fontSize: 12,
+                                      color: themeService.isDarkMode
+                                          ? const Color(0xFF999999)
+                                          : const Color(0xFF7f8c8d),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF27ae60),
+                                size: 24,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 
