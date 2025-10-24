@@ -1,83 +1,63 @@
 // 直播频道数据模型
 class LiveChannel {
-  final int id;
-  final String name; // 标准名称
-  final String title; // 显示标题
+  final String id; // 频道ID
+  final String tvgId; // TVG ID
+  final String name; // 频道名称
   final String logo; // 频道图标
-  final List<String> uris; // 视频源地址列表
   final String group; // 分组名称
-  final int number; // 频道号
-  final Map<String, String>? headers; // 请求头
-  final int videoIndex; // 当前播放的视频源索引
+  final String url; // 视频源地址
   bool isFavorite; // 是否收藏
 
   LiveChannel({
     required this.id,
+    required this.tvgId,
     required this.name,
-    required this.title,
     required this.logo,
-    required this.uris,
     required this.group,
-    this.number = -1,
-    this.headers,
-    this.videoIndex = 0,
+    required this.url,
     this.isFavorite = false,
   });
 
   factory LiveChannel.fromJson(Map<String, dynamic> json) {
     return LiveChannel(
-      id: json['id'] ?? -1,
-      name: json['name'] ?? '',
-      title: json['title'] ?? '',
-      logo: json['logo'] ?? '',
-      uris: List<String>.from(json['uris'] ?? []),
-      group: json['group'] ?? '',
-      number: json['number'] ?? -1,
-      headers: json['headers'] != null
-          ? Map<String, String>.from(json['headers'])
-          : null,
-      videoIndex: json['videoIndex'] ?? 0,
-      isFavorite: json['isFavorite'] ?? false,
+      id: json['id'] as String? ?? '',
+      tvgId: json['tvgId'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      logo: json['logo'] as String? ?? '',
+      group: json['group'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      isFavorite: json['isFavorite'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'tvgId': tvgId,
       'name': name,
-      'title': title,
       'logo': logo,
-      'uris': uris,
       'group': group,
-      'number': number,
-      'headers': headers,
-      'videoIndex': videoIndex,
+      'url': url,
       'isFavorite': isFavorite,
     };
   }
 
   LiveChannel copyWith({
-    int? id,
+    String? id,
+    String? tvgId,
     String? name,
-    String? title,
     String? logo,
-    List<String>? uris,
     String? group,
-    int? number,
-    Map<String, String>? headers,
-    int? videoIndex,
+    String? url,
     bool? isFavorite,
   }) {
     return LiveChannel(
       id: id ?? this.id,
+      tvgId: tvgId ?? this.tvgId,
       name: name ?? this.name,
-      title: title ?? this.title,
       logo: logo ?? this.logo,
-      uris: uris ?? this.uris,
       group: group ?? this.group,
-      number: number ?? this.number,
-      headers: headers ?? this.headers,
-      videoIndex: videoIndex ?? this.videoIndex,
+      url: url ?? this.url,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }

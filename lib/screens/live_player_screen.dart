@@ -2,10 +2,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/live_channel.dart';
+import '../models/live_source.dart';
 import '../models/epg_program.dart';
-import '../services/live_channel_service.dart';
-import '../services/epg_service.dart';
-import '../services/user_data_service.dart';
+import '../services/api_service.dart';
 import '../widgets/mobile_video_player_widget.dart';
 import '../widgets/pc_video_player_widget.dart';
 import '../utils/device_utils.dart';
@@ -17,10 +16,12 @@ import '../widgets/switch_loading_overlay.dart';
 
 class LivePlayerScreen extends StatefulWidget {
   final LiveChannel channel;
+  final LiveSource source;
 
   const LivePlayerScreen({
     super.key,
     required this.channel,
+    required this.source,
   });
 
   @override
@@ -32,7 +33,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   late SystemUiOverlayStyle _originalStyle;
   bool _isInitialized = false;
   late LiveChannel _currentChannel;
-  int _currentSourceIndex = 0;
+  late LiveSource _currentSource;
   List<EpgProgram>? _programs;
   bool _isLoadingEpg = false;
   List<LiveChannel> _allChannels = [];
@@ -69,7 +70,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   void initState() {
     super.initState();
     _currentChannel = widget.channel;
-    _currentSourceIndex = widget.channel.videoIndex;
+    _currentSource = widget.source;
 
     // 初始化动画控制器
     _loadingAnimationController = AnimationController(
@@ -108,21 +109,29 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   }
 
   Future<void> _loadAllChannels() async {
-    final channels = await LiveChannelService.getChannels();
-    if (mounted) {
-      setState(() {
-        _allChannels = channels;
-      });
+    try {
+      final channels = await ApiService.getLiveChannels(_currentSource.key);
+      if (mounted) {
+        setState(() {
+          _allChannels = channels;
+        });
 
-      // 滚动到当前频道
-      _scrollToCurrentChannel();
+        // 滚动到当前频道
+        _scrollToCurrentChannel();
+      }
+    } catch (e) {
+      print('加载频道列表失败: $e');
+      if (mounted) {
+        setState(() {
+          _allChannels = [];
+        });
+      }
     }
   }
 
   void _switchChannel(LiveChannel channel) {
     setState(() {
       _currentChannel = channel;
-      _currentSourceIndex = 0;
       _isLoading = true;
       _loadingMessage = '切换频道...';
     });
@@ -149,22 +158,26 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     });
 
     try {
-      final serverUrl = await UserDataService.getServerUrl();
-      if (serverUrl == null || serverUrl.isEmpty) {
-        setState(() {
-          _isLoadingEpg = false;
-        });
+      // 如果 tvgId 为空，则不加载 EPG
+      if (_currentChannel.tvgId.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _programs = null;
+            _isLoadingEpg = false;
+          });
+        }
         return;
       }
 
-      final programs = await EpgService.getChannelPrograms(
-        _currentChannel.name,
-        serverUrl,
+      // 调用 ApiService 获取 EPG 数据
+      final epgData = await ApiService.getLiveEpg(
+        _currentChannel.tvgId,
+        _currentSource.key,
       );
 
       if (mounted) {
         setState(() {
-          _programs = programs;
+          _programs = epgData?.programs;
           _isLoadingEpg = false;
         });
 
@@ -175,18 +188,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       print('加载 EPG 失败: $e');
       if (mounted) {
         setState(() {
+          _programs = null;
           _isLoadingEpg = false;
         });
       }
     }
-  }
-
-  void _switchSource(int index) {
-    setState(() {
-      _currentSourceIndex = index;
-      _isLoading = true;
-      _loadingMessage = '切换播放源...';
-    });
   }
 
   // 退出网页全屏
@@ -206,21 +212,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     if (mounted) {
       setState(() {
         _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    await LiveChannelService.toggleFavorite(_currentChannel.id);
-    final channels = await LiveChannelService.getChannels();
-    final updatedChannel = channels.firstWhere(
-      (c) => c.id == _currentChannel.id,
-      orElse: () => _currentChannel,
-    );
-
-    if (mounted) {
-      setState(() {
-        _currentChannel = updatedChannel;
       });
     }
   }
@@ -502,15 +493,18 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
 
   /// 构建播放器组件
   Widget _buildPlayerWidget() {
-    final videoUrl = _currentChannel.uris[_currentSourceIndex];
-    final headers = _currentChannel.headers;
+    final videoUrl = _currentChannel.url;
 
     if (DeviceUtils.isPC()) {
       return PcVideoPlayerWidget(
-        key: ValueKey('${_currentChannel.id}_$_currentSourceIndex'),
+        key: ValueKey(_currentChannel.id),
         url: videoUrl,
-        headers: headers,
-        videoTitle: _currentChannel.title,
+        headers: <String, String>{
+          'User-Agent': _currentSource.ua.isNotEmpty
+              ? _currentSource.ua
+              : 'AptvPlayer/1.4.10',
+        },
+        videoTitle: _currentChannel.name,
         onBackPressed: _isWebFullscreen
             ? _exitWebFullscreen
             : () => Navigator.pop(context),
@@ -527,10 +521,14 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       );
     } else {
       return MobileVideoPlayerWidget(
-        key: ValueKey('${_currentChannel.id}_$_currentSourceIndex'),
+        key: ValueKey(_currentChannel.id),
         url: videoUrl,
-        headers: headers,
-        videoTitle: _currentChannel.title,
+        headers: <String, String>{
+          'User-Agent': _currentSource.ua.isNotEmpty
+              ? _currentSource.ua
+              : 'AptvPlayer/1.4.10',
+        },
+        videoTitle: _currentChannel.name,
         onBackPressed: () => Navigator.pop(context),
         onControllerCreated: (controller) {
           _mobileVideoPlayerController = controller;
@@ -736,7 +734,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        _currentChannel.title,
+                        _currentChannel.name,
                         style: FontUtils.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -748,18 +746,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (!(_isTablet && !_isPortraitTablet))
-                      IconButton(
-                        icon: Icon(
-                          _currentChannel.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: _currentChannel.isFavorite
-                              ? const Color(0xFFe74c3c)
-                              : null,
-                        ),
-                        onPressed: _toggleFavorite,
-                      ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -878,7 +864,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                   ),
                 ),
           title: Text(
-            channel.title,
+            channel.name,
             style: FontUtils.poppins(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -906,273 +892,9 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     );
   }
 
-  /// 构建播放源选择器
+  /// 构建播放源选择器（新结构不再需要多源选择）
   Widget _buildSourceSelector(ThemeData theme, ThemeService themeService) {
-    if (_currentChannel.uris.length <= 1) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: themeService.isDarkMode
-                ? const Color(0xFF333333)
-                : const Color(0xFFe0e0e0),
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            '播放源',
-            style: FontUtils.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: themeService.isDarkMode
-                  ? Colors.white
-                  : const Color(0xFF2c3e50),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildSourceDropdown(themeService),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建播放源下拉菜单
-  Widget _buildSourceDropdown(ThemeService themeService) {
-    return GestureDetector(
-      onTap: () => _showSourceBottomSheet(themeService),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: themeService.isDarkMode
-              ? const Color(0xFF2a2a2a)
-              : const Color(0xFFf5f5f5),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: const Color(0xFF27ae60).withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF27ae60).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.play_circle_outline,
-                    size: 14,
-                    color: Color(0xFF27ae60),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '源 ${_currentSourceIndex + 1}',
-                  style: FontUtils.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: themeService.isDarkMode
-                        ? Colors.white
-                        : const Color(0xFF2c3e50),
-                  ),
-                ),
-              ],
-            ),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: themeService.isDarkMode
-                  ? const Color(0xFF999999)
-                  : const Color(0xFF7f8c8d),
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 显示播放源选择底部弹窗
-  void _showSourceBottomSheet(ThemeService themeService) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: themeService.isDarkMode
-                ? const Color(0xFF1e1e1e)
-                : Colors.white,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 顶部拖动条
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: themeService.isDarkMode
-                      ? const Color(0xFF666666)
-                      : const Color(0xFFe0e0e0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // 标题
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  children: [
-                    Text(
-                      '选择播放源',
-                      style: FontUtils.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: themeService.isDarkMode
-                            ? Colors.white
-                            : const Color(0xFF2c3e50),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '共 ${_currentChannel.uris.length} 个源',
-                      style: FontUtils.poppins(
-                        fontSize: 14,
-                        color: themeService.isDarkMode
-                            ? const Color(0xFF999999)
-                            : const Color(0xFF7f8c8d),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              // 播放源列表
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.5,
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _currentChannel.uris.length,
-                  itemBuilder: (context, index) {
-                    final isSelected = index == _currentSourceIndex;
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _switchSource(index);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF27ae60).withOpacity(0.1)
-                              : Colors.transparent,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF27ae60)
-                                    : themeService.isDarkMode
-                                        ? const Color(0xFF2a2a2a)
-                                        : const Color(0xFFf5f5f5),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}',
-                                  style: FontUtils.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : themeService.isDarkMode
-                                            ? const Color(0xFF999999)
-                                            : const Color(0xFF7f8c8d),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '播放源 ${index + 1}',
-                                    style: FontUtils.poppins(
-                                      fontSize: 15,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      color: isSelected
-                                          ? const Color(0xFF27ae60)
-                                          : themeService.isDarkMode
-                                              ? Colors.white
-                                              : const Color(0xFF2c3e50),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _currentChannel.uris[index],
-                                    style: FontUtils.poppins(
-                                      fontSize: 12,
-                                      color: themeService.isDarkMode
-                                          ? const Color(0xFF999999)
-                                          : const Color(0xFF7f8c8d),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF27ae60),
-                                size: 24,
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
+    return const SizedBox.shrink();
   }
 
   /// 构建可滚动的节目单（用于平板横屏）

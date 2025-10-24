@@ -180,16 +180,6 @@ class _MainLayoutState extends State<MainLayout> {
             : themeService.isDarkMode
                 ? const Color(0xFF1e1e1e).withOpacity(0.9)
                 : Colors.white.withOpacity(0.8),
-        border: widget.isSearchMode
-            ? null
-            : Border(
-                bottom: BorderSide(
-                  color: themeService.isDarkMode
-                      ? const Color(0xFF333333).withOpacity(0.3)
-                      : Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
       ),
       child: widget.isSearchMode
           ? _buildSearchHeader(context, themeService, isTablet)
