@@ -217,52 +217,35 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
 
   /// 滚动到当前正在播放的节目
   void _scrollToCurrentProgram() {
-    if (_programs == null || _programs!.isEmpty) return;
+    if (_programs == null || _programs!.isEmpty) {
+      return;
+    }
 
     // 找到当前正在播放的节目索引
     final currentIndex = _programs!.indexWhere((p) => p.isLive);
-    if (currentIndex == -1) return;
+    if (currentIndex == -1) {
+      return;
+    }
 
     // 延迟执行，确保列表已经渲染
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_programScrollController.hasClients) return;
-
-      // 计算节目项的精确高度
-      // padding: 12 (top) + 12 (bottom) = 24
-      // margin: 12 (bottom) = 12
-      // 内容高度估算：
-      // - 时间行: ~20 (包括 badge 或纯文本)
-      // - 间距: 6
-      // - 标题: ~20
-      // - 描述(如果有): ~30
-      // - 进度条(如果是直播): ~16
-      // 基础高度 = 24 + 12 + 20 + 6 + 20 = 82
-      // 有描述时 += 34 (4间距 + 30高度)
-      // 有进度条时 += 12 (8间距 + 4高度)
-
-      // 使用保守估计，每个项目约 110 像素(包含描述的情况)
-      const double baseItemHeight = 82.0;
-      const double descriptionHeight = 34.0;
-      const double progressHeight = 12.0;
-
-      // 计算到目标节目的累计高度
-      double totalOffset = 0.0;
-      for (int i = 0; i < currentIndex; i++) {
-        double itemHeight = baseItemHeight;
-        if (_programs![i].description != null &&
-            _programs![i].description!.isNotEmpty) {
-          itemHeight += descriptionHeight;
-        }
-        if (_programs![i].isLive) {
-          itemHeight += progressHeight;
-        }
-        totalOffset += itemHeight;
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!_programScrollController.hasClients) {
+        return;
       }
 
-      // 获取可视区域高度,将当前节目定位在屏幕中央偏上位置
-      final viewportHeight =
-          _programScrollController.position.viewportDimension;
-      final centerOffset = totalOffset - (viewportHeight * 0.3);
+      // 根据最大滚动范围反推实际的卡片宽度
+      // maxScrollExtent = 总宽度 - 可视区域宽度
+      final viewportWidth = _programScrollController.position.viewportDimension;
+      final totalContentWidth =
+          _programScrollController.position.maxScrollExtent + viewportWidth;
+      final actualItemWidth = totalContentWidth / _programs!.length;
+
+      // 计算卡片左边缘的位置
+      final itemLeftPosition = currentIndex * actualItemWidth;
+
+      // 将卡片居中：卡片左边缘位置 - (可视区域宽度 / 2) + (卡片宽度 / 2)
+      final centerOffset =
+          itemLeftPosition - (viewportWidth / 2) + (actualItemWidth / 2);
 
       // 确保不会滚动到负值或超出最大滚动范围
       final maxScrollExtent = _programScrollController.position.maxScrollExtent;
@@ -515,6 +498,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
         setState(() {
           _isWebFullscreen = isWebFullscreen;
         });
+        // 退出全屏后，重新滚动到当前节目
+        if (!isWebFullscreen) {
+          _scrollToCurrentProgram();
+        }
       },
       onReady: _onVideoPlayerReady,
       live: true,
@@ -537,10 +524,17 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
         ),
         // 播放器占位
         SizedBox(height: playerHeight),
-        _buildChannelInfo(theme, themeService),
-        _buildSourceSelector(theme, themeService),
+        // 可滚动内容区域
         Expanded(
-          child: _buildProgramGuideScrollable(theme, themeService),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildChannelInfo(theme, themeService),
+                _buildSourceSelector(theme, themeService),
+                _buildProgramGuideScrollable(theme, themeService),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -572,11 +566,16 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                   children: [
                     // 播放器占位
                     SizedBox(height: playerHeight),
-                    // 台标台名放在播放器下方
-                    _buildChannelInfo(theme, themeService),
-                    // 节目单
+                    // 可滚动内容区域
                     Expanded(
-                      child: _buildProgramGuideScrollable(theme, themeService),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildChannelInfo(theme, themeService),
+                            _buildProgramGuideScrollable(theme, themeService),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -584,9 +583,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
               // 右侧：播放源和频道列表
               Expanded(
                 child: Container(
-                  color: themeService.isDarkMode
-                      ? const Color(0xFF1e1e1e)
-                      : Colors.white,
+                  color: Colors.transparent,
                   child: Column(
                     children: [
                       // 顶部栏
@@ -653,13 +650,17 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
         ),
         // 播放器占位
         SizedBox(height: playerHeight),
-        // 台标台名（固定）
-        _buildChannelInfo(theme, themeService),
-        // 播放源选择器（固定）
-        _buildSourceSelector(theme, themeService),
-        // 节目单（可滚动）
+        // 可滚动内容区域
         Expanded(
-          child: _buildProgramGuideScrollable(theme, themeService),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildChannelInfo(theme, themeService),
+                _buildSourceSelector(theme, themeService),
+                _buildProgramGuideScrollable(theme, themeService),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -670,7 +671,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
+        color: Colors.transparent,
         border: Border(
           bottom: BorderSide(
             color: themeService.isDarkMode
@@ -884,7 +885,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       ThemeData theme, ThemeService themeService) {
     return Container(
       decoration: BoxDecoration(
-        color: themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
+        color: Colors.transparent,
         border: Border(
           top: BorderSide(
             color: themeService.isDarkMode
@@ -893,52 +894,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           ),
         ),
       ),
-      child: Column(
-        children: [
-          // 标题栏（固定）
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: themeService.isDarkMode
-                      ? const Color(0xFF333333)
-                      : const Color(0xFFe0e0e0),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '节目单',
-                  style: FontUtils.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: themeService.isDarkMode
-                        ? Colors.white
-                        : const Color(0xFF2c3e50),
-                  ),
-                ),
-                const Spacer(),
-                if (_isLoadingEpg)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // 节目列表（可滚动）
-          Expanded(
-            child: _buildProgramList(themeService),
-          ),
-        ],
-      ),
+      child: _buildProgramList(themeService),
     );
   }
 
@@ -991,18 +947,22 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       );
     }
 
-    return ListView.builder(
-      controller: _programScrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: _programs!.length,
-      itemBuilder: (context, index) {
-        final program = _programs![index];
-        return _buildProgramItem(
-          program,
-          themeService,
-          key: program.isLive ? _currentProgramKey : null,
-        );
-      },
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        controller: _programScrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: _programs!.length,
+        itemBuilder: (context, index) {
+          final program = _programs![index];
+          return _buildProgramItem(
+            program,
+            themeService,
+            key: program.isLive ? _currentProgramKey : null,
+          );
+        },
+      ),
     );
   }
 
@@ -1011,104 +971,119 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     ThemeService themeService, {
     Key? key,
   }) {
+    final now = DateTime.now();
     final isLive = program.isLive;
+    final isPast = now.isAfter(program.endTime);
+
+    // 根据节目状态选择颜色和边框
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    Color timeColor;
+
+    if (isLive) {
+      // 正在播放 - 绿色背景 + 绿色边框
+      backgroundColor = themeService.isDarkMode
+          ? const Color(0xFF27ae60).withOpacity(0.2)
+          : const Color(0xFF27ae60).withOpacity(0.1);
+      borderColor = const Color(0xFF27ae60).withOpacity(0.3);
+      textColor = themeService.isDarkMode
+          ? const Color(0xFF4ade80)
+          : const Color(0xFF16a34a);
+      timeColor = themeService.isDarkMode
+          ? const Color(0xFF4ade80)
+          : const Color(0xFF16a34a);
+    } else if (isPast) {
+      // 过去的节目 - 灰色背景 + 灰色边框
+      backgroundColor = themeService.isDarkMode
+          ? const Color(0xFF374151).withOpacity(0.5)
+          : const Color(0xFFd1d5db).withOpacity(0.5);
+      borderColor = themeService.isDarkMode
+          ? const Color(0xFF4b5563)
+          : const Color(0xFFd1d5db);
+      textColor = themeService.isDarkMode
+          ? const Color(0xFF9ca3af)
+          : const Color(0xFF6b7280);
+      timeColor = themeService.isDarkMode
+          ? const Color(0xFF9ca3af)
+          : const Color(0xFF6b7280);
+    } else {
+      // 未开始的节目 - 蓝色背景 + 蓝色边框
+      backgroundColor = themeService.isDarkMode
+          ? const Color(0xFF3498db).withOpacity(0.2)
+          : const Color(0xFF3498db).withOpacity(0.1);
+      borderColor = const Color(0xFF3498db).withOpacity(0.3);
+      textColor = themeService.isDarkMode
+          ? const Color(0xFF60a5fa)
+          : const Color(0xFF2563eb);
+      timeColor = themeService.isDarkMode
+          ? const Color(0xFF60a5fa)
+          : const Color(0xFF2563eb);
+    }
 
     return Container(
       key: key,
-      margin: const EdgeInsets.only(bottom: 12),
+      width: 180,
+      height: 96,
+      margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isLive
-            ? const Color(0xFF27ae60).withOpacity(0.1)
-            : themeService.isDarkMode
-                ? const Color(0xFF2a2a2a)
-                : const Color(0xFFf5f5f5),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
-        border: isLive
-            ? Border.all(color: const Color(0xFF27ae60), width: 1)
-            : null,
+        border: Border.all(
+          color: borderColor,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              if (isLive)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF27ae60),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '直播中',
-                    style: FontUtils.poppins(
-                      fontSize: 10,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              if (isLive) const SizedBox(width: 8),
               Text(
                 program.timeRange,
                 style: FontUtils.poppins(
-                  fontSize: 12,
-                  color: isLive
-                      ? const Color(0xFF27ae60)
-                      : themeService.isDarkMode
-                          ? const Color(0xFF999999)
-                          : const Color(0xFF7f8c8d),
-                  fontWeight: isLive ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 11,
+                  color: timeColor,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
+              const Spacer(),
+              if (isLive)
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF27ae60),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '正在播放',
+                      style: FontUtils.poppins(
+                        fontSize: 10,
+                        color: timeColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
-          const SizedBox(height: 6),
           Text(
             program.title,
             style: FontUtils.poppins(
-              fontSize: 14,
-              fontWeight: isLive ? FontWeight.w600 : FontWeight.w500,
-              color: themeService.isDarkMode
-                  ? Colors.white
-                  : const Color(0xFF2c3e50),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: textColor,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          if (program.description != null &&
-              program.description!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              program.description!,
-              style: FontUtils.poppins(
-                fontSize: 12,
-                color: themeService.isDarkMode
-                    ? const Color(0xFF999999)
-                    : const Color(0xFF7f8c8d),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          if (isLive) ...[
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: program.progress,
-                backgroundColor: themeService.isDarkMode
-                    ? const Color(0xFF333333)
-                    : const Color(0xFFe0e0e0),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF27ae60),
-                ),
-                minHeight: 4,
-              ),
-            ),
-          ],
         ],
       ),
     );

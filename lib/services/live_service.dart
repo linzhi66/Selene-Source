@@ -504,25 +504,4 @@ class LiveService {
     _channelsCache.clear();
     _epgCache.clear();
   }
-
-  /// 获取缓存信息（用于调试）
-  static Map<String, dynamic> getCacheInfo() {
-    return {
-      'sourcesCache': _liveSourcesCache != null
-          ? {
-              'count': _liveSourcesCache!.data.length,
-              'cacheTime': _liveSourcesCache!.cacheTime.toIso8601String(),
-              'isExpired': _liveSourcesCache!.isExpired(_sourceCacheDuration),
-            }
-          : null,
-      'channelsCache': {
-        'keys': _channelsCache.keys.toList(),
-        'count': _channelsCache.length,
-      },
-      'epgCache': {
-        'keys': _epgCache.keys.toList(),
-        'count': _epgCache.length,
-      },
-    };
-  }
 }
