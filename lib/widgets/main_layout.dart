@@ -172,6 +172,13 @@ class _MainLayoutState extends State<MainLayout> {
     final themeService = Provider.of<ThemeService>(context, listen: false);
     final isTablet = DeviceUtils.isTablet(context);
 
+    // 计算建议框宽度
+    // 平板模式：屏幕宽度的 50%
+    // 移动端：屏幕宽度 - 左右padding(32) - 右侧按钮宽度(32*2) - 按钮间距(12) - 按钮与搜索框间距(16)
+    final screenWidth = MediaQuery.of(context).size.width;
+    final suggestionWidth =
+        isTablet ? screenWidth * 0.5 : screenWidth - 32 - 16 - 32 - 12 - 32;
+
     _overlayEntry = OverlayEntry(
       builder: (context) => Stack(
         children: [
@@ -186,14 +193,12 @@ class _MainLayoutState extends State<MainLayout> {
             ),
           ),
           // 搜索建议框
-          Positioned(
-            width: isTablet
-                ? MediaQuery.of(context).size.width * 0.5
-                : MediaQuery.of(context).size.width - 32,
-            child: CompositedTransformFollower(
-              link: _layerLink,
-              showWhenUnlinked: false,
-              offset: const Offset(0, 42), // 紧贴搜索框
+          CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, 42), // 紧贴搜索框
+            child: SizedBox(
+              width: suggestionWidth,
               child: Material(
                 elevation: 0,
                 borderRadius: BorderRadius.circular(12),
