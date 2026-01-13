@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 用于锁定/恢复屏幕方向和系统 UI
 import 'package:intl/intl.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:volume_controller/volume_controller.dart';
+
+import '../services/orientation_service.dart';
 import 'dlna_device_dialog.dart';
 
 class MobilePlayerControls extends StatefulWidget {
@@ -158,12 +162,23 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     _brightnessHideTimer?.cancel();
     _timeUpdateTimer?.cancel();
     VolumeController.instance.showSystemUI = true;
+    // 恢复系统 UI 和 允许常见方向，防止控件释放后仍被锁定
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
   bool get _isFullscreen => widget.state.isFullscreen();
+
   bool get _isPlaying => widget.player.state.playing;
+
   Duration get _position => widget.player.state.position;
+
   Duration get _duration => widget.player.state.duration;
 
   void _startHideTimer() {
@@ -244,8 +259,12 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   void _onSwipeUpdate(DragUpdateDetails details) {
-    if (_isLocked || !_isSeekingViaSwipe || widget.live || _screenSize == null)
+    if (_isLocked ||
+        !_isSeekingViaSwipe ||
+        widget.live ||
+        _screenSize == null) {
       return;
+    }
     final screenWidth = _screenSize!.width;
     final swipeDistance = details.globalPosition.dx - _swipeStartX;
     final swipeRatio = swipeDistance / (screenWidth * 0.5);
@@ -369,24 +388,122 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  void _enterFullscreen() {
-    widget.state.enterFullscreen();
+  /// 全屏操作
+  Future<void> _enterFullscreen() async {
+    // 判断目标方向
+    final screenSize = MediaQuery.of(context).size;
+    final screenAspectRatio = screenSize.width / screenSize.height;
+    final videoWidth = widget.player.state.width ?? 0;
+    final videoHeight = widget.player.state.height ?? 0;
+    final videoAspectRatio =
+        (videoWidth > 0 && videoHeight > 0) ? videoWidth / videoHeight : 0;
+    final isScreenPortrait = screenAspectRatio < 1.0;
+    final isVideoPortrait = videoAspectRatio > 0 && videoAspectRatio < 1.0;
+    final shouldLockPortrait = isScreenPortrait && isVideoPortrait;
+    // 并行执行方向锁定和系统UI隐藏
+    await Future.wait([
+      // 设置屏幕方向
+      _setScreenOrientation(shouldLockPortrait),
+      // 隐藏系统UI
+      _hideSystemUI(),
+    ]);
+    // 进入全屏
     widget.onFullscreenChange(true);
+    widget.state.enterFullscreen();
+    // 仅在 Android 平台执行，且延迟最短
+    if (Platform.isAndroid) {
+      await Future.delayed(const Duration(milliseconds: 30));
+      await _setScreenOrientation(shouldLockPortrait);
+    }
     _onUserInteraction();
   }
 
-  void _exitFullscreen() {
-    widget.state.exitFullscreen();
+  /// 设置屏幕方向的通用方法
+  Future<void> _setScreenOrientation(bool shouldLockPortrait) async {
+    if (Platform.isAndroid) {
+      // 使用原生 Android 方向控制（更直接更快）
+      if (shouldLockPortrait) {
+        await OrientationService.setPortraitOnly();
+      } else {
+        await OrientationService.setLandscapeOnly();
+      }
+    } else {
+      // iOS/其他平台使用 SystemChrome
+      try {
+        if (shouldLockPortrait) {
+          await SystemChrome.setPreferredOrientations(
+              [DeviceOrientation.portraitUp]);
+        } else {
+          await SystemChrome.setPreferredOrientations([
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        }
+      } catch (e) {
+        debugPrint('[Fullscreen] Failed to set orientation: $e');
+      }
+    }
+  }
+
+  /// 隐藏系统 UI 的通用方法
+  Future<void> _hideSystemUI() async {
+    try {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } catch (e) {
+      debugPrint('[Fullscreen] Failed to hide system UI: $e');
+    }
+  }
+
+  /// 退出全屏
+  Future<void> _exitFullscreen() async {
+    // 更新 UI 状态并触发回调
     widget.onFullscreenChange(false);
-    // 触发退出全屏回调
+    widget.state.exitFullscreen();
     widget.onExitFullScreen?.call();
-    // 确保控制栏可见并重新启动隐藏计时器
+    // 恢复控制栏和计时器
     setState(() {
       _controlsVisible = true;
       _isLocked = false;
     });
     widget.onControlsVisibilityChanged(true);
     _startHideTimer();
+    // 并行执行系统UI恢复和方向解锁
+    try {
+      await Future.wait([
+        _restoreSystemUI(),
+        _restoreScreenOrientation(),
+      ]);
+    } catch (e) {
+      debugPrint('[Fullscreen] Error restoring system state: $e');
+    }
+  }
+
+  /// 恢复系统 UI 的通用方法
+  Future<void> _restoreSystemUI() async {
+    try {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    } catch (e) {
+      debugPrint('[Fullscreen] Failed to restore system UI: $e');
+    }
+  }
+
+  /// 恢复屏幕方向的通用方法
+  Future<void> _restoreScreenOrientation() async {
+    try {
+      // 恢复允许的方向（竖/横皆可）
+      if (Platform.isAndroid) {
+        await OrientationService.setPortraitAndLandscape();
+      } else {
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    } catch (e) {
+      debugPrint('[Fullscreen] Failed to restore orientation: $e');
+    }
   }
 
   Future<void> _showDLNADialog() async {
@@ -889,7 +1006,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
                 if (Platform.isAndroid)
                   GestureDetector(
                     onTap: () async {
-                      print('PIP button clicked!');
                       _onUserInteraction();
                       await _enterPipMode();
                     },
@@ -914,7 +1030,9 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
                   },
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    padding: EdgeInsets.only(left: _isFullscreen ? 12 : 5, right: _isFullscreen ? 12 : 8),
+                    padding: EdgeInsets.only(
+                        left: _isFullscreen ? 12 : 5,
+                        right: _isFullscreen ? 12 : 8),
                     child: Icon(
                       _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                       color: Colors.white,
@@ -1277,7 +1395,7 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
                       height: 6,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(3),
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -1308,7 +1426,7 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
                             color: Colors.red,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withValues(alpha: 0.3),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),

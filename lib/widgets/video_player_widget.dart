@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pip/pip.dart';
+
 import 'mobile_player_controls.dart';
 import 'pc_player_controls.dart';
 import 'video_player_surface.dart';
@@ -58,6 +60,7 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class VideoPlayerWidgetController {
   VideoPlayerWidgetController._(this._state);
+
   final _VideoPlayerWidgetState _state;
 
   Future<void> updateDataSource(
@@ -140,6 +143,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   VoidCallback? _exitWebFullscreenCallback;
   final Pip _pip = Pip();
   bool _isPipMode = false;
+
+  // 视频宽高和全屏状态监听
+  final ValueNotifier<BoxFit> _videoFit = ValueNotifier<BoxFit>(BoxFit.contain);
+  double _videoWidth = 0;
+  double _videoHeight = 0;
+  Timer? _sizeCheckTimer;
+  bool _isCurrentlyFullscreen = false;
 
   @override
   void initState() {
@@ -277,6 +287,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         widget.onReady?.call();
       }
     });
+
+    // 监听视频尺寸变化并更新视频填充模式
+    _sizeCheckTimer?.cancel();
+    _sizeCheckTimer =
+        Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (!mounted || _playerDisposed) {
+        timer.cancel();
+        return;
+      }
+      final width = _player?.state.width ?? 0;
+      final height = _player?.state.height ?? 0;
+      if (width > 0 && height > 0) {
+        if (_videoWidth != width || _videoHeight != height) {
+          _videoWidth = width.toDouble();
+          _videoHeight = height.toDouble();
+          _updateVideoFitMode();
+        }
+      }
+    });
   }
 
   Future<void> _updateDataSource(
@@ -343,6 +372,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<void> _setPlaybackSpeed(double speed) async {
     _playbackSpeed.value = speed;
     await _player?.setRate(speed);
+  }
+
+  /// 更新视频贴合模式
+  void _updateVideoFitMode() {
+    // 核心判断规则：
+    // 1. 非全屏状态：始终使用 contain
+    // 2. 全屏状态下：
+    //    - 横屏视频（宽 > 高，如 16:9, 21:9）→ 使用 contain（等比适配，无拉伸）
+    //    - 竖屏视频（高 > 宽，如 9:16, 4:5）→ 使用 scaleDown（防止超出屏幕）
+    if (_videoWidth == 0 || _videoHeight == 0) return;
+    final BoxFit newFit;
+    if (!_isCurrentlyFullscreen) {
+      // 非全屏状态，始终使用 contain
+      newFit = BoxFit.contain;
+    } else {
+      // 全屏状态，根据视频比例决定填充模式，使用 scaleDown
+      newFit = _videoWidth > _videoHeight ? BoxFit.contain : BoxFit.scaleDown;
+    }
+    if (_videoFit.value != newFit) {
+      _videoFit.value = newFit;
+    }
   }
 
   void _exitWebFullscreen() {
@@ -427,6 +477,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
     _playerDisposed = true;
+    _sizeCheckTimer?.cancel();
     _positionSubscription?.cancel();
     _playingSubscription?.cancel();
     _completedSubscription?.cancel();
@@ -464,6 +515,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
     _disposePlayer();
     _playbackSpeed.dispose();
+    _videoFit.dispose();
     super.dispose();
   }
 
@@ -472,56 +524,77 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     return Container(
       color: Colors.black,
       child: _isInitialized && _videoController != null
-          ? Video(
-              controller: _videoController!,
-              controls: (state) {
-                return widget.surface == VideoPlayerSurface.desktop
-                    ? PCPlayerControls(
-                        state: state,
-                        player: _player!,
-                        onBackPressed: widget.onBackPressed,
-                        onNextEpisode: widget.onNextEpisode,
-                        onPause: widget.onPause,
-                        videoUrl: _currentUrl ?? '',
-                        isLastEpisode: widget.isLastEpisode,
-                        isLoadingVideo: _isLoadingVideo,
-                        onCastStarted: widget.onCastStarted,
-                        videoTitle: widget.videoTitle,
-                        currentEpisodeIndex: widget.currentEpisodeIndex,
-                        totalEpisodes: widget.totalEpisodes,
-                        sourceName: widget.sourceName,
-                        onWebFullscreenChanged: widget.onWebFullscreenChanged,
-                        onExitWebFullscreenCallbackReady: (callback) {
-                          _exitWebFullscreenCallback = callback;
-                        },
-                        onExitFullScreen: widget.onExitFullScreen,
-                        live: widget.live,
-                        playbackSpeedListenable: _playbackSpeed,
-                        onSetSpeed: _setPlaybackSpeed,
+          ? ValueListenableBuilder<BoxFit>(
+              valueListenable: _videoFit,
+              builder: (context, videoFit, _) {
+                // 根据是否全屏和填充模式决定是否添加外边距
+                // 全屏时无需外边距，非全屏时添加外边距防止视频超出屏幕
+                final needsPadding = !_isCurrentlyFullscreen &&
+                    (videoFit == BoxFit.cover || videoFit == BoxFit.scaleDown);
+                final videoWidget = Video(
+                  controller: _videoController!,
+                  fit: videoFit,
+                  controls: (state) {
+                    return widget.surface == VideoPlayerSurface.desktop
+                        ? PCPlayerControls(
+                            state: state,
+                            player: _player!,
+                            onBackPressed: widget.onBackPressed,
+                            onNextEpisode: widget.onNextEpisode,
+                            onPause: widget.onPause,
+                            videoUrl: _currentUrl ?? '',
+                            isLastEpisode: widget.isLastEpisode,
+                            isLoadingVideo: _isLoadingVideo,
+                            onCastStarted: widget.onCastStarted,
+                            videoTitle: widget.videoTitle,
+                            currentEpisodeIndex: widget.currentEpisodeIndex,
+                            totalEpisodes: widget.totalEpisodes,
+                            sourceName: widget.sourceName,
+                            onWebFullscreenChanged:
+                                widget.onWebFullscreenChanged,
+                            onExitWebFullscreenCallbackReady: (callback) {
+                              _exitWebFullscreenCallback = callback;
+                            },
+                            onExitFullScreen: widget.onExitFullScreen,
+                            live: widget.live,
+                            playbackSpeedListenable: _playbackSpeed,
+                            onSetSpeed: _setPlaybackSpeed,
+                          )
+                        : MobilePlayerControls(
+                            player: _player!,
+                            state: state,
+                            onControlsVisibilityChanged: (_) {},
+                            onBackPressed: widget.onBackPressed,
+                            onFullscreenChange: (isFullscreen) {
+                              _isCurrentlyFullscreen = isFullscreen;
+                              _updateVideoFitMode();
+                            },
+                            onNextEpisode: widget.onNextEpisode,
+                            onPause: widget.onPause,
+                            videoUrl: _currentUrl ?? '',
+                            isLastEpisode: widget.isLastEpisode,
+                            isLoadingVideo: _isLoadingVideo,
+                            onCastStarted: widget.onCastStarted,
+                            videoTitle: widget.videoTitle,
+                            currentEpisodeIndex: widget.currentEpisodeIndex,
+                            totalEpisodes: widget.totalEpisodes,
+                            sourceName: widget.sourceName,
+                            onExitFullScreen: widget.onExitFullScreen,
+                            live: widget.live,
+                            playbackSpeedListenable: _playbackSpeed,
+                            onSetSpeed: _setPlaybackSpeed,
+                            onEnterPipMode: _enterPipMode,
+                            isPipMode: _isPipMode,
+                          );
+                  },
+                );
+                // 条件性添加外边距
+                return needsPadding
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: videoWidget,
                       )
-                    : MobilePlayerControls(
-                        player: _player!,
-                        state: state,
-                        onControlsVisibilityChanged: (_) {},
-                        onBackPressed: widget.onBackPressed,
-                        onFullscreenChange: (_) {},
-                        onNextEpisode: widget.onNextEpisode,
-                        onPause: widget.onPause,
-                        videoUrl: _currentUrl ?? '',
-                        isLastEpisode: widget.isLastEpisode,
-                        isLoadingVideo: _isLoadingVideo,
-                        onCastStarted: widget.onCastStarted,
-                        videoTitle: widget.videoTitle,
-                        currentEpisodeIndex: widget.currentEpisodeIndex,
-                        totalEpisodes: widget.totalEpisodes,
-                        sourceName: widget.sourceName,
-                        onExitFullScreen: widget.onExitFullScreen,
-                        live: widget.live,
-                        playbackSpeedListenable: _playbackSpeed,
-                        onSetSpeed: _setPlaybackSpeed,
-                        onEnterPipMode: _enterPipMode,
-                        isPipMode: _isPipMode,
-                      );
+                    : videoWidget;
               },
             )
           : const Center(
