@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 用于锁定/恢复屏幕方向和系统 UI
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -390,32 +390,53 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
   /// 全屏操作
   Future<void> _enterFullscreen() async {
-    // 判断目标方向
-    final screenSize = MediaQuery.of(context).size;
-    final screenAspectRatio = screenSize.width / screenSize.height;
-    final videoWidth = widget.player.state.width ?? 0;
-    final videoHeight = widget.player.state.height ?? 0;
-    final videoAspectRatio =
-        (videoWidth > 0 && videoHeight > 0) ? videoWidth / videoHeight : 0;
-    final isScreenPortrait = screenAspectRatio < 1.0;
-    final isVideoPortrait = videoAspectRatio > 0 && videoAspectRatio < 1.0;
-    final shouldLockPortrait = isScreenPortrait && isVideoPortrait;
-    // 并行执行方向锁定和系统UI隐藏
-    await Future.wait([
-      // 设置屏幕方向
-      _setScreenOrientation(shouldLockPortrait),
-      // 隐藏系统UI
-      _hideSystemUI(),
-    ]);
+    // 计算是否应当锁定为竖屏
+    final shouldLockPortrait = _determineShouldLockPortrait();
+    // 先设置屏幕方向，再等待方向生效，然后再进入全屏并通知上层
+    try {
+      await _setScreenOrientation(shouldLockPortrait);
+      // 隐藏系统 UI
+      await _hideSystemUI();
+      // 等待方向真正生效
+      await _waitForOrientationApplied(shouldLockPortrait, maxAttempts: 12);
+    } catch (e) {
+      debugPrint('[Fullscreen] Failed while applying orientation/ui: $e');
+    }
     // 进入全屏
-    widget.onFullscreenChange(true);
     widget.state.enterFullscreen();
-    // 仅在 Android 平台执行，且延迟最短
+    widget.onFullscreenChange(true);
+    // 仅在 Android 平台作为兜底，短暂重设一次方向，帮助某些机型稳定锁定
     if (Platform.isAndroid) {
       await Future.delayed(const Duration(milliseconds: 30));
       await _setScreenOrientation(shouldLockPortrait);
     }
     _onUserInteraction();
+  }
+
+  /// 根据当前屏幕和视频尺寸判断是否应该锁定为竖屏
+  bool _determineShouldLockPortrait() {
+    try {
+      // 屏幕尺寸
+      final screenSize = MediaQuery.of(context).size;
+      // 屏幕纵横比
+      final screenAspectRatio = screenSize.width / screenSize.height;
+      // 视频宽度
+      final videoWidth = widget.player.state.width ?? 0;
+      // 视频高度
+      final videoHeight = widget.player.state.height ?? 0;
+      // 视频长宽比
+      final videoAspectRatio =
+          (videoWidth > 0 && videoHeight > 0) ? videoWidth / videoHeight : 0;
+      // 是否屏幕纵向
+      final isScreenPortrait = screenAspectRatio < 1.0;
+      // 是否视频肖像
+      final isVideoPortrait = videoAspectRatio > 0 && videoAspectRatio < 1.0;
+      // 是否竖屏
+      return isScreenPortrait && isVideoPortrait;
+    } catch (e) {
+      debugPrint('[Fullscreen] _determineShouldLockPortrait error: $e');
+      return false;
+    }
   }
 
   /// 设置屏幕方向的通用方法
@@ -442,6 +463,24 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       } catch (e) {
         debugPrint('[Fullscreen] Failed to set orientation: $e');
       }
+    }
+  }
+
+  /// 等待方向变更在 Flutter 层生效（通过轮询 MediaQuery 的宽高比）
+  Future<void> _waitForOrientationApplied(bool shouldLockPortrait,
+      {int maxAttempts = 8}) async {
+    try {
+      for (var i = 0; i < maxAttempts; i++) {
+        if (!mounted) return;
+        // 等待一帧以让 MediaQuery 有机会更新
+        await Future.delayed(const Duration(milliseconds: 50));
+        if (!mounted) return;
+        final ms = MediaQuery.of(context).size;
+        final isPortraitNow = (ms.width / ms.height) < 1.0;
+        if (isPortraitNow == shouldLockPortrait) return;
+      }
+    } catch (e) {
+      debugPrint('[Fullscreen] waitForOrientationApplied error: $e');
     }
   }
 

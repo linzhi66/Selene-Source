@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 class OrientationService {
   static const platform = MethodChannel('io.flutter.selene/orientation');
 
-  /// 允许竖屏和横屏
+  /// 请求竖屏和横屏
   static Future<void> setPortraitAndLandscape() async {
     try {
       await platform.invokeMethod('setPortraitLandscape');
@@ -15,7 +15,7 @@ class OrientationService {
     }
   }
 
-  /// 仅允许竖屏
+  /// 仅请求竖屏
   static Future<void> setPortraitOnly() async {
     try {
       await platform.invokeMethod('setPortraitOnly');
@@ -24,7 +24,7 @@ class OrientationService {
     }
   }
 
-  /// 仅允许横屏
+  /// 仅请求横屏
   static Future<void> setLandscapeOnly() async {
     try {
       await platform.invokeMethod('setLandscapeOnly');
