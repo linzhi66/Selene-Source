@@ -29,8 +29,11 @@ const int _maxCacheSize = 1000; // 最大缓存条目数量
 
 class LocalSearchCacheService {
   // 单例模式
-  static final LocalSearchCacheService _instance = LocalSearchCacheService._internal();
+  static final LocalSearchCacheService _instance =
+      LocalSearchCacheService._internal();
+
   factory LocalSearchCacheService() => _instance;
+
   LocalSearchCacheService._internal();
 
   final Map<String, CachedPageEntry> _searchCache = {};
@@ -50,7 +53,7 @@ class LocalSearchCacheService {
   ) {
     final key = _makeSearchCacheKey(sourceKey, query, page);
     final entry = _searchCache[key];
-    
+
     if (entry == null) return null;
 
     // 检查是否过期
@@ -141,7 +144,7 @@ class LocalSearchCacheService {
     if (_cleanupTimer != null) return; // 避免重复启动
 
     _cleanupTimer = Timer.periodic(
-      Duration(milliseconds: _cacheCleanupIntervalMs),
+      const Duration(milliseconds: _cacheCleanupIntervalMs),
       (_) {
         _performCacheCleanup();
       },

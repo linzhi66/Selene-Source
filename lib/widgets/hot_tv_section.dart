@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
@@ -32,8 +33,7 @@ class _HotTvSectionState extends State<HotTvSection> {
   List<DoubanMovie> _tvShows = [];
   bool _isLoading = true;
   bool _hasError = false;
-  
-  
+
   // 静态变量存储当前实例
   static _HotTvSectionState? _currentInstance;
 

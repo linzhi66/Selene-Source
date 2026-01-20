@@ -1,7 +1,9 @@
 import 'dart:convert';
+
 import 'package:bs58check/bs58check.dart' as bs58;
-import '../models/search_resource.dart';
+
 import '../models/live_source.dart';
+import '../models/search_resource.dart';
 
 /// 订阅内容解析结果
 class SubscriptionContent {
@@ -18,10 +20,10 @@ class SubscriptionContent {
 /// 用于解析订阅内容
 class SubscriptionService {
   /// 解析订阅内容
-  /// 
+  ///
   /// 参数:
   /// - content: Base58 编码的订阅内容
-  /// 
+  ///
   /// 返回:
   /// - 成功: 返回 SubscriptionContent 对象，包含 SearchResource 和 LiveSource 列表
   /// - 失败: 返回 null
@@ -34,7 +36,7 @@ class SubscriptionService {
 
       // 解析 JSON
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      
+
       // 解析 api_site
       List<SearchResource>? searchResources;
       final apiSite = jsonData['api_site'] as Map<String, dynamic>?;

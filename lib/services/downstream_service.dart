@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
 import 'package:gbk_codec/gbk_codec.dart';
+import 'package:http/http.dart' as http;
+
 import '../models/search_resource.dart';
 import '../models/search_result.dart';
 import 'content_filter_service.dart';

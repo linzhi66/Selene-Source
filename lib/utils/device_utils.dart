@@ -14,8 +14,7 @@ class DeviceUtils {
     if (isPC()) {
       return true;
     }
-    final double width = MediaQuery.of(context).size.width;
-    return width >= tabletMinWidth;
+    return MediaQuery.of(context).size.width >= tabletMinWidth;
   }
 
   /// 判断当前设备是否是平板竖屏
@@ -78,7 +77,8 @@ class DeviceUtils {
   /// - < 1000: 5.75列
   /// - 1000-1200: 6.75列
   /// - >= 1200: 7.75列
-  static double getHorizontalVisibleCards(BuildContext context, double mobileCardCount) {
+  static double getHorizontalVisibleCards(
+      BuildContext context, double mobileCardCount) {
     if (!isTablet(context)) {
       return mobileCardCount; // 手机模式使用传入的卡片数
     }

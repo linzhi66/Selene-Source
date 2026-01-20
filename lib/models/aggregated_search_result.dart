@@ -31,15 +31,15 @@ class AggregatedSearchResult {
   factory AggregatedSearchResult.fromSearchResult(SearchResult result) {
     final type = result.episodes.length > 1 ? 'tv' : 'movie';
     final key = '${result.title}_${result.year}_$type';
-    
+
     Map<String, int> episodeCounts = {};
     episodeCounts[result.sourceName] = result.episodes.length;
-    
+
     Map<String, int> doubanIds = {};
     if (result.doubanId != null && result.doubanId! > 0) {
       doubanIds[result.doubanId.toString()] = 1;
     }
-    
+
     return AggregatedSearchResult(
       key: key,
       title: result.title,
@@ -90,41 +90,41 @@ class AggregatedSearchResult {
   /// 获取最常见的集数
   int get mostCommonEpisodeCount {
     if (episodeCounts.isEmpty) return 0;
-    
+
     // 统计每个集数的出现次数
     Map<int, int> countFrequency = {};
     for (int count in episodeCounts.values) {
       countFrequency[count] = (countFrequency[count] ?? 0) + 1;
     }
-    
+
     // 找出出现次数最多的集数
     int mostCommon = episodeCounts.values.first;
     int maxFrequency = 0;
-    
+
     countFrequency.forEach((count, frequency) {
       if (frequency > maxFrequency) {
         maxFrequency = frequency;
         mostCommon = count;
       }
     });
-    
+
     return mostCommon;
   }
 
   /// 获取最常见的豆瓣ID
   String? get mostCommonDoubanId {
     if (doubanIds.isEmpty) return null;
-    
+
     String? mostCommon;
     int maxCount = 0;
-    
+
     doubanIds.forEach((id, count) {
       if (count > maxCount) {
         maxCount = count;
         mostCommon = id;
       }
     });
-    
+
     return mostCommon;
   }
 

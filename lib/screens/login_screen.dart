@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
-import 'dart:async';
-import '../services/user_data_service.dart';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import '../services/local_mode_storage_service.dart';
 import '../services/subscription_service.dart';
+import '../services/user_data_service.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
 import '../widgets/windows_title_bar.dart';
@@ -389,9 +391,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final content =
             await SubscriptionService.parseSubscriptionContent(response.body);
 
-        if (content == null || 
-            (content.searchResources == null || content.searchResources!.isEmpty) &&
-            (content.liveSources == null || content.liveSources!.isEmpty)) {
+        if (content == null ||
+            (content.searchResources == null ||
+                    content.searchResources!.isEmpty) &&
+                (content.liveSources == null || content.liveSources!.isEmpty)) {
           setState(() {
             _isLoading = false;
           });
@@ -470,8 +473,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // 保存订阅链接和内容
         await LocalModeStorageService.saveSubscriptionUrl(newUrl);
-        if (content.searchResources != null && content.searchResources!.isNotEmpty) {
-          await LocalModeStorageService.saveSearchSources(content.searchResources!);
+        if (content.searchResources != null &&
+            content.searchResources!.isNotEmpty) {
+          await LocalModeStorageService.saveSearchSources(
+              content.searchResources!);
         }
         if (content.liveSources != null && content.liveSources!.isNotEmpty) {
           await LocalModeStorageService.saveLiveSources(content.liveSources!);
@@ -612,7 +617,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.6),
+                        fillColor: Colors.white.withValues(alpha: 0.6),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 18,
@@ -670,7 +675,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.6),
+                        fillColor: Colors.white.withValues(alpha: 0.6),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 18,
@@ -737,7 +742,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.6),
+                        fillColor: Colors.white.withValues(alpha: 0.6),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 18,
@@ -760,10 +765,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isFormValid && !_isLoading
                             ? const Color(0xFF2c3e50) // 与Selene logo相同的颜色
-                            : const Color(0xFFbdc3c7), // 禁用时的浅灰色
+                            : const Color(0xFFbdc3c7),
+                        // 禁用时的浅灰色
                         foregroundColor: _isFormValid && !_isLoading
                             ? Colors.white
-                            : const Color(0xFF7f8c8d), // 禁用时的文字颜色
+                            : const Color(0xFF7f8c8d),
+                        // 禁用时的文字颜色
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -775,7 +782,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                SizedBox(
+                                const SizedBox(
                                   height: 18,
                                   width: 18,
                                   child: CircularProgressIndicator(
@@ -879,7 +886,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderSide: BorderSide.none,
                           ),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.6),
+                          fillColor: Colors.white.withValues(alpha: 0.6),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 18,
@@ -937,7 +944,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderSide: BorderSide.none,
                           ),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.6),
+                          fillColor: Colors.white.withValues(alpha: 0.6),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 18,
@@ -1004,7 +1011,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderSide: BorderSide.none,
                           ),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.6),
+                          fillColor: Colors.white.withValues(alpha: 0.6),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 18,

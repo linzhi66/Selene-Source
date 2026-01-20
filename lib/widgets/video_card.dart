@@ -1,16 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../models/search_result.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
-import 'video_menu_bottom_sheet.dart';
-import '../utils/image_url.dart';
-import '../models/search_result.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
+import '../utils/image_url.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 视频卡片组件
 class VideoCard extends StatefulWidget {

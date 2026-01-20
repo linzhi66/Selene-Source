@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../utils/font_utils.dart';
 
 class SelectorOption {

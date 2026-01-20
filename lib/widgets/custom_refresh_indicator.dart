@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../utils/font_utils.dart';
+
 import '../services/theme_service.dart';
+import '../utils/font_utils.dart';
 
 /// 自定义下拉刷新指示器
 class CustomRefreshIndicator extends StatelessWidget {
@@ -23,9 +24,8 @@ class CustomRefreshIndicator extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: onRefresh,
           color: const Color(0xFF27AE60), // 绿色主题
-          backgroundColor: themeService.isDarkMode 
-              ? const Color(0xFF1e1e1e) 
-              : Colors.white,
+          backgroundColor:
+              themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
           strokeWidth: 2.5,
           displacement: 40,
           child: this.child,
@@ -53,7 +53,7 @@ class CustomRefreshIndicatorContent extends StatelessWidget {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         final indicatorColor = color ?? const Color(0xFF27AE60); // 绿色主题
-        
+
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
@@ -61,7 +61,7 @@ class CustomRefreshIndicatorContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: indicatorColor.withOpacity(0.3),
+                color: indicatorColor.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -118,9 +118,10 @@ class StyledRefreshIndicator extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: onRefresh,
           color: primaryColor ?? const Color(0xFF27AE60), // 默认绿色主题
-          backgroundColor: backgroundColor ?? (themeService.isDarkMode 
-              ? const Color(0xFF1e1e1e) 
-              : Colors.white),
+          backgroundColor: backgroundColor ??
+              (themeService.isDarkMode
+                  ? const Color(0xFF1e1e1e)
+                  : Colors.white),
           strokeWidth: 2.5,
           displacement: 40,
           child: this.child,

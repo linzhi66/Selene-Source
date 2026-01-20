@@ -1,19 +1,19 @@
-import 'dart:convert';
-
-import 'package:selene/services/local_mode_storage_service.dart';
-import 'package:selene/services/user_data_service.dart';
-
-import '../models/live_channel.dart';
-import '../models/live_source.dart';
-import '../models/epg_program.dart';
-import '../models/m3u_content.dart';
-import 'api_service.dart';
-import 'package:http/http.dart' as http;
-import 'package:xml/xml_events.dart';
-import 'package:gbk_codec/gbk_codec.dart';
-
 // ignore: unused_import
 import 'dart:async' show unawaited;
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:gbk_codec/gbk_codec.dart';
+import 'package:http/http.dart' as http;
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/user_data_service.dart';
+import 'package:xml/xml_events.dart';
+
+import '../models/epg_program.dart';
+import '../models/live_channel.dart';
+import '../models/live_source.dart';
+import '../models/m3u_content.dart';
+import 'api_service.dart';
 
 /// 缓存项
 class _CacheItem<T> {
@@ -74,7 +74,7 @@ class LiveService {
       _liveSourcesCache = _CacheItem(sources, DateTime.now());
       return sources;
     } catch (e) {
-      print('获取直播源失败: $e');
+      debugPrint('获取直播源失败: $e');
       return _liveSourcesCache?.data ?? [];
     }
   }
@@ -139,7 +139,7 @@ class LiveService {
       _channelsCache[sourceKey] = _CacheItem(m3uContent, DateTime.now());
       return m3uContent.channels;
     } catch (e) {
-      print('获取直播频道失败: $e');
+      debugPrint('获取直播频道失败: $e');
       return _channelsCache[sourceKey]?.data.channels ?? [];
     }
   }
@@ -307,7 +307,7 @@ class LiveService {
           liveSource.epg.isNotEmpty ? liveSource.epg : m3uContent.tvgUrl;
 
       if (epgUrl.isEmpty) {
-        print('EPG URL 为空: $sourceKey');
+        debugPrint('EPG URL 为空: $sourceKey');
         return;
       }
 
@@ -323,7 +323,7 @@ class LiveService {
           .toList();
 
       if (tvgIds.isEmpty) {
-        print('没有需要获取 EPG 的频道: $sourceKey');
+        debugPrint('没有需要获取 EPG 的频道: $sourceKey');
         return;
       }
 
@@ -354,7 +354,7 @@ class LiveService {
       // 更新缓存
       _epgCache[sourceKey] = _CacheItem(epgDataMap, DateTime.now());
     } catch (e) {
-      print('获取 EPG 节目单失败: $e');
+      debugPrint('获取 EPG 节目单失败: $e');
     }
   }
 
@@ -453,7 +453,7 @@ class LiveService {
         }
       }
     } catch (e) {
-      print('解析 EPG 失败: $e');
+      debugPrint('解析 EPG 失败: $e');
     }
 
     return result;

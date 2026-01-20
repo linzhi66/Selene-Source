@@ -34,7 +34,7 @@ class PlayRecord {
     final parts = key.split('+');
     final source = parts.length > 1 ? parts[0] : '';
     final id = parts.length > 1 ? parts[1] : key;
-    
+
     return PlayRecord(
       id: id,
       source: source,
@@ -78,7 +78,7 @@ class PlayRecord {
     final hours = playTime ~/ 3600;
     final minutes = (playTime % 3600) ~/ 60;
     final seconds = playTime % 60;
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
@@ -91,7 +91,7 @@ class PlayRecord {
     final hours = totalTime ~/ 3600;
     final minutes = (totalTime % 3600) ~/ 60;
     final seconds = totalTime % 60;
-    
+
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../utils/device_utils.dart';
 
 class PlayerEpisodesPanel extends StatefulWidget {
@@ -59,8 +60,8 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
 
     final crossAxisCount = widget.crossAxisCount;
     const mainAxisSpacing = 12.0;
-    final childAspectRatio = widget.crossAxisCount == 4 
-        ? 2.2 
+    final childAspectRatio = widget.crossAxisCount == 4
+        ? 2.2
         : (widget.crossAxisCount == 3 ? 2.0 : 3.0);
 
     final itemWidth =
@@ -117,8 +118,8 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
                 crossAxisCount: widget.crossAxisCount,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: widget.crossAxisCount == 4 
-                    ? 2.2 
+                childAspectRatio: widget.crossAxisCount == 4
+                    ? 2.2
                     : (widget.crossAxisCount == 3 ? 2.0 : 3.0),
               ),
               itemCount: widget.episodes.length,
@@ -141,7 +142,9 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
                   isCurrentEpisode: isCurrentEpisode,
                   isDarkMode: isDarkMode,
                   episodeTitle: episodeTitle,
-                  onTap: isCurrentEpisode ? null : () => widget.onEpisodeTap(episodeIndex),
+                  onTap: isCurrentEpisode
+                      ? null
+                      : () => widget.onEpisodeTap(episodeIndex),
                 );
               },
             ),
@@ -151,7 +154,6 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
     );
   }
 }
-
 
 /// 带 hover 效果的选集面板项（PC 端专用）
 class _EpisodePanelItemWithHover extends StatefulWidget {
@@ -168,17 +170,19 @@ class _EpisodePanelItemWithHover extends StatefulWidget {
   });
 
   @override
-  State<_EpisodePanelItemWithHover> createState() => _EpisodePanelItemWithHoverState();
+  State<_EpisodePanelItemWithHover> createState() =>
+      _EpisodePanelItemWithHoverState();
 }
 
-class _EpisodePanelItemWithHoverState extends State<_EpisodePanelItemWithHover> {
+class _EpisodePanelItemWithHoverState
+    extends State<_EpisodePanelItemWithHover> {
   bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: (DeviceUtils.isPC() && !widget.isCurrentEpisode) 
-          ? SystemMouseCursors.click 
+      cursor: (DeviceUtils.isPC() && !widget.isCurrentEpisode)
+          ? SystemMouseCursors.click
           : MouseCursor.defer,
       onEnter: (_) {
         if (DeviceUtils.isPC() && !widget.isCurrentEpisode) {
@@ -197,10 +201,12 @@ class _EpisodePanelItemWithHoverState extends State<_EpisodePanelItemWithHover> 
             color: widget.isCurrentEpisode
                 ? Colors.green.withValues(alpha: 0.2)
                 : (_isHovering && DeviceUtils.isPC()
-                    ? (widget.isDarkMode 
-                        ? const Color(0xFF1A3D2E)  // 深色模式下的浅绿色
-                        : const Color(0xFFE8F5E9))  // 浅色模式下的浅绿色
-                    : (widget.isDarkMode ? Colors.grey[800] : Colors.grey[200])),
+                    ? (widget.isDarkMode
+                        ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
+                        : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
+                    : (widget.isDarkMode
+                        ? Colors.grey[800]
+                        : Colors.grey[200])),
             borderRadius: BorderRadius.circular(8),
             border: widget.isCurrentEpisode
                 ? Border.all(color: Colors.green, width: 2)
@@ -217,9 +223,7 @@ class _EpisodePanelItemWithHoverState extends State<_EpisodePanelItemWithHover> 
                 style: TextStyle(
                   color: widget.isCurrentEpisode
                       ? Colors.green
-                      : (widget.isDarkMode
-                          ? Colors.white
-                          : Colors.black),
+                      : (widget.isDarkMode ? Colors.white : Colors.black),
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),

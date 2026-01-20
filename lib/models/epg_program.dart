@@ -47,8 +47,7 @@ class EpgProgram {
   }
 
   /// 从 API 返回的节目数据创建 EpgProgram
-  factory EpgProgram.fromApiJson(
-      Map<String, dynamic> json, String channelId) {
+  factory EpgProgram.fromApiJson(Map<String, dynamic> json, String channelId) {
     return EpgProgram(
       channelId: channelId,
       title: json['title'] as String? ?? '',

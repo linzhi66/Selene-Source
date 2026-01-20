@@ -1,12 +1,14 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../models/bangumi.dart';
+import '../models/video_info.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
+import 'shimmer_effect.dart';
 import 'video_card.dart';
 import 'video_menu_bottom_sheet.dart';
-import '../models/video_info.dart';
-import 'shimmer_effect.dart';
 
 class BangumiGrid extends StatelessWidget {
   final List<BangumiItem>? bangumiItems;
@@ -49,16 +51,17 @@ class BangumiGrid extends StatelessWidget {
         // 平板模式根据宽度动态展示6～9列，手机模式3列
         final int crossAxisCount = DeviceUtils.getTabletColumnCount(context);
         final isTablet = DeviceUtils.isTablet(context);
-        
+
         final double screenWidth = constraints.maxWidth;
         const double padding = 16.0;
         const double spacing = 12.0;
-        final double availableWidth = screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
+        final double availableWidth =
+            screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
         const double minItemWidth = 80.0;
         final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
-        
+
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           shrinkWrap: true,
@@ -81,7 +84,7 @@ class BangumiGrid extends StatelessWidget {
   /// 构建骨架卡片
   Widget _buildSkeletonCard(double width) {
     final double height = width * 1.5;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -140,7 +143,7 @@ class BangumiGrid extends StatelessWidget {
   Widget _buildEmptyState() {
     final bool isAnime = contentType == 'anime';
     final String contentName = isAnime ? '番剧' : '内容';
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -178,16 +181,17 @@ class BangumiGrid extends StatelessWidget {
         // 平板模式根据宽度动态展示6～9列，手机模式3列
         final int crossAxisCount = DeviceUtils.getTabletColumnCount(context);
         final isTablet = DeviceUtils.isTablet(context);
-        
+
         final double screenWidth = constraints.maxWidth;
         const double padding = 16.0;
         const double spacing = 12.0;
-        final double availableWidth = screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
+        final double availableWidth =
+            screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
         const double minItemWidth = 80.0;
         final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
-        
+
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           shrinkWrap: true,
@@ -202,14 +206,16 @@ class BangumiGrid extends StatelessWidget {
           itemBuilder: (context, index) {
             final bangumiItem = bangumiItems![index];
             final videoInfo = bangumiItem.toVideoInfo();
-            
+
             return VideoCard(
               videoInfo: videoInfo,
               onTap: () => onVideoTap(videoInfo),
               from: 'bangumi',
               cardWidth: itemWidth,
-              onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
-              isFavorited: false, 
+              onGlobalMenuAction: onGlobalMenuAction != null
+                  ? (action) => onGlobalMenuAction!(videoInfo, action)
+                  : null,
+              isFavorited: false,
             );
           },
         );

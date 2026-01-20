@@ -438,7 +438,7 @@ main() {
         # 等待所有后台进程完成
         log_info "等待所有构建任务完成..."
         for pid in "${pids[@]}"; do
-            wait $pid || log_warning "构建进程 $pid 失败"
+            wait "$pid" || log_warning "构建进程 $pid 失败"
         done
         
         log_success "所有并行构建任务已完成"

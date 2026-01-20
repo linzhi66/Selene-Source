@@ -1,11 +1,13 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import '../models/search_result.dart';
+
 import '../models/search_resource.dart';
+import '../models/search_result.dart';
+import '../services/local_mode_storage_service.dart';
+import '../services/user_data_service.dart';
 import 'api_service.dart';
 import 'downstream_service.dart';
-import '../services/user_data_service.dart';
-import '../services/local_mode_storage_service.dart';
 
 /// 搜索服务
 class SearchService {

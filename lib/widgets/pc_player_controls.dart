@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+
 import 'dlna_device_dialog.dart';
 
 // 带 hover 效果的按钮组件
@@ -130,11 +132,10 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
     // 注册退出网页全屏的回调
     widget.onExitWebFullscreenCallbackReady?.call(exitWebFullscreen);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _forceStartHideTimer();
-        // 请求焦点以接收键盘事件
-        _focusNode.requestFocus();
-      }
+      if (!mounted) return;
+      _forceStartHideTimer();
+      // 请求焦点以接收键盘事件
+      _focusNode.requestFocus();
     });
   }
 
@@ -214,11 +215,10 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
     }
     if (widget.player.state.playing) {
       _hideTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            _controlsVisible = false;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _controlsVisible = false;
+        });
       });
     }
   }
@@ -226,11 +226,10 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   void _forceStartHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _controlsVisible = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _controlsVisible = false;
+      });
     });
   }
 
@@ -320,7 +319,9 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   }
 
   void _onSwipeUpdate(DragUpdateDetails details) {
-    if (!mounted || !_isSeekingViaSwipe || _screenSize == null || widget.live) return;
+    if (!mounted || !_isSeekingViaSwipe || _screenSize == null || widget.live) {
+      return;
+    }
 
     final screenWidth = _screenSize!.width;
     final swipeDistance = details.globalPosition.dx - _swipeStartX;
@@ -842,6 +843,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                 // 延迟检查是否需要隐藏菜单
                                 Future.delayed(
                                     const Duration(milliseconds: 100), () {
+                                  if (!mounted) return;
                                   if (mounted &&
                                       !_isHoveringVolumeButton &&
                                       !_isHoveringVolumeMenu) {
@@ -906,8 +908,9 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   _isHoveringSpeedButton = false;
                                 });
                                 // 延迟检查是否需要隐藏菜单
-                                Future.delayed(const Duration(milliseconds: 100),
-                                    () {
+                                Future.delayed(
+                                    const Duration(milliseconds: 100), () {
+                                  if (!mounted) return;
                                   if (mounted &&
                                       !_isHoveringSpeedButton &&
                                       !_isHoveringSpeedMenu) {
@@ -923,7 +926,8 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                 decoration: _isHoveringSpeedButton
                                     ? BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.grey.withValues(alpha: 0.5),
+                                        color:
+                                            Colors.grey.withValues(alpha: 0.5),
                                       )
                                     : null,
                                 child: Icon(
@@ -1030,6 +1034,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
           });
           // 延迟检查是否需要隐藏菜单
           Future.delayed(const Duration(milliseconds: 100), () {
+            if (!mounted) return;
             if (mounted && !_isHoveringSpeedButton && !_isHoveringSpeedMenu) {
               setState(() {
                 _showSpeedMenu = false;
@@ -1105,18 +1110,21 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
       top: menuTop,
       child: MouseRegion(
         onEnter: (_) {
+          if (!mounted) return;
           setState(() {
             _isHoveringVolumeMenu = true;
           });
           _hideTimer?.cancel();
         },
         onExit: (_) {
+          if (!mounted) return;
           setState(() {
             _isHoveringVolumeMenu = false;
           });
           // 延迟检查是否需要隐藏菜单
           Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted && !_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
+            if (!mounted) return;
+            if (!_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
               setState(() {
                 _showVolumeMenu = false;
               });
@@ -1154,6 +1162,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                       ),
                     ),
                   ),
+
                   // 垂直音量滑块
                   Expanded(
                     child: Padding(
@@ -1169,7 +1178,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   ((1 - (localY / constraints.maxHeight)) * 100)
                                       .clamp(0.0, 100.0);
                               widget.player.setVolume(volume);
-                              setState(() {});
+                              if (mounted) setState(() {});
                             },
                             onVerticalDragUpdate: (details) {
                               final localY = details.localPosition.dy;
@@ -1177,7 +1186,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   ((1 - (localY / constraints.maxHeight)) * 100)
                                       .clamp(0.0, 100.0);
                               widget.player.setVolume(volume);
-                              setState(() {});
+                              if (mounted) setState(() {});
                             },
                             onTapDown: (details) {
                               final localY = details.localPosition.dy;
@@ -1185,7 +1194,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   ((1 - (localY / constraints.maxHeight)) * 100)
                                       .clamp(0.0, 100.0);
                               widget.player.setVolume(volume);
-                              setState(() {});
+                              if (mounted) setState(() {});
                             },
                             child: Stack(
                               alignment: Alignment.center,
@@ -1378,147 +1387,158 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
     }
 
     return MouseRegion(
-      cursor: widget.live ? MouseCursor.defer : SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragStart: widget.live ? null : (details) {
-          _isDragging = true;
-          widget.onDragStart?.call();
-          _updateDragPosition(details.localPosition.dx, context);
-        },
-        onHorizontalDragUpdate: widget.live ? null : (details) {
-          if (_isDragging) {
-            widget.onDragUpdate?.call();
-            _updateDragPosition(details.localPosition.dx, context);
-          }
-        },
-        onHorizontalDragEnd: widget.live ? null : (details) async {
-          if (_isDragging) {
-            final seekPosition = Duration(
-                milliseconds: (_dragValue * duration.inMilliseconds).round());
-            
-            setState(() {
-              _isDragging = false;
-              _isSeeking = true; // 标记开始 seek
-            });
-            
-            await widget.player.seek(seekPosition);
-            
-            // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-            await Future.delayed(const Duration(milliseconds: 100));
-            
-            if (mounted) {
-              setState(() {
-                _isSeeking = false; // 标记 seek 完成
-              });
-            }
-            
-            widget.onDragEnd?.call();
-          }
-        },
-        onTapDown: widget.live ? null : (details) async {
-          widget.onDragStart?.call();
-          _updateDragPosition(details.localPosition.dx, context);
-          final seekPosition = Duration(
-              milliseconds: (_dragValue * duration.inMilliseconds).round());
-          
-          setState(() {
-            _isSeeking = true; // 标记开始 seek
-          });
-          
-          await widget.player.seek(seekPosition);
-          
-          // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-          await Future.delayed(const Duration(milliseconds: 100));
-          
-          if (mounted) {
-            setState(() {
-              _isSeeking = false; // 标记 seek 完成
-            });
-          }
-          
-          widget.onDragEnd?.call();
-        },
-        child: Container(
-          height: 24,
-          color: Colors.transparent,
-          child: Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final progressWidth = constraints.maxWidth;
-                final progressValue = value.clamp(0.0, 1.0);
-                final thumbPosition = (progressValue * progressWidth)
-                    .clamp(8.0, progressWidth - 8.0);
+        cursor: widget.live ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: widget.live
+              ? null
+              : (details) {
+                  _isDragging = true;
+                  widget.onDragStart?.call();
+                  _updateDragPosition(details.localPosition.dx, context);
+                },
+          onHorizontalDragUpdate: widget.live
+              ? null
+              : (details) {
+                  if (_isDragging) {
+                    widget.onDragUpdate?.call();
+                    _updateDragPosition(details.localPosition.dx, context);
+                  }
+                },
+          onHorizontalDragEnd: widget.live
+              ? null
+              : (details) async {
+                  if (_isDragging) {
+                    final seekPosition = Duration(
+                        milliseconds:
+                            (_dragValue * duration.inMilliseconds).round());
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // 进度条背景
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 9,
-                      child: Container(
-                        height: 6,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(3),
-                          color: Colors.white.withValues(alpha: 0.3),
+                    setState(() {
+                      _isDragging = false;
+                      _isSeeking = true; // 标记开始 seek
+                    });
+
+                    await widget.player.seek(seekPosition);
+
+                    // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
+                    await Future.delayed(const Duration(milliseconds: 100));
+
+                    if (mounted) {
+                      setState(() {
+                        _isSeeking = false; // 标记 seek 完成
+                      });
+                    }
+
+                    widget.onDragEnd?.call();
+                  }
+                },
+          onTapDown: widget.live
+              ? null
+              : (details) async {
+                  widget.onDragStart?.call();
+                  _updateDragPosition(details.localPosition.dx, context);
+                  final seekPosition = Duration(
+                      milliseconds:
+                          (_dragValue * duration.inMilliseconds).round());
+
+                  setState(() {
+                    _isSeeking = true; // 标记开始 seek
+                  });
+
+                  await widget.player.seek(seekPosition);
+
+                  // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
+                  await Future.delayed(const Duration(milliseconds: 100));
+
+                  if (mounted) {
+                    setState(() {
+                      _isSeeking = false; // 标记 seek 完成
+                    });
+                  }
+
+                  widget.onDragEnd?.call();
+                },
+          child: Container(
+            height: 24,
+            color: Colors.transparent,
+            child: Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final progressWidth = constraints.maxWidth;
+                  final progressValue = value.clamp(0.0, 1.0);
+                  final thumbPosition = (progressValue * progressWidth)
+                      .clamp(8.0, progressWidth - 8.0);
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // 进度条背景
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 9,
+                        child: Container(
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
                         ),
                       ),
-                    ),
-                    // 已播放进度
-                    Positioned(
-                      left: 0,
-                      top: 9,
-                      child: Container(
-                        width: progressValue * progressWidth,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(3),
-                          color: Colors.red,
+                      // 已播放进度
+                      Positioned(
+                        left: 0,
+                        top: 9,
+                        child: Container(
+                          width: progressValue * progressWidth,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: Colors.red,
+                          ),
                         ),
                       ),
-                    ),
-                    // 可拖拽的圆形把手
-                    Positioned(
-                      left: thumbPosition - 8,
-                      top: 4,
-                      child: MouseRegion(
-                        onEnter: (_) => setState(() => _isHoveringThumb = true),
-                        onExit: (_) => setState(() => _isHoveringThumb = false),
-                        child: AnimatedScale(
-                          scale: (_isHoveringThumb ||
-                                  _isDragging ||
-                                  widget.isSeekingViaSwipe)
-                              ? 1.25
-                              : 1.0,
-                          duration: const Duration(milliseconds: 150),
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.red,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                      // 可拖拽的圆形把手
+                      Positioned(
+                        left: thumbPosition - 8,
+                        top: 4,
+                        child: MouseRegion(
+                          onEnter: (_) =>
+                              setState(() => _isHoveringThumb = true),
+                          onExit: (_) =>
+                              setState(() => _isHoveringThumb = false),
+                          child: AnimatedScale(
+                            scale: (_isHoveringThumb ||
+                                    _isDragging ||
+                                    widget.isSeekingViaSwipe)
+                                ? 1.25
+                                : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   void _updateDragPosition(double dx, BuildContext context) {

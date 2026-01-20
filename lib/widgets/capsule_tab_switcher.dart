@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../services/theme_service.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
@@ -166,8 +167,8 @@ class _CapsuleTabSwitcherState extends State<CapsuleTabSwitcher>
                           boxShadow: [
                             BoxShadow(
                               color: themeService.isDarkMode
-                                  ? Colors.black.withOpacity(0.3)
-                                  : Colors.black.withOpacity(0.1),
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.1),
                               blurRadius: 3,
                               offset: const Offset(0, 1),
                             ),

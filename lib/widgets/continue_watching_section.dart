@@ -1,17 +1,18 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
 import '../utils/device_utils.dart';
-import 'video_card.dart';
-import '../utils/image_url.dart';
 import '../utils/font_utils.dart';
-import 'video_menu_bottom_sheet.dart';
+import '../utils/image_url.dart';
 import 'shimmer_effect.dart';
+import 'video_card.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 继续观看组件
 class ContinueWatchingSection extends StatefulWidget {
@@ -57,7 +58,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   bool _showLeftScroll = false;
   bool _showRightScroll = false;
   bool _isHovered = false;
-  
+
   // hover 状态
   bool _isClearButtonHovered = false;
   bool _isMoreButtonHovered = false;
@@ -117,17 +118,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   void _scrollLeft() {
     if (!_scrollController.hasClients) return;
-    
+
     // 根据可见卡片数动态计算滚动距离
-    final double visibleCards = DeviceUtils.getHorizontalVisibleCards(context, 2.75);
+    final double visibleCards =
+        DeviceUtils.getHorizontalVisibleCards(context, 2.75);
     final double screenWidth = MediaQuery.of(context).size.width;
     const double padding = 32.0;
     const double spacing = 12.0;
     final double availableWidth = screenWidth - padding;
-    final double cardWidth = (availableWidth - (spacing * (visibleCards - 1))) / visibleCards;
+    final double cardWidth =
+        (availableWidth - (spacing * (visibleCards - 1))) / visibleCards;
     // 每次滚动约 5 个卡片的距离
     final double scrollDistance = (cardWidth + spacing) * 5;
-    
+
     _scrollController.animateTo(
       math.max(0, _scrollController.offset - scrollDistance),
       duration: const Duration(milliseconds: 300),
@@ -137,17 +140,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   void _scrollRight() {
     if (!_scrollController.hasClients) return;
-    
+
     // 根据可见卡片数动态计算滚动距离
-    final double visibleCards = DeviceUtils.getHorizontalVisibleCards(context, 2.75);
+    final double visibleCards =
+        DeviceUtils.getHorizontalVisibleCards(context, 2.75);
     final double screenWidth = MediaQuery.of(context).size.width;
     const double padding = 32.0;
     const double spacing = 12.0;
     final double availableWidth = screenWidth - padding;
-    final double cardWidth = (availableWidth - (spacing * (visibleCards - 1))) / visibleCards;
+    final double cardWidth =
+        (availableWidth - (spacing * (visibleCards - 1))) / visibleCards;
     // 每次滚动约 5 个卡片的距离
     final double scrollDistance = (cardWidth + spacing) * 5;
-    
+
     _scrollController.animateTo(
       math.min(
         _scrollController.position.maxScrollExtent,
@@ -172,25 +177,25 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
       final cachedRecordsRes = await _cacheService.getPlayRecords(context);
 
+      if (!mounted) return; // ensure widget still mounted before touching state
+
       if (cachedRecordsRes.success && cachedRecordsRes.data != null) {
         final cachedRecords = cachedRecordsRes.data!;
         // 有缓存数据，立即显示
+        setState(() {
+          _playRecords = cachedRecords;
+          _isLoading = false;
+        });
+
+        // 预加载图片
+        _preloadImages(cachedRecords);
+      } else {
         if (mounted) {
           setState(() {
-            _playRecords = cachedRecords;
+            _hasError = true;
             _isLoading = false;
           });
         }
-
-        // 预加载图片
-        if (mounted) {
-          _preloadImages(cachedRecords);
-        }
-      } else {
-        setState(() {
-          _hasError = true;
-          _isLoading = false;
-        });
       }
     } catch (e) {
       if (mounted) {
@@ -213,6 +218,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
       final record = records[i];
       final imageUrl = await getImageUrl(record.cover, record.source);
+      if (!mounted) break;
       if (imageUrl.isNotEmpty) {
         final headers = getImageRequestHeaders(imageUrl, record.source);
         final provider = NetworkImage(imageUrl, headers: headers);
@@ -344,53 +350,33 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     try {
       final response = await PageCacheService().clearPlayRecord(context);
 
+      if (!mounted) return;
+
       if (response.success) {
         setState(() {
           _playRecords.clear();
         });
         // 显示成功提示
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '播放记录已清空',
-                style: FontUtils.poppins(color: Colors.white),
-              ),
-              backgroundColor: const Color(0xFF27ae60),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
-      } else {
-        // 显示错误提示
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '清空失败',
-                style: FontUtils.poppins(color: Colors.white),
-              ),
-              backgroundColor: const Color(0xFFe74c3c),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // 显示错误提示
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '清空失败: ${e.toString()}',
+              '播放记录已清空',
+              style: FontUtils.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF27ae60),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      } else {
+        // 显示错误提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '清空失败',
               style: FontUtils.poppins(color: Colors.white),
             ),
             backgroundColor: const Color(0xFFe74c3c),
@@ -402,6 +388,23 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
           ),
         );
       }
+    } catch (e) {
+      // 显示错误提示
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '清空失败: ${e.toString()}',
+            style: FontUtils.poppins(color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFFe74c3c),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 
@@ -667,7 +670,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     return LayoutBuilder(
       builder: (context, constraints) {
         // 根据宽度动态展示卡片数：平板模式 5.75/6.75/7.75，手机模式 2.75
-        final double visibleCards = DeviceUtils.getHorizontalVisibleCards(context, 2.75);
+        final double visibleCards =
+            DeviceUtils.getHorizontalVisibleCards(context, 2.75);
 
         // 计算卡片宽度
         final double screenWidth = constraints.maxWidth;
@@ -699,7 +703,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                   videoInfo: VideoInfo.fromPlayRecord(playRecord),
                   onTap: () => widget.onVideoTap?.call(playRecord),
                   from: 'playrecord',
-                  cardWidth: cardWidth, // 使用动态计算的宽度
+                  cardWidth: cardWidth,
+                  // 使用动态计算的宽度
                   onGlobalMenuAction: (action) =>
                       widget.onGlobalMenuAction?.call(playRecord, action),
                   isFavorited: _cacheService.isFavoritedSync(
@@ -718,7 +723,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     return LayoutBuilder(
       builder: (context, constraints) {
         // 根据宽度动态展示卡片数：平板模式 5.75/6.75/7.75，手机模式 2.75
-        final double visibleCards = DeviceUtils.getHorizontalVisibleCards(context, 2.75);
+        final double visibleCards =
+            DeviceUtils.getHorizontalVisibleCards(context, 2.75);
         final isTablet = DeviceUtils.isTablet(context);
         final int skeletonCount = isTablet ? visibleCards.ceil() : 3; // 骨架卡片数量
 
@@ -835,7 +841,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
     try {
       if (mounted) {
-        final cachedRecordsResult = await _cacheService.getPlayRecordsDirect(context);
+        final cachedRecordsResult =
+            await _cacheService.getPlayRecordsDirect(context);
         if (cachedRecordsResult.success && cachedRecordsResult.data != null) {
           final cachedRecords = cachedRecordsResult.data!;
           setState(() {

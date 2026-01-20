@@ -11,7 +11,7 @@ class UserDataService {
   static const String _preferSpeedTestKey = 'prefer_speed_test';
   static const String _localSearchKey = 'local_search';
   static const String _isLocalModeKey = 'is_local_mode';
-  
+
   // 内存缓存
   static bool? _isLocalModeCache;
 
@@ -91,13 +91,13 @@ class UserDataService {
     final serverUrl = await getServerUrl();
     final username = await getUsername();
     final password = await getPassword();
-    
-    return serverUrl != null && 
-           serverUrl.isNotEmpty && 
-           username != null && 
-           username.isNotEmpty && 
-           password != null && 
-           password.isNotEmpty;
+
+    return serverUrl != null &&
+        serverUrl.isNotEmpty &&
+        username != null &&
+        username.isNotEmpty &&
+        password != null &&
+        password.isNotEmpty;
   }
 
   // 保存豆瓣数据源设置（存储key值）
@@ -120,7 +120,8 @@ class UserDataService {
   }
 
   // 保存豆瓣图片源设置（存储key值）
-  static Future<void> saveDoubanImageSource(String imageSourceDisplayName) async {
+  static Future<void> saveDoubanImageSource(
+      String imageSourceDisplayName) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _getDoubanImageSourceKeyFromDisplayName(imageSourceDisplayName);
     await prefs.setString(_doubanImageSourceKey, key);
@@ -252,7 +253,7 @@ class UserDataService {
     _isLocalModeCache = value; // 缓存到内存
     return value;
   }
-  
+
   // 同步获取本地模式设置（从内存缓存读取）
   static bool getIsLocalModeSync() {
     return _isLocalModeCache ?? false;

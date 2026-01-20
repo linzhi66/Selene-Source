@@ -113,14 +113,12 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   void _initSystemControls() {
     VolumeController.instance.showSystemUI = false;
     VolumeController.instance.getVolume().then((value) {
-      if (mounted) {
-        setState(() => _currentVolume = value);
-      }
+      if (!mounted) return;
+      setState(() => _currentVolume = value);
     }).catchError((_) {});
     ScreenBrightness().application.then((value) {
-      if (mounted) {
-        setState(() => _currentBrightness = value);
-      }
+      if (!mounted) return;
+      setState(() => _currentBrightness = value);
     }).catchError((_) {});
   }
 
@@ -185,10 +183,9 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     _hideTimer?.cancel();
     if (_isPlaying) {
       _hideTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() => _controlsVisible = false);
-          widget.onControlsVisibilityChanged(false);
-        }
+        if (!mounted) return;
+        setState(() => _controlsVisible = false);
+        widget.onControlsVisibilityChanged(false);
       });
     }
   }
@@ -196,10 +193,9 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   void _forceStartHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _controlsVisible = false);
-        widget.onControlsVisibilityChanged(false);
-      }
+      if (!mounted) return;
+      setState(() => _controlsVisible = false);
+      widget.onControlsVisibilityChanged(false);
     });
   }
 

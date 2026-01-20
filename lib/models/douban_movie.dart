@@ -103,15 +103,15 @@ class DoubanMovieDetails {
     String poster = '';
     if (json['images'] != null) {
       final images = json['images'] as Map<String, dynamic>?;
-      poster = images?['large']?.toString() ?? 
-               images?['medium']?.toString() ?? 
-               images?['small']?.toString() ?? '';
+      poster = images?['large']?.toString() ??
+          images?['medium']?.toString() ??
+          images?['small']?.toString() ??
+          '';
     } else if (json['pic'] != null) {
       final pic = json['pic'] as Map<String, dynamic>?;
-      poster = pic?['normal']?.toString() ?? 
-               pic?['large']?.toString() ?? '';
+      poster = pic?['normal']?.toString() ?? pic?['large']?.toString() ?? '';
     }
-    
+
     // 处理rating字段
     String? rate;
     if (json['rating'] != null) {
@@ -121,7 +121,7 @@ class DoubanMovieDetails {
         rate = (value as num).toStringAsFixed(1);
       }
     }
-    
+
     // 处理年份
     String year = json['year']?.toString() ?? '';
     if (year.isEmpty && json['pubdate'] != null) {
@@ -129,28 +129,30 @@ class DoubanMovieDetails {
       final yearMatch = RegExp(r'(\d{4})').firstMatch(pubdate);
       year = yearMatch?.group(1) ?? '';
     }
-    
+
     // 处理导演列表
     List<String> directors = [];
     if (json['directors'] != null) {
       final directorsData = json['directors'] as List<dynamic>? ?? [];
-      directors = directorsData.map((d) => d['name']?.toString() ?? '').toList();
+      directors =
+          directorsData.map((d) => d['name']?.toString() ?? '').toList();
     }
-    
+
     // 处理编剧列表
     List<String> screenwriters = [];
     if (json['screenwriters'] != null) {
       final screenwritersData = json['screenwriters'] as List<dynamic>? ?? [];
-      screenwriters = screenwritersData.map((w) => w['name']?.toString() ?? '').toList();
+      screenwriters =
+          screenwritersData.map((w) => w['name']?.toString() ?? '').toList();
     }
-    
+
     // 处理演员列表
     List<String> actors = [];
     if (json['casts'] != null) {
       final castsData = json['casts'] as List<dynamic>? ?? [];
       actors = castsData.map((c) => c['name']?.toString() ?? '').toList();
     }
-    
+
     // 处理类型列表
     List<String> genres = [];
     if (json['genres'] != null) {
@@ -158,7 +160,7 @@ class DoubanMovieDetails {
           .map((g) => g.toString())
           .toList();
     }
-    
+
     // 处理国家列表
     List<String> countries = [];
     if (json['countries'] != null) {
@@ -166,7 +168,7 @@ class DoubanMovieDetails {
           .map((c) => c.toString())
           .toList();
     }
-    
+
     // 处理语言列表
     List<String> languages = [];
     if (json['languages'] != null) {
@@ -174,14 +176,16 @@ class DoubanMovieDetails {
           .map((l) => l.toString())
           .toList();
     }
-    
+
     // 处理推荐列表
     List<DoubanRecommendItem> recommends = [];
     if (json['recommends'] != null) {
       final recommendsData = json['recommends'] as List<dynamic>? ?? [];
-      recommends = recommendsData.map((r) => DoubanRecommendItem.fromJson(r as Map<String, dynamic>)).toList();
+      recommends = recommendsData
+          .map((r) => DoubanRecommendItem.fromJson(r as Map<String, dynamic>))
+          .toList();
     }
-    
+
     // 处理总集数
     int? totalEpisodes;
     if (json['episodes_count'] != null) {
@@ -189,7 +193,7 @@ class DoubanMovieDetails {
     } else if (json['total_episodes'] != null) {
       totalEpisodes = json['total_episodes'] as int?;
     }
-    
+
     return DoubanMovieDetails(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -201,8 +205,8 @@ class DoubanMovieDetails {
       directors: directors,
       screenwriters: screenwriters,
       actors: actors,
-      duration: json['durations']?.isNotEmpty == true 
-          ? json['durations'][0]?.toString() 
+      duration: json['durations']?.isNotEmpty == true
+          ? json['durations'][0]?.toString()
           : null,
       countries: countries,
       languages: languages,
@@ -261,10 +265,9 @@ class DoubanMovie {
     String poster = '';
     if (json['pic'] != null) {
       final pic = json['pic'] as Map<String, dynamic>?;
-      poster = pic?['normal']?.toString() ?? 
-               pic?['large']?.toString() ?? '';
+      poster = pic?['normal']?.toString() ?? pic?['large']?.toString() ?? '';
     }
-    
+
     // 处理rating字段
     String? rate;
     if (json['rating'] != null) {
@@ -274,7 +277,7 @@ class DoubanMovie {
         rate = (value as num).toStringAsFixed(1);
       }
     }
-    
+
     // 处理年份，从card_subtitle中提取
     String year = '';
     if (json['card_subtitle'] != null) {
@@ -282,7 +285,7 @@ class DoubanMovie {
       final yearMatch = RegExp(r'(\d{4})').firstMatch(cardSubtitle);
       year = yearMatch?.group(1) ?? '';
     }
-    
+
     return DoubanMovie(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -322,7 +325,6 @@ class DoubanMovie {
       rate: rate,
     );
   }
-
 }
 
 /// 豆瓣API响应模型
@@ -336,7 +338,7 @@ class DoubanResponse {
   /// 从JSON创建DoubanResponse实例
   factory DoubanResponse.fromJson(Map<String, dynamic> json) {
     final itemsData = json['items'] as List<dynamic>? ?? [];
-    
+
     return DoubanResponse(
       items: itemsData.map((item) {
         return DoubanMovie.fromJson(item as Map<String, dynamic>);

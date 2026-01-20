@@ -1,14 +1,16 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../models/favorite_item.dart';
-import '../widgets/video_card.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
-import 'video_menu_bottom_sheet.dart';
+import '../widgets/video_card.dart';
 import 'shimmer_effect.dart';
+import 'video_menu_bottom_sheet.dart';
 
 class FavoritesGrid extends StatefulWidget {
   final Function(PlayRecord) onVideoTap;
@@ -112,9 +114,12 @@ class _FavoritesGridState extends State<FavoritesGrid>
       await _cacheService.refreshFavorites(context);
 
       // 重新获取收藏夹数据
-      final result = await _cacheService.getFavorites(context);
+      final result = await _cacheService
+          .getFavorites(context); // ignore: use_build_context_synchronously
 
-      if (result.success && result.data != null && mounted) {
+      if (!mounted) return;
+
+      if (result.success && result.data != null) {
         // 只有当新数据与当前数据不同时才更新UI
         if (_favorites.length != result.data!.length ||
             !_isSameFavorites(_favorites, result.data!)) {
@@ -134,6 +139,9 @@ class _FavoritesGridState extends State<FavoritesGrid>
     try {
       final cachedRecordsResult =
           await _cacheService.getPlayRecordsDirect(context);
+
+      if (!mounted) return;
+
       if (cachedRecordsResult.success && cachedRecordsResult.data != null) {
         final cachedRecords = cachedRecordsResult.data!;
         // 只有当新数据与当前数据不同时才更新UI
@@ -190,7 +198,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
   Future<void> _loadFavorites() async {
     try {
       // 使用缓存服务获取数据
-      final result = await _cacheService.getFavorites(context);
+      final result = await _cacheService
+          .getFavorites(context); // ignore: use_build_context_synchronously
+
+      if (!mounted) return;
 
       if (result.success && result.data != null) {
         setState(() {
@@ -207,7 +218,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
   Future<void> _loadPlayRecords() async {
     try {
       // 使用缓存服务获取数据
-      final result = await _cacheService.getPlayRecords(context);
+      final result = await _cacheService
+          .getPlayRecords(context); // ignore: use_build_context_synchronously
+
+      if (!mounted) return;
 
       if (result.success && result.data != null) {
         setState(() {
@@ -240,9 +254,12 @@ class _FavoritesGridState extends State<FavoritesGrid>
         year: favorite.year,
         sourceName: favorite.sourceName,
         totalEpisodes: favorite.totalEpisodes,
-        index: 0, // 0表示没有播放记录
-        playTime: 0, // 未播放
-        totalTime: 0, // 未知总时长
+        index: 0,
+        // 0表示没有播放记录
+        playTime: 0,
+        // 未播放
+        totalTime: 0,
+        // 未知总时长
         saveTime: favorite.saveTime,
         searchTitle: favorite.title, // 使用标题作为搜索标题
       );
@@ -299,7 +316,8 @@ class _FavoritesGridState extends State<FavoritesGrid>
               crossAxisSpacing: spacing, // 列间距
               mainAxisSpacing: isTablet ? 0 : 16, // 行间距
             ),
-            itemCount: isTablet ? crossAxisCount * 2 : 6, // 平板显示2行，手机显示6个骨架卡片
+            itemCount: isTablet ? crossAxisCount * 2 : 6,
+            // 平板显示2行，手机显示6个骨架卡片
             itemBuilder: (context, index) {
               return _buildSkeletonCard(itemWidth);
             },
@@ -349,10 +367,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.error_outline,
             size: 80,
-            color: const Color(0xFFbdc3c7),
+            color: Color(0xFFbdc3c7),
           ),
           const SizedBox(height: 24),
           Text(
@@ -471,8 +489,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
               return VideoCard(
                 videoInfo: VideoInfo.fromPlayRecord(playRecord),
                 onTap: () => widget.onVideoTap(playRecord),
-                from: 'favorite', // 统一设置为收藏场景
-                cardWidth: itemWidth, // 传递计算出的宽度
+                from: 'favorite',
+                // 统一设置为收藏场景
+                cardWidth: itemWidth,
+                // 传递计算出的宽度
                 onGlobalMenuAction: widget.onGlobalMenuAction != null
                     ? (action) => widget.onGlobalMenuAction!(
                         VideoInfo.fromPlayRecord(playRecord), action)

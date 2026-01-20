@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import '../models/search_result.dart';
+
 import '../models/aggregated_search_result.dart';
+import '../models/search_result.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
 import '../utils/device_utils.dart';
@@ -32,15 +34,14 @@ class SearchResultAggGrid extends StatefulWidget {
   State<SearchResultAggGrid> createState() => _SearchResultAggGridState();
 }
 
-class _SearchResultAggGridState extends State<SearchResultAggGrid> 
+class _SearchResultAggGridState extends State<SearchResultAggGrid>
     with AutomaticKeepAliveClientMixin {
-  
   // 聚合结果映射，key为聚合键，value为聚合结果
   Map<String, AggregatedSearchResult> _aggregatedResults = {};
-  
+
   // 按添加顺序排列的聚合键列表
   List<String> _orderedKeys = [];
-  
+
   @override
   bool get wantKeepAlive => true;
 
@@ -62,24 +63,23 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
   void _updateAggregatedResults() {
     final newAggregatedResults = <String, AggregatedSearchResult>{};
     final newOrderedKeys = <String>[];
-    
+
     for (final result in widget.results) {
       final key = AggregatedSearchResult.generateKey(
-        result.title, 
-        result.year, 
-        result.episodes.length
-      );
-      
+          result.title, result.year, result.episodes.length);
+
       if (newAggregatedResults.containsKey(key)) {
         // 已存在，添加到现有聚合结果中
-        newAggregatedResults[key] = newAggregatedResults[key]!.addResult(result);
+        newAggregatedResults[key] =
+            newAggregatedResults[key]!.addResult(result);
       } else {
         // 新的聚合结果
-        newAggregatedResults[key] = AggregatedSearchResult.fromSearchResult(result);
+        newAggregatedResults[key] =
+            AggregatedSearchResult.fromSearchResult(result);
         newOrderedKeys.add(key);
       }
     }
-    
+
     setState(() {
       _aggregatedResults = newAggregatedResults;
       _orderedKeys = newOrderedKeys; // 直接使用新的顺序
@@ -89,11 +89,11 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
   @override
   Widget build(BuildContext context) {
     super.build(context); // 必须调用以支持 AutomaticKeepAliveClientMixin
-    
+
     if (_aggregatedResults.isEmpty && widget.hasReceivedStart) {
       return _buildEmptyState();
     }
-    
+
     if (_aggregatedResults.isEmpty && !widget.hasReceivedStart) {
       return const SizedBox.shrink(); // 搜索开始但未收到start消息时，不显示任何内容
     }
@@ -104,18 +104,20 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
         final int crossAxisCount = DeviceUtils.getTabletColumnCount(context);
         final bool isTablet = DeviceUtils.isTablet(context);
         final double mainAxisSpacing = isTablet ? 0.0 : 16.0; // 平板行间距为0
-        
+
         // 计算每列的宽度
         final double screenWidth = constraints.maxWidth;
         const double padding = 16.0; // 左右padding
         const double spacing = 12.0; // 列间距
-        final double availableWidth = screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1)); // 减去padding和间距
+        final double availableWidth = screenWidth -
+            (padding * 2) -
+            (spacing * (crossAxisCount - 1)); // 减去padding和间距
         // 确保最小宽度，防止负宽度约束
         const double minItemWidth = 80.0; // 最小项目宽度
         final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
-        
+
         return GridView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -129,20 +131,26 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
             final key = _orderedKeys[index];
             final aggregatedResult = _aggregatedResults[key]!;
             final videoInfo = aggregatedResult.toVideoInfo();
-            
+
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
               child: VideoCard(
-                key: ValueKey(key), // 使用聚合键作为唯一key
+                key: ValueKey(key),
+                // 使用聚合键作为唯一key
                 videoInfo: videoInfo,
-                onTap: widget.onVideoTap != null ? () => widget.onVideoTap!(videoInfo) : null,
-                from: 'agg', // 标记为聚合卡片
-                cardWidth: itemWidth, // 传递计算出的宽度
-                onGlobalMenuAction: widget.onGlobalMenuAction != null 
+                onTap: widget.onVideoTap != null
+                    ? () => widget.onVideoTap!(videoInfo)
+                    : null,
+                from: 'agg',
+                // 标记为聚合卡片
+                cardWidth: itemWidth,
+                // 传递计算出的宽度
+                onGlobalMenuAction: widget.onGlobalMenuAction != null
                     ? (action) => widget.onGlobalMenuAction!(videoInfo, action)
                     : null,
-                isFavorited: false, // 聚合卡片不显示收藏状态
+                isFavorited: false,
+                // 聚合卡片不显示收藏状态
                 originalResults: aggregatedResult.originalResults,
                 onSourceSelected: widget.onSourceSelected,
               ),
@@ -158,10 +166,10 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.search_off,
             size: 80,
-            color: const Color(0xFFbdc3c7),
+            color: Color(0xFFbdc3c7),
           ),
           const SizedBox(height: 24),
           Text(

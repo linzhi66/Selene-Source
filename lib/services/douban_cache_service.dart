@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// 缓存项数据结构
 class CacheItem<T> {
@@ -20,38 +21,43 @@ class CacheItem<T> {
 
   /// 转换为JSON（用于序列化）
   Map<String, dynamic> toJson() => {
-    'data': data,
-    'timestamp': timestamp.millisecondsSinceEpoch,
-    'expiration': expiration.inMilliseconds,
-  };
+        'data': data,
+        'timestamp': timestamp.millisecondsSinceEpoch,
+        'expiration': expiration.inMilliseconds,
+      };
 
   /// 从JSON创建缓存项
-  static CacheItem<T> fromJson<T>(Map<String, dynamic> json, T Function(dynamic) fromJsonFunc) {
+  static CacheItem<T> fromJson<T>(
+      Map<String, dynamic> json, T Function(dynamic) fromJsonFunc) {
     try {
       // 检查必需的字段
-      if (!json.containsKey('data') || !json.containsKey('timestamp') || !json.containsKey('expiration')) {
+      if (!json.containsKey('data') ||
+          !json.containsKey('timestamp') ||
+          !json.containsKey('expiration')) {
         throw FormatException('缓存项缺少必需字段: ${json.keys.toList()}');
       }
 
       final timestampValue = json['timestamp'];
       final expirationValue = json['expiration'];
-      
+
       int timestamp;
       if (timestampValue is int) {
         timestamp = timestampValue;
       } else if (timestampValue is String) {
         timestamp = int.parse(timestampValue);
       } else {
-        throw FormatException('timestamp 字段类型错误: ${timestampValue.runtimeType}');
+        throw FormatException(
+            'timestamp 字段类型错误: ${timestampValue.runtimeType}');
       }
-      
+
       int expiration;
       if (expirationValue is int) {
         expiration = expirationValue;
       } else if (expirationValue is String) {
         expiration = int.parse(expirationValue);
       } else {
-        throw FormatException('expiration 字段类型错误: ${expirationValue.runtimeType}');
+        throw FormatException(
+            'expiration 字段类型错误: ${expirationValue.runtimeType}');
       }
 
       return CacheItem<T>(
@@ -82,7 +88,7 @@ class DoubanCacheService {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       _cacheDir = Directory('${appDir.path}/douban_cache');
-      
+
       if (!await _cacheDir!.exists()) {
         await _cacheDir!.create(recursive: true);
       }
@@ -99,7 +105,8 @@ class DoubanCacheService {
   /// 生成缓存键
   String _generateCacheKey(String prefix, Map<String, dynamic> params) {
     final sortedKeys = params.keys.toList()..sort();
-    final paramString = sortedKeys.map((key) => '$key=${params[key]}').join('&');
+    final paramString =
+        sortedKeys.map((key) => '$key=${params[key]}').join('&');
     return '${prefix}_$paramString';
   }
 
@@ -118,24 +125,28 @@ class DoubanCacheService {
             if (_cacheDir != null) {
               final file = File('${_cacheDir!.path}/$key.json');
               if (await file.exists()) {
-                try { await file.delete(); } catch (_) {}
+                try {
+                  await file.delete();
+                } catch (_) {}
               }
             }
           } else {
-                // 使用解码器将原始 JSON 转成目标类型
-                try {
-                  return decode(raw);
-                } catch (e) {
-                  // 解码失败，删除缓存
-                  _memoryCache.remove(key);
-                  if (_cacheDir != null) {
-                    final file = File('${_cacheDir!.path}/$key.json');
-                    if (await file.exists()) {
-                      try { await file.delete(); } catch (_) {}
-                    }
-                  }
-                  rethrow;
+            // 使用解码器将原始 JSON 转成目标类型
+            try {
+              return decode(raw);
+            } catch (e) {
+              // 解码失败，删除缓存
+              _memoryCache.remove(key);
+              if (_cacheDir != null) {
+                final file = File('${_cacheDir!.path}/$key.json');
+                if (await file.exists()) {
+                  try {
+                    await file.delete();
+                  } catch (_) {}
                 }
+              }
+              rethrow;
+            }
           }
         } else {
           // 过期则删除
@@ -150,20 +161,25 @@ class DoubanCacheService {
           try {
             final jsonString = await file.readAsString();
             final jsonData = json.decode(jsonString);
-            
+
             if (jsonData is! Map<String, dynamic>) {
-              try { await file.delete(); } catch (_) {}
+              try {
+                await file.delete();
+              } catch (_) {}
               return null;
             }
 
             // 读取为原始 JSON（不做结构假设），再用 decode 转换
-            final cacheItem = CacheItem.fromJson<dynamic>(jsonData, (data) => data);
+            final cacheItem =
+                CacheItem.fromJson<dynamic>(jsonData, (data) => data);
 
             if (!cacheItem.isExpired) {
               // 发现旧格式（Map 且含 items），直接删除并视为未命中
               final raw = cacheItem.data;
               if (raw is Map && raw.containsKey('items')) {
-                try { await file.delete(); } catch (_) {}
+                try {
+                  await file.delete();
+                } catch (_) {}
               } else {
                 // 重新加载到内存缓存
                 _memoryCache[key] = cacheItem;
@@ -172,7 +188,9 @@ class DoubanCacheService {
                 } catch (e) {
                   // 解码失败，删除缓存
                   _memoryCache.remove(key);
-                  try { await file.delete(); } catch (_) {}
+                  try {
+                    await file.delete();
+                  } catch (_) {}
                   rethrow;
                 }
               }
@@ -182,7 +200,9 @@ class DoubanCacheService {
             }
           } catch (e) {
             // 文件内容不合法或旧格式，直接删除避免反复报错
-            try { await file.delete(); } catch (_) {}
+            try {
+              await file.delete();
+            } catch (_) {}
           }
         }
       }
@@ -247,7 +267,7 @@ class DoubanCacheService {
           expiredKeys.add(key);
         }
       });
-      
+
       for (final key in expiredKeys) {
         _memoryCache.remove(key);
       }
@@ -260,9 +280,10 @@ class DoubanCacheService {
             try {
               final jsonString = await file.readAsString();
               final jsonData = json.decode(jsonString) as Map<String, dynamic>;
-              final timestamp = DateTime.fromMillisecondsSinceEpoch(jsonData['timestamp']);
+              final timestamp =
+                  DateTime.fromMillisecondsSinceEpoch(jsonData['timestamp']);
               final expiration = Duration(milliseconds: jsonData['expiration']);
-              
+
               if (DateTime.now().difference(timestamp) > expiration) {
                 await file.delete();
               }

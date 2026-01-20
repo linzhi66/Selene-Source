@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/bangumi.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';

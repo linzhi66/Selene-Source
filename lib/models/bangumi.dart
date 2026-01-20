@@ -3,7 +3,7 @@ import 'video_info.dart';
 /// HTML 实体解码工具函数
 String _decodeHtmlEntities(String text) {
   if (text.isEmpty) return text;
-  
+
   // 常见的 HTML 实体映射
   final Map<String, String> htmlEntities = {
     '&amp;': '&',
@@ -26,25 +26,21 @@ String _decodeHtmlEntities(String text) {
     '&bull;': '•',
     '&middot;': '·',
   };
-  
+
   String result = text;
-  
+
   // 处理命名实体
   htmlEntities.forEach((entity, replacement) {
     result = result.replaceAll(entity, replacement);
   });
-  
+
   // 处理数字实体 (如 &#123; 或 &#x1A;)
-  result = result.replaceAllMapped(
-    RegExp(r'&#(\d+);'),
-    (match) => String.fromCharCode(int.parse(match.group(1)!))
-  );
-  
-  result = result.replaceAllMapped(
-    RegExp(r'&#x([0-9a-fA-F]+);'),
-    (match) => String.fromCharCode(int.parse(match.group(1)!, radix: 16))
-  );
-  
+  result = result.replaceAllMapped(RegExp(r'&#(\d+);'),
+      (match) => String.fromCharCode(int.parse(match.group(1)!)));
+
+  result = result.replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'),
+      (match) => String.fromCharCode(int.parse(match.group(1)!, radix: 16)));
+
   return result;
 }
 
@@ -66,12 +62,15 @@ class BangumiRating {
     final Map<String, int> safeCount = {};
     if (countData is Map) {
       countData.forEach((key, value) {
-        safeCount[key.toString()] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+        safeCount[key.toString()] =
+            value is int ? value : int.tryParse(value.toString()) ?? 0;
       });
     }
-    
+
     return BangumiRating(
-      total: json['total'] is int ? json['total'] : int.tryParse(json['total']?.toString() ?? '0') ?? 0,
+      total: json['total'] is int
+          ? json['total']
+          : int.tryParse(json['total']?.toString() ?? '0') ?? 0,
       count: safeCount,
       score: (json['score'] ?? 0.0).toDouble(),
     );
@@ -236,7 +235,7 @@ class BangumiItem {
       url: json['url']?.toString() ?? '',
       type: json['type'] ?? 0,
       name: _decodeHtmlEntities(json['name']?.toString() ?? ''),
-      nameCn: json['name_cn']?.toString() != null 
+      nameCn: json['name_cn']?.toString() != null
           ? _decodeHtmlEntities(json['name_cn']!.toString())
           : null,
       summary: _decodeHtmlEntities(json['summary']?.toString() ?? ''),
@@ -285,7 +284,6 @@ class BangumiItem {
       rate: rating.score > 0 ? rating.score.toStringAsFixed(1) : null,
     );
   }
-
 }
 
 /// Bangumi 详情数据模型
@@ -337,7 +335,7 @@ class BangumiDetails {
       id: json['id'] ?? 0,
       type: json['type'] ?? 0,
       name: _decodeHtmlEntities(json['name']?.toString() ?? ''),
-      nameCn: json['name_cn']?.toString() != null 
+      nameCn: json['name_cn']?.toString() != null
           ? _decodeHtmlEntities(json['name_cn']!.toString())
           : null,
       summary: _decodeHtmlEntities(json['summary']?.toString() ?? ''),
@@ -346,19 +344,18 @@ class BangumiDetails {
       date: json['date']?.toString(),
       platform: json['platform']?.toString(),
       images: BangumiImages.fromJson(json['images'] ?? {}),
-      infobox: (json['infobox'] as List<dynamic>? ?? [])
-          .map((item) {
-            if (item is Map<String, dynamic>) {
-              final value = item['value'];
-              if (value is List) {
-                final valueList = value.map((v) => v['v']?.toString() ?? '').join(', ');
-                return '${item['key']}: $valueList';
-              }
-              return '${item['key']}: ${value?.toString() ?? ''}';
-            }
-            return item.toString();
-          })
-          .toList(),
+      infobox: (json['infobox'] as List<dynamic>? ?? []).map((item) {
+        if (item is Map<String, dynamic>) {
+          final value = item['value'];
+          if (value is List) {
+            final valueList =
+                value.map((v) => v['v']?.toString() ?? '').join(', ');
+            return '${item['key']}: $valueList';
+          }
+          return '${item['key']}: ${value?.toString() ?? ''}';
+        }
+        return item.toString();
+      }).toList(),
       volumes: json['volumes'] ?? 0,
       eps: json['eps'] ?? 0,
       totalEpisodes: json['total_episodes'] ?? 0,

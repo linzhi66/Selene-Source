@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import '../services/live_service.dart';
+import 'package:provider/provider.dart';
+
 import '../models/live_channel.dart';
 import '../models/live_source.dart';
-import '../utils/font_utils.dart';
-import '../utils/device_utils.dart';
+import '../services/live_service.dart';
 import '../services/theme_service.dart';
-import 'package:provider/provider.dart';
-import 'live_player_screen.dart';
-import '../widgets/filter_pill_hover.dart';
+import '../utils/device_utils.dart';
+import '../utils/font_utils.dart';
 import '../widgets/filter_options_selector.dart';
+import '../widgets/filter_pill_hover.dart';
+import 'live_player_screen.dart';
 
 class LiveScreen extends StatefulWidget {
   const LiveScreen({super.key});

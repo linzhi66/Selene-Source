@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../models/douban_movie.dart';
+import '../models/video_info.dart';
+import '../services/douban_service.dart';
 import '../services/theme_service.dart';
+import '../utils/device_utils.dart';
+import '../utils/font_utils.dart';
 import '../widgets/capsule_tab_switcher.dart';
 import '../widgets/custom_refresh_indicator.dart';
 import '../widgets/douban_movies_grid.dart';
-import '../services/douban_service.dart';
-import '../models/douban_movie.dart';
-import '../models/video_info.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../widgets/pulsing_dots_indicator.dart';
-import 'player_screen.dart';
-import '../widgets/filter_pill_hover.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
 import '../widgets/filter_options_selector.dart';
+import '../widgets/filter_pill_hover.dart';
+import '../widgets/pulsing_dots_indicator.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
+import 'player_screen.dart';
 
 class TvScreen extends StatefulWidget {
   const TvScreen({super.key});
@@ -297,6 +298,7 @@ class _TvScreenState extends State<TvScreen> {
         // 如果是刷新且内容不足一屏，尝试自动加载更多
         if (isRefresh && result.success && result.data != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             _checkAndLoadMoreIfNeeded();
           });
         }
@@ -335,6 +337,7 @@ class _TvScreenState extends State<TvScreen> {
         // 如果是刷新且内容不足一屏，尝试自动加载更多
         if (isRefresh && result.success && result.data != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             _checkAndLoadMoreIfNeeded();
           });
         }
@@ -488,9 +491,11 @@ class _TvScreenState extends State<TvScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $url')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch $url')),
+        );
+      }
     }
   }
 
@@ -569,13 +574,14 @@ class _TvScreenState extends State<TvScreen> {
   Widget _buildFilterSection() {
     final themeService = Provider.of<ThemeService>(context);
     return Container(
-      width: double.infinity, // 设置为100%宽度
+      width: double.infinity,
+      // 设置为100%宽度
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
         color: themeService.isDarkMode
-            ? Colors.white.withOpacity(0.1)
-            : Colors.white.withOpacity(0.8),
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.white.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -776,8 +782,8 @@ class _TvScreenState extends State<TvScreen> {
             height: 2,
             decoration: BoxDecoration(
               color: themeService.isDarkMode
-                  ? Colors.white.withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.4),
+                  ? Colors.white.withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(1),
             ),
           ),
@@ -787,7 +793,7 @@ class _TvScreenState extends State<TvScreen> {
             style: FontUtils.poppins(
               fontSize: 14,
               color: themeService.isDarkMode
-                  ? Colors.white.withOpacity(0.6)
+                  ? Colors.white.withValues(alpha: 0.6)
                   : Colors.grey[600],
               fontWeight: FontWeight.w400,
             ),
@@ -798,7 +804,7 @@ class _TvScreenState extends State<TvScreen> {
             style: FontUtils.poppins(
               fontSize: 12,
               color: themeService.isDarkMode
-                  ? Colors.white.withOpacity(0.4)
+                  ? Colors.white.withValues(alpha: 0.4)
                   : Colors.grey[500],
               fontWeight: FontWeight.w300,
             ),

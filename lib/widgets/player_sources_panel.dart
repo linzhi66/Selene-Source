@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+
 import '../models/search_result.dart';
 import '../utils/device_utils.dart';
 
@@ -60,6 +61,7 @@ class _PlayerSourcesPanelState extends State<PlayerSourcesPanel>
 
     // 延迟滚动到当前源
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _scrollToCurrentSource();
     });
   }
@@ -116,10 +118,12 @@ class _PlayerSourcesPanelState extends State<PlayerSourcesPanel>
     try {
       await widget.onRefresh();
     } finally {
-      setState(() {
-        _isRefreshing = false;
-      });
-      _stopRefreshAnimation();
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+        _stopRefreshAnimation();
+      }
     }
   }
 
@@ -232,183 +236,186 @@ class _SourcePanelItemWithHoverState extends State<_SourcePanelItemWithHover> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: (DeviceUtils.isPC() && !widget.isCurrent)
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
-      onEnter: (_) {
-        if (DeviceUtils.isPC() && !widget.isCurrent) {
-          setState(() => _isHovering = true);
-        }
-      },
-      onExit: (_) {
-        if (DeviceUtils.isPC()) {
-          setState(() => _isHovering = false);
-        }
-      },
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: widget.isCurrent
-                ? (widget.isDarkMode ? Colors.grey[850] : Colors.grey[200])
-                : (_isHovering && DeviceUtils.isPC()
-                    ? (widget.isDarkMode
-                        ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
-                        : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
-                    : (widget.isDarkMode
-                        ? Colors.grey[850]
-                        : Colors.grey[200])),
-            borderRadius: BorderRadius.circular(12),
-            border: widget.isCurrent
-                ? Border.all(color: Colors.green, width: 2)
-                : null,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SizedBox(
-              height: 100,
-              child: Stack(
-                children: [
-                  Row(
-                    children: [
-                      // Left side: Cover
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: AspectRatio(
-                          aspectRatio: 2 / 3,
-                          child: CachedNetworkImage(
-                            imageUrl: widget.source.poster,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              decoration: BoxDecoration(
-                                color: widget.isDarkMode
-                                    ? const Color(0xFF333333)
-                                    : Colors.grey[300],
-                                borderRadius: BorderRadius.circular(8),
+        cursor: (DeviceUtils.isPC() && !widget.isCurrent)
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
+        onEnter: (_) {
+          if (DeviceUtils.isPC() && !widget.isCurrent) {
+            setState(() => _isHovering = true);
+          }
+        },
+        onExit: (_) {
+          if (DeviceUtils.isPC()) {
+            setState(() => _isHovering = false);
+          }
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: widget.isCurrent
+                  ? (widget.isDarkMode ? Colors.grey[850] : Colors.grey[200])
+                  : (_isHovering && DeviceUtils.isPC()
+                      ? (widget.isDarkMode
+                          ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
+                          : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
+                      : (widget.isDarkMode
+                          ? Colors.grey[850]
+                          : Colors.grey[200])),
+              borderRadius: BorderRadius.circular(12),
+              border: widget.isCurrent
+                  ? Border.all(color: Colors.green, width: 2)
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SizedBox(
+                height: 100,
+                child: Stack(
+                  children: [
+                    Row(
+                      children: [
+                        // Left side: Cover
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: AspectRatio(
+                            aspectRatio: 2 / 3,
+                            child: CachedNetworkImage(
+                              imageUrl: widget.source.poster,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                decoration: BoxDecoration(
+                                  color: widget.isDarkMode
+                                      ? const Color(0xFF333333)
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
+                              errorWidget: (context, url, error) => Container(
+                                decoration: BoxDecoration(
+                                  color: widget.isDarkMode
+                                      ? const Color(0xFF333333)
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.movie,
+                                  color: widget.isDarkMode
+                                      ? const Color(0xFF666666)
+                                      : Colors.grey,
+                                  size: 40,
+                                ),
+                              ),
+                              fadeInDuration: const Duration(milliseconds: 200),
+                              fadeOutDuration:
+                                  const Duration(milliseconds: 100),
                             ),
-                            errorWidget: (context, url, error) => Container(
-                              decoration: BoxDecoration(
-                                color: widget.isDarkMode
-                                    ? const Color(0xFF333333)
-                                    : Colors.grey[300],
-                                borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Right side: Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Title
+                              Text(
+                                widget.source.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style:
+                                    widget.theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.movie,
-                                color: widget.isDarkMode
-                                    ? const Color(0xFF666666)
-                                    : Colors.grey,
-                                size: 40,
+                              const SizedBox(height: 8),
+                              // Source Name
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: widget.isDarkMode
+                                          ? Colors.grey[600]!
+                                          : Colors.grey[400]!),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  widget.source.sourceName,
+                                  style: widget.theme.textTheme.bodyMedium,
+                                ),
                               ),
-                            ),
-                            fadeInDuration: const Duration(milliseconds: 200),
-                            fadeOutDuration: const Duration(milliseconds: 100),
+                              const Spacer(),
+                              // Bottom row
+                              Row(
+                                children: [
+                                  if (widget.speedInfo != null) ...[
+                                    if (widget
+                                            .speedInfo!.loadSpeed.isNotEmpty &&
+                                        !widget.speedInfo!.loadSpeed
+                                            .toLowerCase()
+                                            .contains('超时'))
+                                      Text(
+                                        widget.speedInfo!.loadSpeed,
+                                        style: widget.theme.textTheme.bodyMedium
+                                            ?.copyWith(color: Colors.green),
+                                      ),
+                                    if (widget
+                                            .speedInfo!.loadSpeed.isNotEmpty &&
+                                        !widget.speedInfo!.loadSpeed
+                                            .toLowerCase()
+                                            .contains('超时') &&
+                                        widget.speedInfo!.pingTime.isNotEmpty &&
+                                        !widget.speedInfo!.pingTime
+                                            .toLowerCase()
+                                            .contains('超时'))
+                                      const SizedBox(width: 8),
+                                    if (widget.speedInfo!.pingTime.isNotEmpty &&
+                                        !widget.speedInfo!.pingTime
+                                            .toLowerCase()
+                                            .contains('超时'))
+                                      Text(
+                                        widget.speedInfo!.pingTime,
+                                        style: widget.theme.textTheme.bodyMedium
+                                            ?.copyWith(color: Colors.orange),
+                                      ),
+                                  ],
+                                  const Spacer(),
+                                  if (widget.source.episodes.length > 1)
+                                    Text(
+                                      '${widget.source.episodes.length} 集',
+                                      style: widget.theme.textTheme.bodyMedium,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Resolution tag in top right
+                    if (widget.speedInfo != null &&
+                        widget.speedInfo!.quality.isNotEmpty &&
+                        widget.speedInfo!.quality.toLowerCase() != '未知')
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Text(
+                          widget.speedInfo!.quality,
+                          style: widget.theme.textTheme.bodyMedium?.copyWith(
+                            color: widget.isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Right side: Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title
-                            Text(
-                              widget.source.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: widget.theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Source Name
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: widget.isDarkMode
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[400]!),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                widget.source.sourceName,
-                                style: widget.theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                            const Spacer(),
-                            // Bottom row
-                            Row(
-                              children: [
-                                if (widget.speedInfo != null) ...[
-                                  if (widget.speedInfo!.loadSpeed.isNotEmpty &&
-                                      !widget.speedInfo!.loadSpeed
-                                          .toLowerCase()
-                                          .contains('超时'))
-                                    Text(
-                                      widget.speedInfo!.loadSpeed,
-                                      style: widget.theme.textTheme.bodyMedium
-                                          ?.copyWith(color: Colors.green),
-                                    ),
-                                  if (widget.speedInfo!.loadSpeed.isNotEmpty &&
-                                      !widget.speedInfo!.loadSpeed
-                                          .toLowerCase()
-                                          .contains('超时') &&
-                                      widget.speedInfo!.pingTime.isNotEmpty &&
-                                      !widget.speedInfo!.pingTime
-                                          .toLowerCase()
-                                          .contains('超时'))
-                                    const SizedBox(width: 8),
-                                  if (widget.speedInfo!.pingTime.isNotEmpty &&
-                                      !widget.speedInfo!.pingTime
-                                          .toLowerCase()
-                                          .contains('超时'))
-                                    Text(
-                                      widget.speedInfo!.pingTime,
-                                      style: widget.theme.textTheme.bodyMedium
-                                          ?.copyWith(color: Colors.orange),
-                                    ),
-                                ],
-                                const Spacer(),
-                                if (widget.source.episodes.length > 1)
-                                  Text(
-                                    '${widget.source.episodes.length} 集',
-                                    style: widget.theme.textTheme.bodyMedium,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Resolution tag in top right
-                  if (widget.speedInfo != null &&
-                      widget.speedInfo!.quality.isNotEmpty &&
-                      widget.speedInfo!.quality.toLowerCase() != '未知')
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Text(
-                        widget.speedInfo!.quality,
-                        style: widget.theme.textTheme.bodyMedium?.copyWith(
-                          color: widget.isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }

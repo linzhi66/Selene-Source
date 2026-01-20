@@ -26,7 +26,7 @@ class FavoriteItem {
     final parts = key.split('+');
     final source = parts.length > 1 ? parts[0] : '';
     final id = parts.length > 1 ? parts[1] : key;
-    
+
     return FavoriteItem(
       id: id,
       source: source,

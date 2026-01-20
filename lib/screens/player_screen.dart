@@ -1,26 +1,28 @@
-import 'dart:math' as math;
 import 'dart:io' show Platform;
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../widgets/video_player_surface.dart';
-import '../widgets/video_player_widget.dart';
-import '../widgets/video_card.dart';
-import '../services/api_service.dart';
-import '../services/m3u8_service.dart';
-import '../services/douban_service.dart';
-import '../services/user_data_service.dart';
-import '../services/search_service.dart';
-import '../models/search_result.dart';
+
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
+import '../models/search_result.dart';
+import '../services/api_service.dart';
+import '../services/douban_service.dart';
+import '../services/m3u8_service.dart';
 import '../services/page_cache_service.dart';
-import '../widgets/switch_loading_overlay.dart';
-import '../widgets/dlna_player.dart';
-import '../widgets/dlna_device_dialog.dart';
+import '../services/search_service.dart';
+import '../services/user_data_service.dart';
 import '../utils/device_utils.dart';
+import '../widgets/dlna_device_dialog.dart';
+import '../widgets/dlna_player.dart';
 import '../widgets/player_details_panel.dart';
 import '../widgets/player_episodes_panel.dart';
 import '../widgets/player_sources_panel.dart';
+import '../widgets/switch_loading_overlay.dart';
+import '../widgets/video_card.dart';
+import '../widgets/video_player_surface.dart';
+import '../widgets/video_player_widget.dart';
 import '../widgets/windows_title_bar.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -85,6 +87,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   // 所有源信息
   List<SearchResult> allSources = [];
+
   // 所有源测速结果
   Map<String, SourceSpeed> allSourcesSpeed = {};
 
@@ -179,15 +182,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     needPrefer = widget.prefer != null && widget.prefer == 'true';
     searchTitle = widget.stitle ?? '';
 
-    print('=== PlayerScreen 初始化参数 ===');
-    print('currentSource: $currentSource');
-    print('currentID: $currentID');
-    print('videoTitle: $videoTitle');
-    print('videoYear: $videoYear');
-    print('needPrefer: $needPrefer');
-    print('stitle: ${widget.stitle}');
-    print('stype: ${widget.stype}');
-    print('prefer: ${widget.prefer}');
+    debugPrint('=== PlayerScreen 初始化参数 ===');
+    debugPrint('currentSource: $currentSource');
+    debugPrint('currentID: $currentID');
+    debugPrint('videoTitle: $videoTitle');
+    debugPrint('videoYear: $videoYear');
+    debugPrint('needPrefer: $needPrefer');
+    debugPrint('stitle: ${widget.stitle}');
+    debugPrint('stype: ${widget.stype}');
+    debugPrint('prefer: ${widget.prefer}');
   }
 
   void initVideoData() async {
@@ -386,10 +389,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           }
         });
       } else {
-        print('获取豆瓣详情失败: ${response.message}');
+        debugPrint('获取豆瓣详情失败: ${response.message}');
       }
     } catch (e) {
-      print('获取豆瓣详情异常: $e');
+      debugPrint('获取豆瓣详情异常: $e');
     }
   }
 
@@ -453,7 +456,11 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     // 关闭页面前保存进度
     _saveProgress(force: true, scene: '返回按钮');
-    Navigator.of(context).pop();
+
+    // 检查组件是否仍在组件树中
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   // 退出网页全屏
@@ -534,18 +541,20 @@ class _PlayerScreenState extends State<PlayerScreen>
         sourceName: sourceNameSnapshot,
         year: videoYearSnapshot,
         cover: videoCoverSnapshot,
-        index: currentEpisodeIndexSnapshot + 1, // 转换为1开始的索引
+        index: currentEpisodeIndexSnapshot + 1,
+        // 转换为1开始的索引
         totalEpisodes: totalEpisodesSnapshot,
         playTime: playTime,
         totalTime: totalTime,
-        saveTime: DateTime.now().millisecondsSinceEpoch, // 当前时间戳（毫秒）
+        saveTime: DateTime.now().millisecondsSinceEpoch,
+        // 当前时间戳（毫秒）
         searchTitle: searchTitleSnapshot,
       );
 
       // 异步保存播放记录（不等待结果）
       PageCacheService().savePlayRecord(playRecord, context).then((_) {
         debugPrint(
-            '保存播放进度 [场景: $scene]: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: ${playTime}秒');
+            '保存播放进度 [场景: $scene]: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: $playTime秒');
       }).catchError((e) {
         debugPrint('保存播放进度失败 [场景: $scene]: $e');
       });
@@ -635,7 +644,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 动态更新视频数据源
   Future<void> updateVideoUrl(String newUrl, {Duration? startAt}) async {
-    print("newUrl: $newUrl, startAt: $startAt");
+    debugPrint("newUrl: $newUrl, startAt: $startAt");
     try {
       // 获取 M3U8 代理 URL
       final m3u8ProxyUrl = await UserDataService.getM3u8ProxyUrl();
@@ -645,7 +654,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (m3u8ProxyUrl.isNotEmpty) {
         final encodedUrl = Uri.encodeComponent(newUrl);
         finalUrl = '$m3u8ProxyUrl$encodedUrl';
-        print("使用 M3U8 代理: $finalUrl");
+        debugPrint("使用 M3U8 代理: $finalUrl");
       }
 
       if (_isCasting) {
@@ -1165,7 +1174,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 等待下一帧，确保 MobileVideoPlayerWidget 已经重新创建
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && currentDetail != null) {
-        debugPrint('恢复播放: 第${resumeEpisodeIndex + 1}集, ${resumeSeconds}秒');
+        debugPrint('恢复播放: 第${resumeEpisodeIndex + 1}集, $resumeSeconds秒');
         // 调用 startPlay 重新初始化播放器
         startPlay(resumeEpisodeIndex, resumeSeconds);
       }
@@ -1435,12 +1444,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final double screenWidth = constraints.maxWidth;
-        final double padding = 16.0;
-        final double spacing = 12.0;
+        const double padding = 16.0;
+        const double spacing = 12.0;
         final crossAxisCount = _isTablet ? 6 : 3;
         final double availableWidth =
             screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
-        final double minItemWidth = 80.0;
+        const double minItemWidth = 80.0;
         final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
@@ -1639,7 +1648,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           builder: (context, constraints) {
             // 计算按钮宽度：根据设备类型调整
             final screenWidth = constraints.maxWidth;
-            final horizontalPadding = 32.0; // 左右各16
+            const horizontalPadding = 32.0; // 左右各16
             final availableWidth = screenWidth - horizontalPadding;
             final cardsPerView = _isTablet ? 6.2 : 3.2;
             final buttonWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
@@ -1800,7 +1809,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerEpisodesPanel(
@@ -1901,7 +1910,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerDetailsPanel(
@@ -2038,7 +2047,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context, constraints) {
         // 计算卡片宽度：根据设备类型调整
         final screenWidth = constraints.maxWidth;
-        final horizontalPadding = 32.0; // 左右各16
+        const horizontalPadding = 32.0; // 左右各16
         final availableWidth = screenWidth - horizontalPadding;
         final cardsPerView = _isTablet ? 6.2 : 3.2;
         final cardWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
@@ -2168,7 +2177,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerSourcesPanel(
@@ -2335,7 +2344,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
+                        color: Colors.orange.withValues(alpha: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -2368,10 +2377,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B4513).withOpacity(0.1),
+                    color: const Color(0xFF8B4513).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF8B4513).withOpacity(0.3),
+                      color: const Color(0xFF8B4513).withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
@@ -2896,7 +2905,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2ecc71).withOpacity(0.3),
+                          color: const Color(0xFF2ecc71).withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
@@ -2953,8 +2962,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: (isDarkMode ? Colors.white70 : Colors.black54)
-                            .withOpacity(
-                          0.3 + (_textAnimationController.value * 0.7),
+                            .withValues(
+                          alpha: 0.3 + (_textAnimationController.value * 0.7),
                         ),
                       ),
                     );
@@ -3058,7 +3067,7 @@ class _EpisodeCardWithHoverState extends State<_EpisodeCardWithHover> {
         child: Container(
           decoration: BoxDecoration(
             color: widget.isCurrentEpisode
-                ? Colors.green.withOpacity(0.2)
+                ? Colors.green.withValues(alpha: 0.2)
                 : (_isHovering && DeviceUtils.isPC()
                     ? (widget.isDarkMode
                         ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
@@ -3141,123 +3150,122 @@ class _SourceCardWithHoverState extends State<_SourceCardWithHover> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: (DeviceUtils.isPC() && !widget.isCurrentSource)
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
-      onEnter: (_) {
-        if (DeviceUtils.isPC() && !widget.isCurrentSource) {
-          setState(() => _isHovering = true);
-        }
-      },
-      onExit: (_) {
-        if (DeviceUtils.isPC()) {
-          setState(() => _isHovering = false);
-        }
-      },
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.isCurrentSource
-                ? Colors.green.withOpacity(0.2)
-                : (_isHovering && DeviceUtils.isPC()
-                    ? (widget.isDarkMode
-                        ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
-                        : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
-                    : (widget.isDarkMode
-                        ? Colors.grey[700]
-                        : Colors.grey[300])),
-            borderRadius: BorderRadius.circular(8),
-            border: widget.isCurrentSource
-                ? Border.all(color: Colors.green, width: 2)
-                : null,
+        cursor: (DeviceUtils.isPC() && !widget.isCurrentSource)
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
+        onEnter: (_) {
+          if (DeviceUtils.isPC() && !widget.isCurrentSource) {
+            setState(() => _isHovering = true);
+          }
+        },
+        onExit: (_) {
+          if (DeviceUtils.isPC()) {
+            setState(() => _isHovering = false);
+          }
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: widget.isCurrentSource
+                  ? Colors.green.withValues(alpha: 0.2)
+                  : (_isHovering && DeviceUtils.isPC()
+                      ? (widget.isDarkMode
+                          ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
+                          : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
+                      : (widget.isDarkMode
+                          ? Colors.grey[700]
+                          : Colors.grey[300])),
+              borderRadius: BorderRadius.circular(8),
+              border: widget.isCurrentSource
+                  ? Border.all(color: Colors.green, width: 2)
+                  : null,
+            ),
+            child: Stack(
+              children: [
+                // 右上角集数信息
+                if (widget.source.episodes.length > 1)
+                  Positioned(
+                    top: 4,
+                    right: 6,
+                    child: Text(
+                      '${widget.source.episodes.length}集',
+                      style: TextStyle(
+                        color: widget.isCurrentSource
+                            ? Colors.green
+                            : (widget.isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+
+                // 中间源名称
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      widget.source.sourceName,
+                      style: TextStyle(
+                        color: widget.isCurrentSource
+                            ? Colors.green
+                            : (widget.isDarkMode ? Colors.white : Colors.black),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+
+                // 左下角分辨率信息
+                if (widget.speedInfo != null &&
+                    widget.speedInfo!.quality.toLowerCase() != '未知')
+                  Positioned(
+                    bottom: 4,
+                    left: 6,
+                    child: Text(
+                      widget.speedInfo!.quality,
+                      style: TextStyle(
+                        color: widget.isCurrentSource
+                            ? Colors.green
+                            : (widget.isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+
+                // 右下角速率信息
+                if (widget.speedInfo != null &&
+                    widget.speedInfo!.loadSpeed.isNotEmpty &&
+                    !widget.speedInfo!.loadSpeed.toLowerCase().contains('超时'))
+                  Positioned(
+                    bottom: 4,
+                    right: 6,
+                    child: Text(
+                      widget.speedInfo!.loadSpeed,
+                      style: TextStyle(
+                        color: widget.isCurrentSource
+                            ? Colors.green
+                            : (widget.isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          child: Stack(
-            children: [
-              // 右上角集数信息
-              if (widget.source.episodes.length > 1)
-                Positioned(
-                  top: 4,
-                  right: 6,
-                  child: Text(
-                    '${widget.source.episodes.length}集',
-                    style: TextStyle(
-                      color: widget.isCurrentSource
-                          ? Colors.green
-                          : (widget.isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600]),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-
-              // 中间源名称
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    widget.source.sourceName,
-                    style: TextStyle(
-                      color: widget.isCurrentSource
-                          ? Colors.green
-                          : (widget.isDarkMode ? Colors.white : Colors.black),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-
-              // 左下角分辨率信息
-              if (widget.speedInfo != null &&
-                  widget.speedInfo!.quality.toLowerCase() != '未知')
-                Positioned(
-                  bottom: 4,
-                  left: 6,
-                  child: Text(
-                    widget.speedInfo!.quality,
-                    style: TextStyle(
-                      color: widget.isCurrentSource
-                          ? Colors.green
-                          : (widget.isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600]),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-
-              // 右下角速率信息
-              if (widget.speedInfo != null &&
-                  widget.speedInfo!.loadSpeed.isNotEmpty &&
-                  !widget.speedInfo!.loadSpeed.toLowerCase().contains('超时'))
-                Positioned(
-                  bottom: 4,
-                  right: 6,
-                  child: Text(
-                    widget.speedInfo!.loadSpeed,
-                    style: TextStyle(
-                      color: widget.isCurrentSource
-                          ? Colors.green
-                          : (widget.isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600]),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+        ));
   }
 }
 

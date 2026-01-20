@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../models/search_result.dart';
+import 'package:flutter/material.dart';
+
 import '../models/douban_movie.dart';
+import '../models/search_result.dart';
 import '../utils/image_url.dart';
 
 class PlayerDetailsPanel extends StatelessWidget {
@@ -26,7 +27,7 @@ class PlayerDetailsPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: showCloseButton 
+        color: showCloseButton
             ? (isDarkMode ? const Color(0xFF1c1c1e) : Colors.white)
             : Colors.transparent,
       ),
@@ -53,8 +54,7 @@ class PlayerDetailsPanel extends StatelessWidget {
                 ],
               ),
             ),
-          if (!showTitle)
-            const SizedBox(height: 8),
+          if (!showTitle) const SizedBox(height: 8),
           Expanded(
             child: doubanDetails != null
                 ? _buildDoubanDetailsPanel(context, isDarkMode)
@@ -168,7 +168,7 @@ class PlayerDetailsPanel extends StatelessWidget {
                           ],
                           if (totalEpisodes != null && totalEpisodes > 1) ...[
                             Text(
-                              '全${totalEpisodes}集',
+                              '全$totalEpisodes集',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: isDarkMode
                                     ? Colors.grey[400]
@@ -305,7 +305,8 @@ class PlayerDetailsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 左侧封面
-              _buildCoverImage(context, cover, currentDetail?.source, isDarkMode),
+              _buildCoverImage(
+                  context, cover, currentDetail?.source, isDarkMode),
               const SizedBox(width: 16),
               // 右侧信息
               Expanded(
@@ -364,7 +365,7 @@ class PlayerDetailsPanel extends StatelessWidget {
                           const SizedBox(height: 4),
                           if (totalEpisodes > 1)
                             Text(
-                              '全${totalEpisodes}集',
+                              '全$totalEpisodes集',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: isDarkMode
                                     ? Colors.grey[400]
@@ -447,7 +448,8 @@ class PlayerDetailsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildCoverImage(BuildContext context, String cover, String? source, bool isDarkMode) {
+  Widget _buildCoverImage(
+      BuildContext context, String cover, String? source, bool isDarkMode) {
     return SizedBox(
       width: 120,
       height: 160,
@@ -467,8 +469,10 @@ class PlayerDetailsPanel extends StatelessWidget {
                     height: 160,
                     cacheKey: imageUrl,
                     httpHeaders: headers,
-                    memCacheWidth: (120 * MediaQuery.of(context).devicePixelRatio).round(),
-                    memCacheHeight: (160 * MediaQuery.of(context).devicePixelRatio).round(),
+                    memCacheWidth:
+                        (120 * MediaQuery.of(context).devicePixelRatio).round(),
+                    memCacheHeight:
+                        (160 * MediaQuery.of(context).devicePixelRatio).round(),
                     placeholder: (context, url) => Container(
                       width: 120,
                       height: 160,

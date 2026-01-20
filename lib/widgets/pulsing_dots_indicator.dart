@@ -4,10 +4,10 @@ class PulsingDotsIndicator extends StatefulWidget {
   const PulsingDotsIndicator({super.key});
 
   @override
-  _PulsingDotsIndicatorState createState() => _PulsingDotsIndicatorState();
+  PulsingDotsIndicatorState createState() => PulsingDotsIndicatorState();
 }
 
-class _PulsingDotsIndicatorState extends State<PulsingDotsIndicator>
+class PulsingDotsIndicatorState extends State<PulsingDotsIndicator>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<Animation<double>> _animations;

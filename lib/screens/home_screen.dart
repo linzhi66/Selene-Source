@@ -1,30 +1,31 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import '../widgets/continue_watching_section.dart';
-import '../widgets/hot_movies_section.dart';
-import '../widgets/hot_tv_section.dart';
-import '../widgets/hot_show_section.dart';
-import '../widgets/bangumi_section.dart';
-import '../widgets/main_layout.dart';
-import '../widgets/top_tab_switcher.dart';
-import '../widgets/favorites_grid.dart';
-import '../widgets/history_grid.dart';
-import 'search_screen.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
-import '../widgets/custom_refresh_indicator.dart';
+
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../utils/font_utils.dart';
 import '../services/page_cache_service.dart';
 import '../services/version_service.dart';
+import '../utils/font_utils.dart';
+import '../widgets/bangumi_section.dart';
+import '../widgets/continue_watching_section.dart';
+import '../widgets/custom_refresh_indicator.dart';
+import '../widgets/favorites_grid.dart';
+import '../widgets/history_grid.dart';
+import '../widgets/hot_movies_section.dart';
+import '../widgets/hot_show_section.dart';
+import '../widgets/hot_tv_section.dart';
+import '../widgets/main_layout.dart';
+import '../widgets/top_tab_switcher.dart';
 import '../widgets/update_dialog.dart';
-import 'movie_screen.dart';
-import 'tv_screen.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 import 'anime_screen.dart';
-import 'show_screen.dart';
-import 'player_screen.dart';
 import 'live_screen.dart';
+import 'movie_screen.dart';
+import 'player_screen.dart';
+import 'search_screen.dart';
+import 'show_screen.dart';
+import 'tv_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,8 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (e) {
-      // 静默失败，不影响用户体验
-      print('检查更新失败: $e');
+      debugPrint('检查更新失败: $e');
     }
   }
 

@@ -1,9 +1,11 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/search_resource.dart';
+
+import '../models/favorite_item.dart';
 import '../models/live_source.dart';
 import '../models/play_record.dart';
-import '../models/favorite_item.dart';
+import '../models/search_resource.dart';
 
 /// 本地模式存储服务
 /// 用于持久化存储本地模式下的订阅信息、播放记录、收藏夹和搜索记录
@@ -41,8 +43,7 @@ class LocalModeStorageService {
   // ==================== 搜索源列表 ====================
 
   /// 保存搜索源列表
-  static Future<void> saveSearchSources(
-      List<SearchResource> resources) async {
+  static Future<void> saveSearchSources(List<SearchResource> resources) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = resources.map((r) => r.toJson()).toList();
     final jsonString = jsonEncode(jsonList);

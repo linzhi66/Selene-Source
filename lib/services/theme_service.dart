@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+
+import 'package:flutter/material.dart';
 import 'package:macos_window_utils/macos_window_utils.dart';
 
 class ThemeService extends ChangeNotifier {

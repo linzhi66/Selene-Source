@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+
 import '../models/douban_movie.dart';
-import '../models/play_record.dart';
 import '../models/favorite_item.dart';
+import '../models/play_record.dart';
 import 'api_service.dart';
-import 'douban_service.dart';
 import 'data_operation_interface.dart';
-import 'user_data_service.dart';
+import 'douban_service.dart';
 import 'local_mode_storage_service.dart';
+import 'user_data_service.dart';
 
 /// 页面缓存服务 - 单例模式
 class PageCacheService
@@ -62,7 +63,8 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getPlayRecordsDirect(context);
+    return await getPlayRecordsDirect(
+        context); // ignore: use_build_context_synchronously
   }
 
   /// 直接走接口并保存到缓存
@@ -77,10 +79,8 @@ class PageCacheService
     const cacheKey = 'play_records';
 
     try {
-      final response = await ApiService.get<Map<String, dynamic>>(
-        '/api/playrecords',
-        context: context,
-      );
+      final response =
+          await ApiService.get<Map<String, dynamic>>('/api/playrecords');
 
       if (response.success && response.data != null) {
         final records = <PlayRecord>[];
@@ -118,7 +118,6 @@ class PageCacheService
     try {
       final response = await ApiService.get<Map<String, dynamic>>(
         '/api/playrecords',
-        context: context,
       );
 
       if (response.success && response.data != null) {
@@ -156,7 +155,7 @@ class PageCacheService
     _addPlayRecordToCache(playRecord);
 
     try {
-      final response = await ApiService.savePlayRecord(playRecord, context);
+      final response = await ApiService.savePlayRecord(playRecord);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -180,7 +179,7 @@ class PageCacheService
     _removePlayRecordFromCache(source, id);
 
     try {
-      final response = await ApiService.deletePlayRecord(source, id, context);
+      final response = await ApiService.deletePlayRecord(source, id);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -192,7 +191,8 @@ class PageCacheService
   }
 
   @override
-  Future<DataOperationResult<void>> clearPlayRecord(BuildContext context) async {
+  Future<DataOperationResult<void>> clearPlayRecord(
+      BuildContext context) async {
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
       await LocalModeStorageService.clearPlayRecords();
@@ -203,7 +203,7 @@ class PageCacheService
     clearCache('play_records');
 
     try {
-      final response = await ApiService.clearPlayRecord(context);
+      final response = await ApiService.clearPlayRecord();
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -277,7 +277,8 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getFavoritesDirect(context);
+    return await getFavoritesDirect(
+        context); // ignore: use_build_context_synchronously
   }
 
   /// 直接走接口并保存到缓存
@@ -291,7 +292,7 @@ class PageCacheService
     const cacheKey = 'favorites';
 
     try {
-      final response = await ApiService.getFavorites(context);
+      final response = await ApiService.getFavorites();
 
       if (response.success && response.data != null) {
         // 过滤掉 origin=live 的数据
@@ -317,7 +318,7 @@ class PageCacheService
     const cacheKey = 'favorites';
 
     try {
-      final response = await ApiService.getFavorites(context);
+      final response = await ApiService.getFavorites();
 
       if (response.success && response.data != null) {
         // 过滤掉 origin=live 的数据
@@ -353,8 +354,7 @@ class PageCacheService
     _addFavoriteToCache(source, id, favoriteData);
 
     try {
-      final response =
-          await ApiService.favorite(source, id, favoriteData, context);
+      final response = await ApiService.favorite(source, id, favoriteData);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -377,7 +377,7 @@ class PageCacheService
     _removeFavoriteFromCache(source, id);
 
     try {
-      final response = await ApiService.unfavorite(source, id, context);
+      final response = await ApiService.unfavorite(source, id);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -466,7 +466,8 @@ class PageCacheService
       BuildContext context) async {
     final isLocalMode = UserDataService.getIsLocalModeSync();
     if (isLocalMode) {
-      return DataOperationResult.success(await LocalModeStorageService.getSearchHistory());
+      return DataOperationResult.success(
+          await LocalModeStorageService.getSearchHistory());
     }
 
     const cacheKey = 'search_history';
@@ -487,13 +488,14 @@ class PageCacheService
       BuildContext context) async {
     final isLocalMode = UserDataService.getIsLocalModeSync();
     if (isLocalMode) {
-      return DataOperationResult.success(await LocalModeStorageService.getSearchHistory());
+      return DataOperationResult.success(
+          await LocalModeStorageService.getSearchHistory());
     }
 
     const cacheKey = 'search_history';
 
     try {
-      final response = await ApiService.getSearchHistory(context);
+      final response = await ApiService.getSearchHistory();
 
       if (response.success && response.data != null) {
         // 缓存数据
@@ -517,7 +519,7 @@ class PageCacheService
     const cacheKey = 'search_history';
 
     try {
-      final response = await ApiService.getSearchHistory(context);
+      final response = await ApiService.getSearchHistory();
 
       if (response.success && response.data != null) {
         // 更新缓存数据
@@ -536,7 +538,7 @@ class PageCacheService
       await LocalModeStorageService.addSearchHistory(query);
       return DataOperationResult.success(null);
     }
-    
+
     // 优先操作缓存
     const cacheKey = 'search_history';
     final cachedData = getCache<List<String>>(cacheKey);
@@ -554,7 +556,7 @@ class PageCacheService
         final existingItem = cachedData[existingIndex];
         final updatedHistory = [
           existingItem,
-          ...cachedData.where((item) => item != query).toList()
+          ...cachedData.where((item) => item != query)
         ];
         setCache(cacheKey, updatedHistory);
       }
@@ -564,7 +566,7 @@ class PageCacheService
     }
 
     try {
-      final response = await ApiService.addSearchHistory(query, context);
+      final response = await ApiService.addSearchHistory(query);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -595,7 +597,7 @@ class PageCacheService
     }
 
     try {
-      final response = await ApiService.deleteSearchHistory(query, context);
+      final response = await ApiService.deleteSearchHistory(query);
       if (response.success) {
         return DataOperationResult.success(null);
       } else {
@@ -619,7 +621,7 @@ class PageCacheService
     clearCache('search_history');
 
     try {
-      final response = await ApiService.clearSearchHistory(context);
+      final response = await ApiService.clearSearchHistory();
       if (response.success) {
         return DataOperationResult.success(null);
       } else {

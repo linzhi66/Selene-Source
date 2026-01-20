@@ -143,6 +143,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   VoidCallback? _exitWebFullscreenCallback;
   final Pip _pip = Pip();
   bool _isPipMode = false;
+  // Store the observer instance so it can be unregistered later.
+  PipStateChangedObserver? _pipObserver;
 
   // 视频宽高和全屏状态监听
   final ValueNotifier<BoxFit> _videoFit = ValueNotifier<BoxFit>(BoxFit.contain);
@@ -417,7 +419,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
-    _pip.registerStateChangedObserver(PipStateChangedObserver(
+    // Create and keep a reference to the observer so we can unregister the exact
+    // same instance later. Not keeping the instance can leave native side holding
+    // a callback to a Dart closure that may be collected, causing FFI crashes.
+    _pipObserver = PipStateChangedObserver(
       onPipStateChanged: (state, error) {
         if (!mounted) return;
         switch (state) {
@@ -446,7 +451,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             break;
         }
       },
-    ));
+    );
+    try {
+      _pip.registerStateChangedObserver(_pipObserver!);
+    } catch (e) {
+      debugPrint('Failed to register PiP observer: $e');
+    }
   }
 
   Future<void> _enterPipMode() async {
@@ -468,6 +478,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<void> _externalDispose() async {
     if (!mounted || _playerDisposed) {
       return;
+    }
+    // Ensure PiP observer is unregistered before disposing the pip instance.
+    if ((Platform.isAndroid || Platform.isIOS) && _pipObserver != null) {
+      try {
+        // The pip API unregisters the previously registered observer without
+        // requiring the instance as an argument. Call the no-arg method to
+        // ensure native callbacks are cancelled before disposing the pip
+        // instance.
+        _pip.unregisterStateChangedObserver();
+      } catch (e) {
+        debugPrint('Failed to unregister PiP observer: $e');
+      }
+      _pipObserver = null;
     }
     await _disposePlayer();
   }
@@ -510,7 +533,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     if (Platform.isAndroid || Platform.isIOS) {
-      _pip.unregisterStateChangedObserver();
+      if (_pipObserver != null) {
+        try {
+          _pip.unregisterStateChangedObserver();
+        } catch (e) {
+          debugPrint('Failed to unregister PiP observer during dispose: $e');
+        }
+        _pipObserver = null;
+      }
       _pip.dispose();
     }
     _disposePlayer();

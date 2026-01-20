@@ -29,6 +29,9 @@ class ScreenActivity : FlutterActivity() {
         private const val CHANNEL = "io.flutter.selene/orientation"
     }
 
+    // 持有 MethodChannel 的引用，以便在 Activity 销毁时移除 handler，避免 native 在销毁后回调 Dart
+    private var orientationChannel: MethodChannel? = null
+
     /**
      * 配置 Flutter 引擎并设置屏幕方向控制方法调用处理器
      * <p> 该方法用于配置 Flutter 引擎, 并注册一个方法调用处理器来处理来自 Dart 端的屏幕方向设置请求
@@ -43,29 +46,40 @@ class ScreenActivity : FlutterActivity() {
      */
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "setPortraitLandscape" -> {
-                        // 请求竖屏和横屏
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                        result.success(null)
-                    }
-
-                    "setPortraitOnly" -> {
-                        // 仅请求竖屏
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        result.success(null)
-                    }
-
-                    "setLandscapeOnly" -> {
-                        // 仅请求横屏
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                        result.success(null)
-                    }
-
-                    else -> result.notImplemented()
+        orientationChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        orientationChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setPortraitLandscape" -> {
+                    // 请求竖屏和横屏
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                    result.success(null)
                 }
+
+                "setPortraitOnly" -> {
+                    // 仅请求竖屏
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    result.success(null)
+                }
+
+                "setLandscapeOnly" -> {
+                    // 仅请求横屏
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    result.success(null)
+                }
+
+                else -> result.notImplemented()
             }
+        }
+    }
+
+    override fun onDestroy() {
+        // 在 Activity 销毁时清除 handler，防止 native 端在 Activity 被回收后仍尝试回调 Dart
+        try {
+            orientationChannel?.setMethodCallHandler(null)
+        } catch (e: Exception) {
+            // Ignore failures during teardown
+        }
+        orientationChannel = null
+        super.onDestroy()
     }
 }

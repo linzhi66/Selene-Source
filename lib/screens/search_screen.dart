@@ -1,23 +1,25 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import '../services/page_cache_service.dart';
-import '../services/theme_service.dart';
-import '../services/sse_search_service.dart';
+
 import '../models/search_result.dart';
 import '../models/video_info.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
+import '../services/page_cache_service.dart';
+import '../services/sse_search_service.dart';
+import '../services/theme_service.dart';
+import '../utils/device_utils.dart';
+import '../utils/font_utils.dart';
 import '../widgets/custom_switch.dart';
 import '../widgets/favorites_grid.dart';
-import '../widgets/search_result_agg_grid.dart';
-import '../widgets/search_results_grid.dart';
 import '../widgets/filter_options_selector.dart';
 import '../widgets/filter_pill_hover.dart';
 import '../widgets/main_layout.dart';
-import '../utils/font_utils.dart';
-import '../utils/device_utils.dart';
+import '../widgets/search_result_agg_grid.dart';
+import '../widgets/search_results_grid.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 import 'player_screen.dart';
 
 enum SortOrder { none, asc, desc }
@@ -38,7 +40,7 @@ class _SearchScreenState extends State<SearchScreen>
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   List<String> _searchHistory = [];
-  List<SearchResult> _searchResults = [];
+  final List<SearchResult> _searchResults = [];
   bool _hasSearched = false;
   bool _hasReceivedStart = false; // 是否已收到start消息
   String? _searchError;
@@ -246,8 +248,8 @@ class _SearchScreenState extends State<SearchScreen>
       await PageCacheService().refreshSearchHistory(context);
 
       // 重新获取搜索历史数据
-      final result = await PageCacheService().getSearchHistory(context);
       if (mounted) {
+        final result = await PageCacheService().getSearchHistory(context);
         setState(() {
           _searchHistory = result.success ? (result.data ?? []) : [];
         });
@@ -319,7 +321,7 @@ class _SearchScreenState extends State<SearchScreen>
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFe74c3c).withOpacity(0.1),
+                      color: const Color(0xFFe74c3c).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -562,14 +564,16 @@ class _SearchScreenState extends State<SearchScreen>
               ],
             ),
           ),
-          currentBottomNavIndex: -1, // 不选中任何底部导航项
+          currentBottomNavIndex: -1,
+          // 不选中任何底部导航项
           onBottomNavChanged: (index) {
             // 点击底部导航时关闭搜索页面
             Navigator.pop(context);
           },
           selectedTopTab: '',
           onTopTabChanged: (tab) {},
-          showBottomNav: false, // 不显示底部导航栏
+          showBottomNav: false,
+          // 不显示底部导航栏
           isSearchMode: true,
           searchController: _searchController,
           searchFocusNode: _searchFocusNode,
@@ -785,7 +789,7 @@ class _SearchScreenState extends State<SearchScreen>
                           themeService.isDarkMode
                               ? const Color(0xFF1e1e1e)
                               : Colors.white,
-                          const Color(0xFFe74c3c).withOpacity(0.2),
+                          const Color(0xFFe74c3c).withValues(alpha: 0.2),
                           animationValue,
                         )!;
 
@@ -893,7 +897,8 @@ class _SearchScreenState extends State<SearchScreen>
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.2),
                                           blurRadius: 2,
                                           offset: const Offset(0, 1),
                                         ),
@@ -930,10 +935,10 @@ class _SearchScreenState extends State<SearchScreen>
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFe74c3c).withOpacity(0.1),
+        color: const Color(0xFFe74c3c).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFe74c3c).withOpacity(0.3),
+          color: const Color(0xFFe74c3c).withValues(alpha: 0.3),
           width: 1,
         ),
       ),

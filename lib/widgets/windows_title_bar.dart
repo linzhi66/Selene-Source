@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../services/theme_service.dart';
 
 class WindowsTitleBar extends StatefulWidget {
   final bool forceBlack;
   final Color? customBackgroundColor;
   final String? title;
-  
+
   const WindowsTitleBar({
     super.key,
     this.forceBlack = false,
@@ -25,20 +26,20 @@ class _WindowsTitleBarState extends State<WindowsTitleBar> {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         final isDark = themeService.isDarkMode;
-        
+
         // 优先使用自定义背景色，其次使用 forceBlack，最后使用默认颜色
         final backgroundColor = widget.customBackgroundColor ??
             (widget.forceBlack
                 ? Colors.transparent
-                : (isDark 
+                : (isDark
                     ? const Color(0xFF1e1e1e).withValues(alpha: 0.9)
                     : Colors.white.withValues(alpha: 0.8)));
-        
+
         // Windows 11 风格的文字和图标颜色
-        final foregroundColor = widget.forceBlack 
+        final foregroundColor = widget.forceBlack
             ? Colors.white
             : (isDark ? Colors.white : const Color(0xFF202020));
-        
+
         return Container(
           height: 40,
           decoration: BoxDecoration(
@@ -138,17 +139,17 @@ class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
   @override
   Widget build(BuildContext context) {
     Color? backgroundColor;
-    
+
     if (_isPressed) {
       backgroundColor = widget.isCloseButton
           ? const Color(0xFF8B0000) // 深红色
-          : (widget.isDark 
+          : (widget.isDark
               ? Colors.white.withValues(alpha: 0.1)
               : Colors.black.withValues(alpha: 0.06));
     } else if (_isHovered) {
       backgroundColor = widget.isCloseButton
           ? const Color(0xFFE81123) // Windows 11 红色
-          : (widget.isDark 
+          : (widget.isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.04));
     }
@@ -170,7 +171,7 @@ class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
           color: backgroundColor ?? Colors.transparent,
           child: Center(
             child: widget.isCloseButton && _isHovered
-                ? Icon(
+                ? const Icon(
                     Icons.close,
                     size: 16,
                     color: Colors.white,

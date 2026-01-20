@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../services/theme_service.dart';
 
 class ShimmerEffect extends StatefulWidget {
@@ -86,4 +87,3 @@ class _ShimmerEffectState extends State<ShimmerEffect>
     );
   }
 }
-

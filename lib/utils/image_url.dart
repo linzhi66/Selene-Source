@@ -8,7 +8,7 @@ import '../services/user_data_service.dart';
 Future<String> getImageUrl(String originalUrl, String? source) async {
   if (source == 'douban' && originalUrl.isNotEmpty) {
     final imageSourceKey = await UserDataService.getDoubanImageSourceKey();
-    
+
     switch (imageSourceKey) {
       case 'official_cdn':
         return originalUrl.replaceAll(
@@ -44,11 +44,10 @@ Map<String, String>? getImageRequestHeaders(String imageUrl, String? source) {
     // 常见可用的 Referer 和 UA，避免 403 或 Android 解码失败
     return <String, String>{
       'Referer': 'https://movie.douban.com/',
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+      'User-Agent':
+          'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
       'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
     };
   }
   return null;
 }
-
-
