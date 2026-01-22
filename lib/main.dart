@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show HttpOverrides, Platform;
 
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
@@ -15,13 +15,16 @@ import 'services/local_mode_storage_service.dart';
 import 'services/subscription_service.dart';
 import 'services/theme_service.dart';
 import 'services/user_data_service.dart';
+import 'utils/http_overrides.dart';
 
+// 应用程序入口点
 void main() async {
+  // 全局禁用证书校验（仅开发使用）
+  HttpOverrides.global = CustomizeHttpOverrides();
+  // 初始化 Flutter
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 初始化 media_kit (用于 PC 端播放器)
+  // 初始化 media_kit
   MediaKit.ensureInitialized();
-
   // 初始化 macOS 窗口配置
   if (Platform.isMacOS) {
     await WindowManipulator.initialize(enableWindowDelegate: true);
@@ -31,16 +34,13 @@ void main() async {
     // 隐藏标题栏中的 Title
     await WindowManipulator.hideTitle();
   }
-
   // 初始化豆瓣缓存服务
   final cacheService = DoubanCacheService();
   await cacheService.init();
-
   // 启动定期清理
   cacheService.startPeriodicCleanup();
-
+  //
   runApp(const SeleneApp());
-
   // 初始化 Windows 窗口配置
   if (Platform.isWindows) {
     doWhenWindowReady(() {
@@ -56,6 +56,7 @@ void main() async {
   }
 }
 
+// 主应用程序组件
 class SeleneApp extends StatelessWidget {
   const SeleneApp({super.key});
 
@@ -91,6 +92,7 @@ class SeleneApp extends StatelessWidget {
   }
 }
 
+// 应用程序包装组件，负责检查登录状态并导航到相应页面
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});
 
@@ -98,6 +100,7 @@ class AppWrapper extends StatefulWidget {
   State<AppWrapper> createState() => _AppWrapperState();
 }
 
+// 应用程序包装组件状态类
 class _AppWrapperState extends State<AppWrapper> {
   bool _isLoading = true;
 
@@ -111,7 +114,6 @@ class _AppWrapperState extends State<AppWrapper> {
     try {
       // 检查是否是本地模式
       final isLocalMode = await UserDataService.getIsLocalMode();
-
       if (isLocalMode) {
         // 本地模式：尝试刷新订阅内容
         try {
@@ -140,7 +142,6 @@ class _AppWrapperState extends State<AppWrapper> {
         } catch (e) {
           // 刷新失败也继续进入首页
         }
-
         // 无论刷新成功与否，都进入首页
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -148,10 +149,8 @@ class _AppWrapperState extends State<AppWrapper> {
           );
         }
       }
-
       // 检查是否有自动登录所需的数据
       final hasAutoLoginData = await UserDataService.hasAutoLoginData();
-
       if (!hasAutoLoginData) {
         // 如果没有自动登录数据，直接进入登录页
         if (mounted) {
@@ -161,10 +160,8 @@ class _AppWrapperState extends State<AppWrapper> {
         }
         return;
       }
-
       // 服务器模式：尝试自动登录
       final loginResult = await ApiService.autoLogin();
-
       if (mounted) {
         if (loginResult.success) {
           // 自动登录成功，进入首页
@@ -243,7 +240,6 @@ class _AppWrapperState extends State<AppWrapper> {
         },
       );
     }
-
     return const LoginScreen();
   }
 }
