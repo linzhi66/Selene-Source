@@ -45,10 +45,9 @@ void main() async {
   if (Platform.isWindows) {
     doWhenWindowReady(() {
       final win = appWindow;
-      const initialSize = Size(1024, 600);
-      const minSize = Size(1024, 600);
-      win.minSize = minSize;
-      win.size = initialSize;
+      const size = Size(1024, 800);
+      win.size = size;
+      win.minSize = size;
       win.alignment = Alignment.center;
       win.title = "Selene";
       win.show();
