@@ -8,7 +8,7 @@ class PlayerEpisodesPanel extends StatefulWidget {
   final List<String> episodesTitles;
   final int currentEpisodeIndex;
   final bool isReversed;
-  final Function(int) onEpisodeTap;
+  final void Function(int) onEpisodeTap;
   final VoidCallback onToggleOrder;
   final int crossAxisCount;
 

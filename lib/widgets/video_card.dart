@@ -18,10 +18,10 @@ class VideoCard extends StatefulWidget {
   final VoidCallback? onTap;
   final String from; // 场景值：'favorite', 'playrecord', 'search', 'agg'
   final double? cardWidth; // 卡片宽度，用于响应式布局
-  final Function(VideoMenuAction)? onGlobalMenuAction; // 视频菜单操作回调
+  final void Function(VideoMenuAction)? onGlobalMenuAction; // 视频菜单操作回调
   final bool isFavorited; // 是否已收藏
   final List<SearchResult>? originalResults;
-  final Function(SearchResult)? onSourceSelected;
+  final void Function(SearchResult)? onSourceSelected;
 
   const VideoCard({
     super.key,
@@ -790,7 +790,7 @@ class _VideoCardState extends State<VideoCard> {
     final sources = widget.originalResults;
     if (sources == null || sources.isEmpty) return;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {

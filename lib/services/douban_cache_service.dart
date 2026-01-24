@@ -326,8 +326,8 @@ class DoubanCacheService {
   /// 定期清理过期缓存（建议在应用启动时调用）
   void startPeriodicCleanup() {
     // 每小时清理一次过期缓存
-    Stream.periodic(const Duration(hours: 1)).listen((_) {
-      _cleanExpiredCache();
+    Stream<void>.periodic(const Duration(hours: 1)).listen((_) async {
+      await _cleanExpiredCache();
     });
   }
 

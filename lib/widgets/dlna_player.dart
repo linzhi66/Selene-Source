@@ -30,11 +30,11 @@ class DLNAPlayer extends StatefulWidget {
   final bool isLastEpisode;
   final VoidCallback? onChangeDevice;
   final Duration? resumePosition;
-  final Function(Duration)? onStopCasting;
-  final Function(Duration position, Duration duration)? onProgressUpdate;
+  final void Function(Duration)? onStopCasting;
+  final void Function(Duration position, Duration duration)? onProgressUpdate;
   final VoidCallback? onPause;
   final VoidCallback? onReady;
-  final Function(DLNAPlayerController)? onControllerCreated;
+  final void Function(DLNAPlayerController)? onControllerCreated;
   final VoidCallback? onVideoCompleted;
 
   const DLNAPlayer({
@@ -65,6 +65,13 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
   bool _isPlaying = false;
   bool _isLoading = true;
   Duration _resumePosition = Duration.zero;
+
+  // Subscriptions may be assigned at runtime (depending on DLNA manager implementation).
+  // They are kept to allow cancellation and future use. Suppress unused-field analyzer warning.
+  // ignore: unused_field
+  StreamSubscription<Duration>? _positionSub;
+  // ignore: unused_field
+  StreamSubscription<bool>? _playingSub;
 
   @override
   void initState() {
@@ -145,7 +152,7 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
             _position.inSeconds >= _duration.inSeconds - 1 &&
             _isPlaying) {
           debugPrint('DLNA视频播放完成');
-          widget.device.pause();
+          await widget.device.pause();
           widget.onVideoCompleted?.call();
         }
       }
@@ -220,6 +227,8 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
   @override
   void dispose() {
     _statusTimer?.cancel();
+    _positionSub?.cancel();
+    _playingSub?.cancel();
     _restoreOrientation();
     super.dispose();
   }

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pip/pip.dart';
-
 import 'package:selene/widgets/mobile_player_controls.dart';
 import 'package:selene/widgets/pc_player_controls.dart';
 import 'package:selene/widgets/video_player_surface.dart';
@@ -15,21 +14,21 @@ class VideoPlayerWidget extends StatefulWidget {
   final String? url;
   final Map<String, String>? headers;
   final VoidCallback? onBackPressed;
-  final Function(VideoPlayerWidgetController)? onControllerCreated;
+  final void Function(VideoPlayerWidgetController)? onControllerCreated;
   final VoidCallback? onReady;
   final VoidCallback? onNextEpisode;
   final VoidCallback? onVideoCompleted;
   final VoidCallback? onPause;
   final bool isLastEpisode;
-  final Function(dynamic)? onCastStarted;
+  final void Function(dynamic)? onCastStarted;
   final String? videoTitle;
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
-  final Function(bool isWebFullscreen)? onWebFullscreenChanged;
+  final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
   final VoidCallback? onExitFullScreen;
   final bool live;
-  final Function(bool isPipMode)? onPipModeChanged;
+  final void Function(bool isPipMode)? onPipModeChanged;
 
   const VideoPlayerWidget({
     super.key,
@@ -143,6 +142,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   VoidCallback? _exitWebFullscreenCallback;
   final Pip _pip = Pip();
   bool _isPipMode = false;
+
   // Store the observer instance so it can be unregistered later.
   PipStateChangedObserver? _pipObserver;
 
@@ -489,7 +489,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         // requiring the instance as an argument. Call the no-arg method to
         // ensure native callbacks are cancelled before disposing the pip
         // instance.
-        _pip.unregisterStateChangedObserver();
+        await _pip.unregisterStateChangedObserver();
       } catch (e) {
         debugPrint('Failed to unregister PiP observer: $e');
       }
@@ -504,10 +504,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
     _playerDisposed = true;
     _sizeCheckTimer?.cancel();
-    _positionSubscription?.cancel();
-    _playingSubscription?.cancel();
-    _completedSubscription?.cancel();
-    _durationSubscription?.cancel();
+    await _positionSubscription?.cancel();
+    await _playingSubscription?.cancel();
+    await _completedSubscription?.cancel();
+    await _durationSubscription?.cancel();
     _progressListeners.clear();
     await _player?.dispose();
     _player = null;

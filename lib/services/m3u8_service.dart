@@ -67,7 +67,7 @@ class M3U8Service {
   /// 获取M3U8流的片段URL列表
   Future<List<String>> _getSegmentUrls(String m3u8Url) async {
     try {
-      final response = await _dio.get(m3u8Url);
+      final response = await _dio.get<String>(m3u8Url);
       final content = response.data as String;
       return _parseSegmentsFromContent(content, m3u8Url);
     } catch (e) {
@@ -129,7 +129,7 @@ class M3U8Service {
       final stopwatch = Stopwatch()..start();
 
       try {
-        await tempDio.head(url);
+        await tempDio.head<void>(url);
         stopwatch.stop();
         final latency = stopwatch.elapsedMilliseconds;
         return latency;
@@ -153,7 +153,7 @@ class M3U8Service {
   /// 从 M3U8 文件获取分辨率
   Future<Map<String, int>> _getResolutionFromM3U8(String m3u8Url) async {
     try {
-      final response = await _dio.get(m3u8Url);
+      final response = await _dio.get<String>(m3u8Url);
       final content = response.data as String;
       final lines = content.split('\n').map((line) => line.trim()).toList();
 
@@ -201,7 +201,7 @@ class M3U8Service {
       // 并发下载片段
       final futures = segmentsToTest.map((segmentUrl) async {
         try {
-          final response = await _dio.get(
+          final response = await _dio.get<Uint8List>(
             segmentUrl,
             options: Options(
               responseType: ResponseType.bytes,
@@ -498,7 +498,7 @@ class M3U8Service {
   /// 并发测速所有源并实时回调结果
   Future<void> testSourcesWithCallback(
     List<dynamic> allSources,
-    Function(String sourceId, Map<String, dynamic> speedData)
+    void Function(String sourceId, Map<String, dynamic> speedData)
         onSourceCompleted, {
     Duration timeout = const Duration(seconds: 5),
   }) async {

@@ -149,7 +149,7 @@ class _LiveScreenState extends State<LiveScreen>
     });
 
     // 开始旋转动画
-    _refreshIconController.repeat();
+    await _refreshIconController.repeat();
 
     try {
       LiveService.clearAllChannelsAndEpgCache();
@@ -452,7 +452,7 @@ class _LiveScreenState extends State<LiveScreen>
       );
     } else {
       // 移动端显示底部弹出
-      showModalBottomSheet(
+      showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
@@ -675,7 +675,7 @@ class _LiveScreenState extends State<LiveScreen>
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (context) => LivePlayerScreen(
               channel: channel,
               source: _currentSource!,

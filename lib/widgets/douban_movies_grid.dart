@@ -14,8 +14,8 @@ class DoubanMoviesGrid extends StatelessWidget {
   final List<DoubanMovie>? movies;
   final bool isLoading;
   final String? errorMessage;
-  final Function(VideoInfo) onVideoTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(VideoInfo) onVideoTap;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
   final String contentType; // 'movie' 或 'tv'
 
   const DoubanMoviesGrid({

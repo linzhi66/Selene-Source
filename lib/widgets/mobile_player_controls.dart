@@ -14,15 +14,15 @@ import 'package:volume_controller/volume_controller.dart';
 class MobilePlayerControls extends StatefulWidget {
   final Player player;
   final VideoState state;
-  final Function(bool) onControlsVisibilityChanged;
+  final void Function(bool) onControlsVisibilityChanged;
   final VoidCallback? onBackPressed;
-  final Function(bool) onFullscreenChange;
+  final void Function(bool) onFullscreenChange;
   final VoidCallback? onNextEpisode;
   final VoidCallback? onPause;
   final String videoUrl;
   final bool isLastEpisode;
   final bool isLoadingVideo;
-  final Function(dynamic)? onCastStarted;
+  final void Function(dynamic)? onCastStarted;
   final String? videoTitle;
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
@@ -64,7 +64,7 @@ class MobilePlayerControls extends StatefulWidget {
 }
 
 class _MobilePlayerControlsState extends State<MobilePlayerControls> {
-  final List<StreamSubscription> _subscriptions = [];
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _hideTimer;
   bool _controlsVisible = true;
   bool _isLongPressing = false;
@@ -428,11 +428,11 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       debugPrint('[Fullscreen] Failed while applying orientation/ui: $e');
     }
     // 进入全屏
-    widget.state.enterFullscreen();
+    await widget.state.enterFullscreen();
     widget.onFullscreenChange(true);
     // 仅在 Android 平台作为兜底，短暂重设一次方向，帮助某些机型稳定锁定
     if (Platform.isAndroid) {
-      await Future.delayed(const Duration(milliseconds: 30));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
       await _setScreenOrientation(shouldLockPortrait);
     }
     _onUserInteraction();
@@ -498,7 +498,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       for (var i = 0; i < maxAttempts; i++) {
         if (!mounted) return;
         // 等待一帧以让 MediaQuery 有机会更新
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
         if (!mounted) return;
         final ms = MediaQuery.of(context).size;
         final isPortraitNow = (ms.width / ms.height) < 1.0;
@@ -522,7 +522,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Future<void> _exitFullscreen() async {
     // 更新 UI 状态并触发回调
     widget.onFullscreenChange(false);
-    widget.state.exitFullscreen();
+    await widget.state.exitFullscreen();
     widget.onExitFullScreen?.call();
     // 恢复控制栏和计时器
     setState(() {
@@ -576,12 +576,12 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       widget.onPause?.call();
     }
     if (_isFullscreen) {
-      _exitFullscreen();
-      await Future.delayed(const Duration(milliseconds: 250));
+      await _exitFullscreen();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
     final resumePos = widget.player.state.position;
     if (!mounted) return;
-    await showDialog(
+    await showDialog<void>(
       context: context,
       builder: (context) => DLNADeviceDialog(
         currentUrl: widget.videoUrl,
@@ -907,7 +907,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
             onTap: () async {
               _onUserInteraction();
               if (!widget.live) {
-                widget.player.pause();
+                await widget.player.pause();
               }
               await _showDLNADialog();
             },
@@ -1307,7 +1307,7 @@ class _MobileVideoProgressBar extends StatefulWidget {
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final VoidCallback? onDragUpdate;
-  final Function(Duration)? onPositionUpdate;
+  final void Function(Duration)? onPositionUpdate;
   final Duration? dragPosition;
   final bool isSeekingViaSwipe;
   final bool live;
@@ -1401,7 +1401,7 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
                 await widget.player.seek(seekPosition);
 
                 // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-                await Future.delayed(const Duration(milliseconds: 100));
+                await Future<void>.delayed(const Duration(milliseconds: 100));
 
                 if (mounted) {
                   setState(() {
@@ -1428,7 +1428,7 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
               await widget.player.seek(seekPosition);
 
               // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-              await Future.delayed(const Duration(milliseconds: 100));
+              await Future<void>.delayed(const Duration(milliseconds: 100));
 
               if (mounted) {
                 setState(() {

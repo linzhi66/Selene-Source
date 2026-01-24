@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:selene/models/search_resource.dart';
 import 'package:selene/models/search_result.dart';
 import 'package:selene/services/api_service.dart';
@@ -14,7 +13,7 @@ import 'package:selene/services/user_data_service.dart';
 /// SSE 搜索服务
 class SSESearchService {
   http.Client? _client;
-  StreamSubscription? _subscription;
+  StreamSubscription<http.StreamedResponse>? _subscription;
   StreamController<List<SearchResult>>? _incrementalResultsController;
   StreamController<String>? _errorController;
   StreamController<SearchProgress>? _progressController;
@@ -189,13 +188,13 @@ class SSESearchService {
     // 检查是否启用本地搜索或本地模式
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
-      localSearch(query);
+      await localSearch(query);
       return;
     }
 
     final isLocalSearch = await UserDataService.getLocalSearch();
     if (isLocalSearch) {
-      localSearch(query);
+      await localSearch(query);
       return;
     }
 
@@ -232,7 +231,7 @@ class SSESearchService {
 
       _subscription = _client!.send(request).asStream().listen(
         _handleSSEResponse,
-        onError: (error) {
+        onError: (dynamic error) {
           // 静默处理连接关闭错误，不显示给用户
           final errorString = error.toString().toLowerCase();
           if (errorString.contains('connection closed') ||

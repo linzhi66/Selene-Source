@@ -141,8 +141,8 @@ class _UserMenuState extends State<UserMenu> {
 
     // 跳转到登录页，并移除所有之前的路由（强制销毁所有页面）
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      await Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (context) => const LoginScreen()),
         (route) => false,
       );
     }
@@ -331,7 +331,7 @@ class _UserMenuState extends State<UserMenu> {
 
   void _showOptionDialog(String title, String currentValue,
       List<String> options, Future<void> Function(String) onChanged) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -405,7 +405,7 @@ class _UserMenuState extends State<UserMenu> {
   void _showM3u8ProxyUrlDialog() {
     final controller = TextEditingController(text: _m3u8ProxyUrl);
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

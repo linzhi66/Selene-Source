@@ -58,7 +58,7 @@ class BangumiRating {
 
   factory BangumiRating.fromJson(Map<String, dynamic> json) {
     // 安全地转换 count Map，确保值是整数
-    final countData = json['count'] ?? {};
+    final countData = json['count'] ?? <String, dynamic>{};
     final Map<String, int> safeCount = {};
     if (countData is Map) {
       countData.forEach((key, value) {

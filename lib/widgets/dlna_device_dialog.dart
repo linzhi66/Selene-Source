@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 class DLNADeviceDialog extends StatefulWidget {
   final String currentUrl;
-  final Function(DLNADevice)? onCastStarted;
+  final void Function(DLNADevice)? onCastStarted;
   final DLNADevice? currentDevice;
   final Duration? resumePosition;
   final String? videoTitle;
@@ -351,7 +351,7 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
   }
 
   void _showConnectionDialog(DLNADevice device) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('投屏'),
@@ -391,8 +391,8 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
       debugPrint('formattedTitle: $formattedTitle');
       debugPrint(
           'widget.resumePosition: ${widget.resumePosition?.inSeconds ?? 0}秒');
-      device.setUrl(widget.currentUrl, title: formattedTitle);
-      device.play();
+      await device.setUrl(widget.currentUrl, title: formattedTitle);
+      await device.play();
 
       if (mounted) {
         Navigator.of(context).pop(); // 关闭连接对话框

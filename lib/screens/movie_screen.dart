@@ -428,7 +428,7 @@ class _MovieScreenState extends State<MovieScreen> {
   void _onVideoTap(VideoInfo videoInfo) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => PlayerScreen(
           title: videoInfo.title,
           stype: 'movie',
@@ -700,7 +700,7 @@ class _MovieScreenState extends State<MovieScreen> {
     String title,
     List<SelectorOption> items,
     String selectedValue,
-    Function(String) onItemSelected,
+    void Function(String) onItemSelected,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

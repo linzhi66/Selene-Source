@@ -64,7 +64,7 @@ linter:
     prefer_single_quotes: true  # 统一使用单引号
     lines_longer_than_80_chars: false  # 现代显示器可放宽
     # 性能关键
-    avoid_slow_async_io: true
+    avoid_slow_async_io: false
     avoid_type_to_string: true
     iterable_contains_unrelated_type: true
     # 安全增强

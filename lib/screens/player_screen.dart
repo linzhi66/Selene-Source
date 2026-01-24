@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:selene/models/douban_movie.dart';
 import 'package:selene/models/play_record.dart';
 import 'package:selene/models/search_result.dart';
@@ -289,7 +288,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
 
     // 延时 1 秒后隐藏加载界面
-    Future.delayed(const Duration(seconds: 1), () {
+    Future<void>.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -555,7 +554,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       PageCacheService().savePlayRecord(playRecord, context).then((_) {
         debugPrint(
             '保存播放进度 [场景: $scene]: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: $playTime秒');
-      }).catchError((e) {
+      }).catchError((dynamic e) {
         debugPrint('保存播放进度失败 [场景: $scene]: $e');
       });
     } catch (e) {
@@ -1187,7 +1186,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final currentUrl = currentDetail!.episodes[currentEpisodeIndex];
 
     // 显示设备选择对话框
-    await showDialog(
+    await showDialog<void>(
       context: context,
       builder: (context) => DLNADeviceDialog(
         currentUrl: currentUrl,
@@ -1486,7 +1485,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _onRecommendTap(DoubanRecommendItem recommend) {
     // 投屏状态下，弹窗提示用户先关闭投屏
     if (_isCasting) {
-      showDialog(
+      showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('提示'),
@@ -1510,7 +1509,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 跳转到新的播放页，只传递title参数
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => PlayerScreen(
           title: recommend.title,
         ),
@@ -1798,7 +1797,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1899,7 +1898,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -2166,7 +2165,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -2218,7 +2217,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       setState(() {
         _isRefreshing = true;
       });
-      _refreshAnimationController.repeat();
+      await _refreshAnimationController.repeat();
     }
 
     try {
@@ -3047,78 +3046,77 @@ class _EpisodeCardWithHoverState extends State<_EpisodeCardWithHover> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: (DeviceUtils.isPC() && !widget.isCurrentEpisode)
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
-      onEnter: (_) {
-        if (DeviceUtils.isPC() && !widget.isCurrentEpisode) {
-          setState(() => _isHovering = true);
-        }
-      },
-      onExit: (_) {
-        if (DeviceUtils.isPC()) {
-          setState(() => _isHovering = false);
-        }
-      },
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.isCurrentEpisode
-                ? Colors.green.withValues(alpha: 0.2)
-                : (_isHovering && DeviceUtils.isPC()
-                    ? (widget.isDarkMode
-                        ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
-                        : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
-                    : (widget.isDarkMode
-                        ? Colors.grey[700]
-                        : Colors.grey[300])),
-            borderRadius: BorderRadius.circular(8),
-            border: widget.isCurrentEpisode
-                ? Border.all(color: Colors.green, width: 2)
-                : null,
-          ),
-          child: Stack(
-            children: [
-              // 左上角集数
-              Positioned(
-                top: 4,
-                left: 6,
-                child: Text(
-                  '${widget.episodeIndex + 1}',
-                  style: TextStyle(
-                    color: widget.isCurrentEpisode
-                        ? Colors.green
-                        : (widget.isDarkMode ? Colors.white : Colors.black),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              // 中间集数名称
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
+        cursor: (DeviceUtils.isPC() && !widget.isCurrentEpisode)
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
+        onEnter: (_) {
+          if (DeviceUtils.isPC() && !widget.isCurrentEpisode) {
+            setState(() => _isHovering = true);
+          }
+        },
+        onExit: (_) {
+          if (DeviceUtils.isPC()) {
+            setState(() => _isHovering = false);
+          }
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: widget.isCurrentEpisode
+                  ? Colors.green.withValues(alpha: 0.2)
+                  : (_isHovering && DeviceUtils.isPC()
+                      ? (widget.isDarkMode
+                          ? const Color(0xFF1A3D2E) // 深色模式下的浅绿色
+                          : const Color(0xFFE8F5E9)) // 浅色模式下的浅绿色
+                      : (widget.isDarkMode
+                          ? Colors.grey[700]
+                          : Colors.grey[300])),
+              borderRadius: BorderRadius.circular(8),
+              border: widget.isCurrentEpisode
+                  ? Border.all(color: Colors.green, width: 2)
+                  : null,
+            ),
+            child: Stack(
+              children: [
+                // 左上角集数
+                Positioned(
+                  top: 4,
+                  left: 6,
                   child: Text(
-                    widget.episodeTitle,
+                    '${widget.episodeIndex + 1}',
                     style: TextStyle(
                       color: widget.isCurrentEpisode
                           ? Colors.green
                           : (widget.isDarkMode ? Colors.white : Colors.black),
-                      fontSize: 13,
+                      fontSize: 10,
                       fontWeight: FontWeight.w400,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-            ],
+                // 中间集数名称
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
+                    child: Text(
+                      widget.episodeTitle,
+                      style: TextStyle(
+                        color: widget.isCurrentEpisode
+                            ? Colors.green
+                            : (widget.isDarkMode ? Colors.white : Colors.black),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }
 

@@ -299,7 +299,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   /// 显示清空确认弹窗
   void _showClearConfirmation() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return Consumer<ThemeService>(
@@ -429,11 +429,11 @@ class _SearchScreenState extends State<SearchScreen>
         }
       } else {
         // 异常时异步刷新搜索历史以恢复数据
-        _refreshSearchHistory();
+        await _refreshSearchHistory();
       }
     } catch (e) {
       // 异常时异步刷新搜索历史以恢复数据
-      _refreshSearchHistory();
+      await _refreshSearchHistory();
     }
   }
 
@@ -472,11 +472,11 @@ class _SearchScreenState extends State<SearchScreen>
         }
       } else {
         // API调用失败，异步刷新搜索历史以恢复数据
-        _refreshSearchHistory();
+        await _refreshSearchHistory();
       }
     } catch (e) {
       // 异常时异步刷新搜索历史以恢复数据
-      _refreshSearchHistory();
+      await _refreshSearchHistory();
     }
   }
 
@@ -1107,7 +1107,7 @@ class _SearchScreenState extends State<SearchScreen>
                           onSourceSelected: (SearchResult result) {
                             Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                MaterialPageRoute<void>(
                                     builder: (context) => PlayerScreen(
                                           source: result.source,
                                           id: result.id,
@@ -1227,7 +1227,7 @@ class _SearchScreenState extends State<SearchScreen>
 
           Navigator.push(
               context,
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                   builder: (context) => PlayerScreen(
                         title: videoInfo.title,
                         stitle: stitle,
@@ -1238,7 +1238,7 @@ class _SearchScreenState extends State<SearchScreen>
           // 非聚合卡片，传递完整信息
           Navigator.push(
               context,
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                   builder: (context) => PlayerScreen(
                         source: videoInfo.source,
                         id: videoInfo.id,
@@ -1337,7 +1337,7 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           );
         }
-        _refreshFavorites();
+        await _refreshFavorites();
       }
     } catch (e) {
       // 显示错误提示
@@ -1357,7 +1357,7 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         );
       }
-      _refreshFavorites();
+      await _refreshFavorites();
     }
   }
 
@@ -1395,7 +1395,7 @@ class _SearchScreenState extends State<SearchScreen>
           );
         }
         // API失败时重新刷新缓存以恢复数据
-        _refreshFavorites();
+        await _refreshFavorites();
       }
     } catch (e) {
       // 显示错误提示
@@ -1416,7 +1416,7 @@ class _SearchScreenState extends State<SearchScreen>
         );
       }
       // 异常时重新刷新缓存以恢复数据
-      _refreshFavorites();
+      await _refreshFavorites();
     }
   }
 
@@ -1566,7 +1566,7 @@ class _SearchScreenState extends State<SearchScreen>
       );
     } else {
       // 移动端显示底部弹出
-      showModalBottomSheet(
+      showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,

@@ -12,8 +12,8 @@ import 'package:selene/widgets/video_card.dart';
 import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 class FavoritesGrid extends StatefulWidget {
-  final Function(PlayRecord) onVideoTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(PlayRecord) onVideoTap;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const FavoritesGrid({
     super.key,
@@ -92,7 +92,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
   Future<void> _refreshDataInBackground() async {
     try {
       // 分别刷新收藏夹和播放记录数据
-      final futures = <Future>[];
+      final futures = <Future<void>>[];
 
       // 刷新收藏夹数据
       futures.add(_refreshFavorites());

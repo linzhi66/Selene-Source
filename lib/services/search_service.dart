@@ -29,7 +29,7 @@ class SearchService {
     if (_cachedResources != null) {
       // 异步刷新缓存（不等待）
       if (!_isRefreshing) {
-        _refreshCache();
+        await _refreshCache();
       }
       return _cachedResources!;
     }
@@ -43,7 +43,7 @@ class SearchService {
     if (_isRefreshing) {
       // 如果正在刷新，等待当前刷新完成
       while (_isRefreshing) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
       return _cachedResources ?? [];
     }

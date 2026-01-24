@@ -143,7 +143,7 @@ class _AppWrapperState extends State<AppWrapper> {
         // 无论刷新成功与否，都进入首页
         if (mounted) {
           await Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute<void>(builder: (context) => const HomeScreen()),
           );
         }
       }
@@ -164,7 +164,7 @@ class _AppWrapperState extends State<AppWrapper> {
         if (loginResult.success) {
           // 自动登录成功，进入首页
           await Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute<void>(builder: (context) => const HomeScreen()),
           );
         } else {
           // 自动登录失败，进入登录页

@@ -8,9 +8,9 @@ import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 热门剧集组件
 class HotTvSection extends StatefulWidget {
-  final Function(PlayRecord)? onTvTap;
+  final void Function(PlayRecord)? onTvTap;
   final VoidCallback? onMoreTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const HotTvSection({
     super.key,

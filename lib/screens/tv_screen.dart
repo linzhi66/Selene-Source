@@ -463,7 +463,7 @@ class _TvScreenState extends State<TvScreen> {
   void _onVideoTap(VideoInfo videoInfo) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => PlayerScreen(
           title: videoInfo.title,
           year: videoInfo.year,
@@ -737,7 +737,7 @@ class _TvScreenState extends State<TvScreen> {
     String title,
     List<SelectorOption> items,
     String selectedValue,
-    Function(String) onItemSelected,
+    void Function(String) onItemSelected,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

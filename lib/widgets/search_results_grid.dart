@@ -15,8 +15,8 @@ import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 class SearchResultsGrid extends StatefulWidget {
   final List<SearchResult> results;
   final ThemeService themeService;
-  final Function(VideoInfo)? onVideoTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(VideoInfo)? onVideoTap;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
   final bool hasReceivedStart;
 
   const SearchResultsGrid({

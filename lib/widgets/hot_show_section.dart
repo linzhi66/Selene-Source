@@ -8,9 +8,9 @@ import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 热门综艺组件
 class HotShowSection extends StatefulWidget {
-  final Function(PlayRecord)? onShowTap;
+  final void Function(PlayRecord)? onShowTap;
   final VoidCallback? onMoreTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const HotShowSection({
     super.key,

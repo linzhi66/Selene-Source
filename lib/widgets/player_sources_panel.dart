@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-
 import 'package:selene/models/search_result.dart';
 import 'package:selene/utils/device_utils.dart';
 
@@ -22,7 +21,7 @@ class PlayerSourcesPanel extends StatefulWidget {
   final String currentSource;
   final String currentId;
   final Map<String, SourceSpeed> sourcesSpeed;
-  final Function(SearchResult) onSourceTap;
+  final void Function(SearchResult) onSourceTap;
   final Future<void> Function() onRefresh;
   final String videoCover;
   final String videoTitle;

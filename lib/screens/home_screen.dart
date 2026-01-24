@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 检查应用更新
   void _checkForUpdates() async {
     // 延迟3秒后检查更新，避免影响页面加载
-    await Future.delayed(const Duration(seconds: 3));
+    await Future<void>.delayed(const Duration(seconds: 3));
 
     try {
       final versionInfo = await VersionService.checkForUpdate();
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
         if (shouldShow && mounted) {
-          UpdateDialog.show(context, versionInfo);
+          await UpdateDialog.show(context, versionInfo);
         }
       }
     } catch (e) {
@@ -85,9 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshCacheOnHomeEnter() async {
     try {
       final cacheService = PageCacheService();
-
       // 异步刷新播放记录缓存
-      cacheService.refreshPlayRecords(context).then((_) {
+      await cacheService.refreshPlayRecords(context).then((_) {
         // 刷新成功后通知继续观看组件和播放历史组件更新UI
         if (mounted) {
           ContinueWatchingSection.refreshPlayRecords();
@@ -96,21 +95,21 @@ class _HomeScreenState extends State<HomeScreen> {
       }).catchError((e) {
         // 静默处理错误
       });
-
-      // 异步刷新收藏夹缓存
-      cacheService.refreshFavorites(context).then((_) {
-        // 刷新成功后通知收藏夹组件更新UI
-        if (mounted) {
+      if (mounted) {
+        // 异步刷新收藏夹缓存
+        await cacheService.refreshFavorites(context).then((_) {
+          // 刷新成功后通知收藏夹组件更新UI
           FavoritesGrid.refreshFavorites();
-        }
-      }).catchError((e) {
-        // 静默处理错误
-      });
-
-      // 异步刷新搜索历史缓存
-      cacheService.refreshSearchHistory(context).catchError((e) {
-        // 静默处理错误
-      });
+        }).catchError((e) {
+          // 静默处理错误
+        });
+      }
+      if (mounted) {
+        // 异步刷新搜索历史缓存
+        await cacheService.refreshSearchHistory(context).catchError((e) {
+          // 静默处理错误
+        });
+      }
     } catch (e) {
       // 静默处理错误，不影响首页正常显示
     }
@@ -476,7 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (Platform.isIOS) {
       Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => const SearchScreen(),
         ),
       ).then((_) {
@@ -486,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       Navigator.push(
         context,
-        PageRouteBuilder(
+        PageRouteBuilder<void>(
           pageBuilder: (context, animation, secondaryAnimation) =>
               const SearchScreen(),
           transitionDuration: Duration.zero, // 无打开动画
@@ -664,7 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       // 异步刷新播放记录缓存
       if (mounted) {
-        _refreshPlayRecordsCache();
+        await _refreshPlayRecordsCache();
       }
     }
   }
@@ -683,10 +682,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _navigateToPlayer(Widget playerScreen) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => playerScreen),
+      MaterialPageRoute<void>(builder: (context) => playerScreen),
     );
 
-    _refreshOnResume();
+    await _refreshOnResume();
   }
 
   /// 从播放页返回时刷新播放记录
@@ -694,9 +693,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 通知继续观看组件和播放历史组件更新UI
       if (mounted) {
-        ContinueWatchingSection.refreshPlayRecords();
-        HistoryGrid.refreshHistory();
-        FavoritesGrid.refreshFavorites();
+        await ContinueWatchingSection.refreshPlayRecords();
+        await HistoryGrid.refreshHistory();
+        await FavoritesGrid.refreshFavorites();
       }
     } catch (e) {
       // 刷新失败，静默处理
@@ -744,7 +743,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         }
-        _refreshFavorites();
+        await _refreshFavorites();
       }
     } catch (e) {
       // 显示错误提示
@@ -764,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }
-      _refreshFavorites();
+      await _refreshFavorites();
     }
   }
 
@@ -803,7 +802,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
         // API失败时重新刷新缓存以恢复数据
-        _refreshFavorites();
+        await _refreshFavorites();
       }
     } catch (e) {
       // 显示错误提示
@@ -824,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
       // 异常时重新刷新缓存以恢复数据
-      _refreshFavorites();
+      await _refreshFavorites();
     }
   }
 
@@ -833,9 +832,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 刷新收藏夹缓存数据
       await PageCacheService().refreshFavorites(context);
-
       // 通知收藏夹组件刷新UI
-      FavoritesGrid.refreshFavorites();
+      await FavoritesGrid.refreshFavorites();
     } catch (e) {
       // 错误处理，静默处理
     }

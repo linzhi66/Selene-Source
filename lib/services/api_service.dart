@@ -69,7 +69,8 @@ class ApiService {
     final String cleanBaseUrl = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    final String cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final String cleanEndpoint =
+        endpoint.startsWith('/') ? endpoint : '/$endpoint';
 
     return '$cleanBaseUrl$cleanEndpoint';
   }

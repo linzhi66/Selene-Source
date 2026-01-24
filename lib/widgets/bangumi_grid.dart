@@ -14,8 +14,8 @@ class BangumiGrid extends StatelessWidget {
   final List<BangumiItem>? bangumiItems;
   final bool isLoading;
   final String? errorMessage;
-  final Function(VideoInfo) onVideoTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(VideoInfo) onVideoTap;
+  final void Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
   final String contentType; // 'anime' 或其他
 
   const BangumiGrid({

@@ -11,8 +11,8 @@ import 'package:selene/widgets/video_card.dart';
 import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 class HistoryGrid extends StatefulWidget {
-  final Function(PlayRecord) onVideoTap;
-  final Function(PlayRecord, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(PlayRecord) onVideoTap;
+  final void Function(PlayRecord, VideoMenuAction)? onGlobalMenuAction;
 
   const HistoryGrid({
     super.key,

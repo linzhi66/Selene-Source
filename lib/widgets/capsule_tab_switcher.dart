@@ -8,7 +8,7 @@ import 'package:selene/utils/font_utils.dart';
 class CapsuleTabSwitcher extends StatefulWidget {
   final List<String> tabs;
   final String selectedTab;
-  final Function(String) onTabChanged;
+  final void Function(String) onTabChanged;
 
   const CapsuleTabSwitcher({
     super.key,

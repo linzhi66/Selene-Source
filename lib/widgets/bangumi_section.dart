@@ -9,9 +9,10 @@ import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 新番放送组件
 class BangumiSection extends StatefulWidget {
-  final Function(PlayRecord)? onBangumiTap;
+  final void Function(PlayRecord)? onBangumiTap;
   final VoidCallback? onMoreTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction; // 全局菜单操作回调
+  final void Function(VideoInfo, VideoMenuAction)?
+      onGlobalMenuAction; // 全局菜单操作回调
 
   const BangumiSection({
     super.key,

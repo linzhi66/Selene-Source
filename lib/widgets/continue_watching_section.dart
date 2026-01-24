@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-
 import 'package:selene/models/play_record.dart';
 import 'package:selene/models/video_info.dart';
 import 'package:selene/services/page_cache_service.dart';
@@ -18,8 +17,8 @@ import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 继续观看组件
 class ContinueWatchingSection extends StatefulWidget {
-  final Function(PlayRecord)? onVideoTap;
-  final Function(PlayRecord, VideoMenuAction)? onGlobalMenuAction;
+  final void Function(PlayRecord)? onVideoTap;
+  final void Function(PlayRecord, VideoMenuAction)? onGlobalMenuAction;
   final VoidCallback? onViewAll;
 
   const ContinueWatchingSection({
@@ -190,7 +189,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
         });
 
         // 预加载图片
-        _preloadImages(cachedRecords);
+        await _preloadImages(cachedRecords);
       } else {
         if (mounted) {
           setState(() {
@@ -245,7 +244,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
           if (mounted) {
             await precacheImage(provider, context)
                 .timeout(const Duration(seconds: 12))
-                .catchError((e) {
+                .catchError((dynamic e) {
               debugPrint('precacheImage failed for $imageUrl: $e');
             });
           }
@@ -259,7 +258,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   /// 显示清空确认弹窗
   void _showClearConfirmation() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return Consumer<ThemeService>(
@@ -582,7 +581,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       onEnter: (_) {
         setState(() => _isHovered = true);
         // 延迟检查以确保滚动控制器已初始化
-        Future.delayed(const Duration(milliseconds: 50), _checkScroll);
+        Future<void>.delayed(const Duration(milliseconds: 50), _checkScroll);
       },
       onExit: (_) => setState(() => _isHovered = false),
       child: Stack(
@@ -878,9 +877,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
           setState(() {
             _playRecords = cachedRecords;
           });
-
           // 预加载新图片
-          _preloadImages(cachedRecords);
+          await _preloadImages(cachedRecords);
         }
       }
     } catch (e) {

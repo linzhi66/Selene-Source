@@ -16,17 +16,17 @@ import 'package:selene/widgets/windows_title_bar.dart';
 class MainLayout extends StatefulWidget {
   final Widget content;
   final int currentBottomNavIndex;
-  final Function(int) onBottomNavChanged;
+  final void Function(int) onBottomNavChanged;
   final String selectedTopTab;
-  final Function(String) onTopTabChanged;
+  final void Function(String) onTopTabChanged;
   final bool isSearchMode;
   final VoidCallback? onSearchTap;
   final VoidCallback? onHomeTap;
   final TextEditingController? searchController;
   final FocusNode? searchFocusNode;
   final String? searchQuery;
-  final Function(String)? onSearchQueryChanged;
-  final Function(String)? onSearchSubmitted;
+  final void Function(String)? onSearchQueryChanged;
+  final void Function(String)? onSearchSubmitted;
   final VoidCallback? onClearSearch;
   final bool showBottomNav;
 
@@ -429,7 +429,7 @@ class _MainLayoutState extends State<MainLayout> {
                   widget.onSearchTap?.call();
 
                   // 延迟重置按钮状态，防止快速重复点击
-                  Future.delayed(const Duration(milliseconds: 300), () {
+                  Future<void>.delayed(const Duration(milliseconds: 300), () {
                     if (mounted) {
                       setState(() {
                         _isSearchButtonPressed = false;
@@ -935,7 +935,8 @@ class _MainLayoutState extends State<MainLayout> {
             final Map<String, dynamic> item = entry.value;
             final bool isSelected =
                 !widget.isSearchMode && widget.currentBottomNavIndex == index;
-            final bool isHovered = DeviceUtils.isPC() && _hoveredNavIndex == index;
+            final bool isHovered =
+                DeviceUtils.isPC() && _hoveredNavIndex == index;
 
             return [
               MouseRegion(

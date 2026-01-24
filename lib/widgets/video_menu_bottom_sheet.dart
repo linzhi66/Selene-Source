@@ -90,11 +90,11 @@ enum VideoMenuAction {
 class VideoMenuBottomSheet extends StatefulWidget {
   final VideoInfo videoInfo;
   final bool isFavorited; // 是否已收藏
-  final Function(VideoMenuAction) onActionSelected;
+  final void Function(VideoMenuAction) onActionSelected;
   final VoidCallback onClose;
   final String from; // 来源场景
   final List<SearchResult>? originalResults;
-  final Function(SearchResult)? onSourceSelected;
+  final void Function(SearchResult)? onSourceSelected;
 
   const VideoMenuBottomSheet({
     super.key,
@@ -112,12 +112,12 @@ class VideoMenuBottomSheet extends StatefulWidget {
     BuildContext context, {
     required VideoInfo videoInfo,
     required bool isFavorited,
-    required Function(VideoMenuAction) onActionSelected,
+    required void Function(VideoMenuAction) onActionSelected,
     String from = 'playrecord',
     List<SearchResult>? originalResults,
-    Function(SearchResult)? onSourceSelected,
+    void Function(SearchResult)? onSourceSelected,
   }) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       enableDrag: false,
@@ -1874,7 +1874,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
     final sources = widget.originalResults;
     if (sources == null || sources.isEmpty) return;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {

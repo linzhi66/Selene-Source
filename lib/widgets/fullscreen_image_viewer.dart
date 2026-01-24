@@ -34,7 +34,7 @@ class FullscreenImageViewer extends StatefulWidget {
     required String title,
   }) {
     Navigator.of(context).push(
-      PageRouteBuilder(
+      PageRouteBuilder<void>(
         opaque: false,
         pageBuilder: (context, animation, secondaryAnimation) =>
             FullscreenImageViewer(
@@ -62,7 +62,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
 
   /// 显示保存图片选择菜单
   void _showSaveImageMenu() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Consumer<ThemeService>(
@@ -160,7 +160,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
 
       if (!granted && mounted) {
         // 权限被拒绝，引导用户到设置页面
-        showDialog(
+        await showDialog<void>(
           context: context,
           builder: (context) => Consumer<ThemeService>(
             builder: (context, themeService, child) {

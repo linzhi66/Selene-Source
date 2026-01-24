@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
 import 'package:selene/models/epg_program.dart';
 import 'package:selene/models/live_channel.dart';
 import 'package:selene/models/live_source.dart';
@@ -261,7 +260,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     }
 
     // 延迟执行，确保列表已经渲染
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
       if (!_programScrollController.hasClients) {
         return;
       }
@@ -848,24 +847,23 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
 
   Widget _buildDefaultLogo(ThemeService themeService) {
     return SizedBox(
-      height: 56,
-      child: AspectRatio(
-        aspectRatio: 2.0,
-        child: Container(
-          decoration: BoxDecoration(
-            color: themeService.isDarkMode
-                ? const Color(0xFF2a2a2a)
-                : const Color(0xFFc0c0c0),
-            borderRadius: BorderRadius.circular(8),
+        height: 56,
+        child: AspectRatio(
+          aspectRatio: 2.0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: themeService.isDarkMode
+                  ? const Color(0xFF2a2a2a)
+                  : const Color(0xFFc0c0c0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.tv,
+              size: 24,
+              color: Color(0xFF95a5b0),
+            ),
           ),
-          child: const Icon(
-            Icons.tv,
-            size: 24,
-            color: Color(0xFF95a5b0),
-          ),
-        ),
-      ),
-    );
+        ));
   }
 
   Widget _buildDefaultLogoIcon() {
@@ -1144,7 +1142,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       );
     } else {
       // 移动端显示底部弹出
-      showModalBottomSheet(
+      showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
@@ -1366,7 +1364,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     final playerHeight = screenWidth / (16 / 9);
     final panelHeight = screenHeight - statusBarHeight - playerHeight;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1692,22 +1690,21 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     }
 
     return SizedBox(
-      height: 88,
-      child: ListView.builder(
-        controller: _programScrollController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _programs!.length,
-        itemBuilder: (context, index) {
-          final program = _programs![index];
-          return _buildProgramItem(
-            program,
-            themeService,
-            key: program.isLive ? _currentProgramKey : null,
-          );
-        },
-      ),
-    );
+        height: 88,
+        child: ListView.builder(
+          controller: _programScrollController,
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: _programs!.length,
+          itemBuilder: (context, index) {
+            final program = _programs![index];
+            return _buildProgramItem(
+              program,
+              themeService,
+              key: program.isLive ? _currentProgramKey : null,
+            );
+          },
+        ));
   }
 
   Widget _buildProgramItem(

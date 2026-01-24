@@ -132,8 +132,8 @@ class DLNAPlayerControls extends StatefulWidget {
   final bool isLastEpisode;
   final VoidCallback? onPlayPause;
   final VoidCallback? onStop;
-  final Function(Duration)? onSeek;
-  final Function(double)? onVolumeChange;
+  final void Function(Duration)? onSeek;
+  final void Function(double)? onVolumeChange;
   final VoidCallback? onChangeDevice;
 
   const DLNAPlayerControls({

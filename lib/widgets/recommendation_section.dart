@@ -17,8 +17,9 @@ class RecommendationSection extends StatefulWidget {
   final String? moreText; // 查看更多文本
   final VoidCallback? onMoreTap; // 查看更多点击回调
   final List<VideoInfo>? videoInfos; // 视频信息列表
-  final Function(VideoInfo)? onItemTap; // 项目点击回调
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction; // 全局菜单操作回调
+  final void Function(VideoInfo)? onItemTap; // 项目点击回调
+  final void Function(VideoInfo, VideoMenuAction)?
+      onGlobalMenuAction; // 全局菜单操作回调
   final bool isLoading; // 是否加载中
   final bool hasError; // 是否有错误
   final VoidCallback? onRetry; // 重试回调

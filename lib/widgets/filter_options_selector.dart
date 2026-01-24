@@ -21,9 +21,9 @@ void showFilterOptionsSelector({
   if (DeviceUtils.isPC()) {
     // PC端显示居中对话框 - 紧凑4列设计
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -103,7 +103,7 @@ void showFilterOptionsSelector({
     );
   } else {
     // 移动端显示底部弹出
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,

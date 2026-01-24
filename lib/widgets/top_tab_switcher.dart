@@ -7,7 +7,7 @@ import 'package:selene/utils/font_utils.dart';
 
 class TopTabSwitcher extends StatefulWidget {
   final String selectedTab;
-  final Function(String) onTabChanged;
+  final void Function(String) onTabChanged;
 
   const TopTabSwitcher({
     super.key,
@@ -217,7 +217,8 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
 
               if (label == '首页') {
                 // 首页按钮：动画值为0时选中
-                final double progress = 1.0 - (_animation.value * 2).clamp(0.0, 1.0);
+                final double progress =
+                    1.0 - (_animation.value * 2).clamp(0.0, 1.0);
                 textColor = Color.lerp(
                   themeService.isDarkMode
                       ? const Color(0xFFb0b0b0)

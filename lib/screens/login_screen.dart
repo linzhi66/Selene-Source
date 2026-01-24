@@ -343,8 +343,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // 跳转到首页，并清除所有路由栈（强制销毁所有旧页面）
             if (mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              await Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute<void>(
+                    builder: (context) => const HomeScreen()),
                 (route) => false,
               );
             }
@@ -492,8 +493,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // 跳转到首页，并清除所有路由栈（强制销毁所有旧页面）
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          await Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute<void>(builder: (context) => const HomeScreen()),
             (route) => false,
           );
         }

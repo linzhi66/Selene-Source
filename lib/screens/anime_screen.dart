@@ -511,7 +511,7 @@ class _AnimeScreenState extends State<AnimeScreen> {
       // 剧场版，传递 title 和 stype=movie
       Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => PlayerScreen(
             title: videoInfo.title,
             stype: 'movie',
@@ -523,7 +523,7 @@ class _AnimeScreenState extends State<AnimeScreen> {
       // 每日放送或番剧，只传递 title
       Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => PlayerScreen(
             title: videoInfo.title,
             year: videoInfo.year,
@@ -870,7 +870,7 @@ class _AnimeScreenState extends State<AnimeScreen> {
     String title,
     List<SelectorOption> items,
     String selectedValue,
-    Function(String) onItemSelected,
+    void Function(String) onItemSelected,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

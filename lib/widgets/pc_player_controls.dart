@@ -60,14 +60,14 @@ class PCPlayerControls extends StatefulWidget {
   final String videoUrl;
   final bool isLastEpisode;
   final bool isLoadingVideo;
-  final Function(dynamic)? onCastStarted;
+  final void Function(dynamic)? onCastStarted;
   final String? videoTitle;
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
-  final Function(bool isFullscreen)? onDLNAButtonPressed;
-  final Function(bool isWebFullscreen)? onWebFullscreenChanged;
-  final Function(VoidCallback)? onExitWebFullscreenCallbackReady;
+  final void Function(bool isFullscreen)? onDLNAButtonPressed;
+  final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
+  final void Function(VoidCallback)? onExitWebFullscreenCallbackReady;
   final VoidCallback? onExitFullScreen;
   final bool live;
   final ValueNotifier<double> playbackSpeedListenable;
@@ -109,8 +109,8 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   bool _isSeekingViaSwipe = false;
   double _swipeStartX = 0;
   Duration _swipeStartPosition = Duration.zero;
-  StreamSubscription? _playingSubscription;
-  StreamSubscription? _positionSubscription;
+  StreamSubscription<dynamic>? _playingSubscription;
+  StreamSubscription<dynamic>? _positionSubscription;
   bool _isFullscreen = false;
   bool _isWebFullscreen = false;
   bool _showSpeedMenu = false;
@@ -396,7 +396,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   Future<void> _showDLNADialog() async {
     if (widget.player.state.playing) {
       if (!widget.live) {
-        widget.player.pause();
+        await widget.player.pause();
       }
       widget.onPause?.call();
     }
@@ -416,7 +416,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
     final resumePos = widget.player.state.position;
 
     if (mounted) {
-      await showDialog(
+      await showDialog<void>(
         context: context,
         builder: (context) => DLNADeviceDialog(
           currentUrl: widget.videoUrl,
@@ -841,7 +841,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   _isHoveringVolumeButton = false;
                                 });
                                 // 延迟检查是否需要隐藏菜单
-                                Future.delayed(
+                                Future<void>.delayed(
                                     const Duration(milliseconds: 100), () {
                                   if (!mounted) return;
                                   if (mounted &&
@@ -908,7 +908,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   _isHoveringSpeedButton = false;
                                 });
                                 // 延迟检查是否需要隐藏菜单
-                                Future.delayed(
+                                Future<void>.delayed(
                                     const Duration(milliseconds: 100), () {
                                   if (!mounted) return;
                                   if (mounted &&
@@ -1033,7 +1033,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
             _isHoveringSpeedMenu = false;
           });
           // 延迟检查是否需要隐藏菜单
-          Future.delayed(const Duration(milliseconds: 100), () {
+          Future<void>.delayed(const Duration(milliseconds: 100), () {
             if (!mounted) return;
             if (mounted && !_isHoveringSpeedButton && !_isHoveringSpeedMenu) {
               setState(() {
@@ -1106,137 +1106,142 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
     final menuTop = buttonPosition.dy - menuHeight - (_isFullscreen ? 2 : 36);
 
     return Positioned(
-      left: menuLeft,
-      top: menuTop,
-      child: MouseRegion(
-        onEnter: (_) {
-          if (!mounted) return;
-          setState(() {
-            _isHoveringVolumeMenu = true;
-          });
-          _hideTimer?.cancel();
-        },
-        onExit: (_) {
-          if (!mounted) return;
-          setState(() {
-            _isHoveringVolumeMenu = false;
-          });
-          // 延迟检查是否需要隐藏菜单
-          Future.delayed(const Duration(milliseconds: 100), () {
+        left: menuLeft,
+        top: menuTop,
+        child: MouseRegion(
+          onEnter: (_) {
             if (!mounted) return;
-            if (!_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
-              setState(() {
-                _showVolumeMenu = false;
-              });
-              _startHideTimer();
-            }
-          });
-        },
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: menuWidth,
-            height: menuHeight,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
+            setState(() {
+              _isHoveringVolumeMenu = true;
+            });
+            _hideTimer?.cancel();
+          },
+          onExit: (_) {
+            if (!mounted) return;
+            setState(() {
+              _isHoveringVolumeMenu = false;
+            });
+            // 延迟检查是否需要隐藏菜单
+            Future<void>.delayed(const Duration(milliseconds: 100), () {
+              if (!mounted) return;
+              if (!_isHoveringVolumeButton && !_isHoveringVolumeMenu) {
+                setState(() {
+                  _showVolumeMenu = false;
+                });
+                _startHideTimer();
+              }
+            });
+          },
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: menuWidth,
+              height: menuHeight,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.85),
+                borderRadius:
+                    BorderRadius.circular(effectiveFullscreen ? 8 : 6),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
               ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 音量百分比显示
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      '${currentVolume.round()}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: effectiveFullscreen ? 14 : 12,
-                        fontWeight: FontWeight.bold,
+              child: ClipRRect(
+                borderRadius:
+                    BorderRadius.circular(effectiveFullscreen ? 8 : 6),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 音量百分比显示
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        '${currentVolume.round()}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: effectiveFullscreen ? 14 : 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
 
-                  // 垂直音量滑块
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8.0, horizontal: 12.0),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onVerticalDragStart: (details) {
-                              final localY = details.localPosition.dy;
-                              final volume =
-                                  ((1 - (localY / constraints.maxHeight)) * 100)
-                                      .clamp(0.0, 100.0);
-                              widget.player.setVolume(volume);
-                              if (mounted) setState(() {});
-                            },
-                            onVerticalDragUpdate: (details) {
-                              final localY = details.localPosition.dy;
-                              final volume =
-                                  ((1 - (localY / constraints.maxHeight)) * 100)
-                                      .clamp(0.0, 100.0);
-                              widget.player.setVolume(volume);
-                              if (mounted) setState(() {});
-                            },
-                            onTapDown: (details) {
-                              final localY = details.localPosition.dy;
-                              final volume =
-                                  ((1 - (localY / constraints.maxHeight)) * 100)
-                                      .clamp(0.0, 100.0);
-                              widget.player.setVolume(volume);
-                              if (mounted) setState(() {});
-                            },
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // 背景轨道
-                                Container(
-                                  width: effectiveFullscreen ? 5 : 4,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(
-                                        effectiveFullscreen ? 2.5 : 2),
-                                    color: Colors.white.withValues(alpha: 0.3),
+                    // 垂直音量滑块
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8.0, horizontal: 12.0),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onVerticalDragStart: (details) {
+                                final localY = details.localPosition.dy;
+                                final volume =
+                                    ((1 - (localY / constraints.maxHeight)) *
+                                            100)
+                                        .clamp(0.0, 100.0);
+                                widget.player.setVolume(volume);
+                                if (mounted) setState(() {});
+                              },
+                              onVerticalDragUpdate: (details) {
+                                final localY = details.localPosition.dy;
+                                final volume =
+                                    ((1 - (localY / constraints.maxHeight)) *
+                                            100)
+                                        .clamp(0.0, 100.0);
+                                widget.player.setVolume(volume);
+                                if (mounted) setState(() {});
+                              },
+                              onTapDown: (details) {
+                                final localY = details.localPosition.dy;
+                                final volume =
+                                    ((1 - (localY / constraints.maxHeight)) *
+                                            100)
+                                        .clamp(0.0, 100.0);
+                                widget.player.setVolume(volume);
+                                if (mounted) setState(() {});
+                              },
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // 背景轨道
+                                  Container(
+                                    width: effectiveFullscreen ? 5 : 4,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(
+                                          effectiveFullscreen ? 2.5 : 2),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.3),
+                                    ),
                                   ),
-                                ),
-                                // 音量指示器
-                                Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: FractionallySizedBox(
-                                    heightFactor: currentVolume / 100,
-                                    child: Container(
-                                      width: effectiveFullscreen ? 5 : 4,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                            effectiveFullscreen ? 2.5 : 2),
-                                        color: Colors.red,
+                                  // 音量指示器
+                                  Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: FractionallySizedBox(
+                                      heightFactor: currentVolume / 100,
+                                      child: Container(
+                                        width: effectiveFullscreen ? 5 : 4,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                              effectiveFullscreen ? 2.5 : 2),
+                                          color: Colors.red,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   Widget _buildPositionIndicator() {
@@ -1323,7 +1328,7 @@ class CustomVideoProgressBar extends StatefulWidget {
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final VoidCallback? onDragUpdate;
-  final Function(Duration)? onPositionUpdate;
+  final void Function(Duration)? onPositionUpdate;
   final Duration? dragPosition;
   final bool isSeekingViaSwipe;
   final bool live;
@@ -1349,7 +1354,7 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
   double _dragValue = 0.0;
   bool _isHoveringThumb = false;
   bool _isSeeking = false; // 新增：标记是否正在 seek
-  StreamSubscription? _positionSubscription;
+  StreamSubscription<dynamic>? _positionSubscription;
 
   @override
   void initState() {
@@ -1421,7 +1426,8 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
                     await widget.player.seek(seekPosition);
 
                     // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-                    await Future.delayed(const Duration(milliseconds: 100));
+                    await Future<void>.delayed(
+                        const Duration(milliseconds: 100));
 
                     if (mounted) {
                       setState(() {
@@ -1448,7 +1454,7 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
                   await widget.player.seek(seekPosition);
 
                   // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
-                  await Future.delayed(const Duration(milliseconds: 100));
+                  await Future<void>.delayed(const Duration(milliseconds: 100));
 
                   if (mounted) {
                     setState(() {
