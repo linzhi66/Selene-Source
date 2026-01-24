@@ -1,4 +1,4 @@
-# 分析器配置 - 优化版
+# 分析器配置
 # 文档: https://dart.dev/guides/language/analysis-options
 # 继承 Flutter 官方推荐规则
 include: package:flutter_lints/flutter.yaml
