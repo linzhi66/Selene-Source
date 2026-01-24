@@ -4,23 +4,22 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-
-import '../models/search_result.dart';
-import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
-import '../services/sse_search_service.dart';
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import '../widgets/custom_switch.dart';
-import '../widgets/favorites_grid.dart';
-import '../widgets/filter_options_selector.dart';
-import '../widgets/filter_pill_hover.dart';
-import '../widgets/main_layout.dart';
-import '../widgets/search_result_agg_grid.dart';
-import '../widgets/search_results_grid.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
-import 'player_screen.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/screens/player_screen.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/services/sse_search_service.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/custom_switch.dart';
+import 'package:selene/widgets/favorites_grid.dart';
+import 'package:selene/widgets/filter_options_selector.dart';
+import 'package:selene/widgets/filter_pill_hover.dart';
+import 'package:selene/widgets/main_layout.dart';
+import 'package:selene/widgets/search_result_agg_grid.dart';
+import 'package:selene/widgets/search_results_grid.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 enum SortOrder { none, asc, desc }
 
@@ -1490,8 +1489,8 @@ class _SearchScreenState extends State<SearchScreen>
   Widget _buildFilterPill(String title, List<SelectorOption> options,
       String selectedValue, ValueChanged<String> onSelected,
       {bool isFirst = false}) {
-    bool isDefault = selectedValue == 'all';
-    bool isHovered = _hoveredFilterPill == title;
+    final bool isDefault = selectedValue == 'all';
+    final bool isHovered = _hoveredFilterPill == title;
 
     return MouseRegion(
       cursor: DeviceUtils.isPC() ? SystemMouseCursors.click : MouseCursor.defer,
@@ -1681,7 +1680,7 @@ class _SearchScreenState extends State<SearchScreen>
         break;
     }
 
-    bool isDefault = _yearSortOrder == SortOrder.none;
+    final bool isDefault = _yearSortOrder == SortOrder.none;
 
     return MouseRegion(
       cursor: DeviceUtils.isPC() ? SystemMouseCursors.click : MouseCursor.defer,

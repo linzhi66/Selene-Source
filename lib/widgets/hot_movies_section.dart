@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../models/douban_movie.dart';
-import '../models/play_record.dart';
-import '../models/video_info.dart';
-import '../services/douban_service.dart';
-import 'recommendation_section.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/douban_service.dart';
+import 'package:selene/widgets/recommendation_section.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 热门电影组件
 class HotMoviesSection extends StatefulWidget {

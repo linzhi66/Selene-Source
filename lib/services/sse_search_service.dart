@@ -4,12 +4,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/search_resource.dart';
-import '../models/search_result.dart';
-import 'api_service.dart';
-import 'downstream_service.dart';
-import 'local_mode_storage_service.dart';
-import 'user_data_service.dart';
+import 'package:selene/models/search_resource.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/downstream_service.dart';
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/user_data_service.dart';
 
 /// SSE 搜索服务
 class SSESearchService {

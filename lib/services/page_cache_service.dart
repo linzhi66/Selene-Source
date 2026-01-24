@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../models/douban_movie.dart';
-import '../models/favorite_item.dart';
-import '../models/play_record.dart';
-import 'api_service.dart';
-import 'data_operation_interface.dart';
-import 'douban_service.dart';
-import 'local_mode_storage_service.dart';
-import 'user_data_service.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/favorite_item.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/data_operation_interface.dart';
+import 'package:selene/services/douban_service.dart';
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/user_data_service.dart';
 
 /// 页面缓存服务 - 单例模式
 class PageCacheService

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/theme_service.dart';
-import '../utils/font_utils.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/font_utils.dart';
 
 /// 自定义下拉刷新指示器
 class CustomRefreshIndicator extends StatelessWidget {

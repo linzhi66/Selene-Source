@@ -5,7 +5,7 @@ import 'package:dlna_dart/xmlParser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'dlna_player_controls.dart';
+import 'package:selene/widgets/dlna_player_controls.dart';
 
 /// DLNAPlayer 的控制器，用于外部控制播放器
 class DLNAPlayerController {
@@ -112,7 +112,7 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
       final transportStr = await widget.device.getTransportInfo();
       final t = TransportInfoParser(transportStr);
 
-      _isPlaying = t.CurrentTransportState == "PLAYING";
+      _isPlaying = t.CurrentTransportState == 'PLAYING';
 
       // 检查进度是否发生变化
       final positionChanged = newPosition != _position;

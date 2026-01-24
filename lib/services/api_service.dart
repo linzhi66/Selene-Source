@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/epg_program.dart';
-import '../models/favorite_item.dart';
-import '../models/live_channel.dart';
-import '../models/live_source.dart';
-import '../models/play_record.dart';
-import '../models/search_resource.dart';
-import '../models/search_result.dart';
-import '../models/search_suggestion.dart';
-import 'user_data_service.dart';
+import 'package:selene/models/epg_program.dart';
+import 'package:selene/models/favorite_item.dart';
+import 'package:selene/models/live_channel.dart';
+import 'package:selene/models/live_source.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/search_resource.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/models/search_suggestion.dart';
+import 'package:selene/services/user_data_service.dart';
 
 /// API响应结果类
 class ApiResponse<T> {
@@ -66,10 +66,10 @@ class ApiService {
     }
 
     // 确保baseUrl不以/结尾，endpoint以/开头
-    String cleanBaseUrl = baseUrl.endsWith('/')
+    final String cleanBaseUrl = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    String cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final String cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
 
     return '$cleanBaseUrl$cleanEndpoint';
   }
@@ -539,7 +539,7 @@ class ApiService {
       if (baseUrl.endsWith('/')) {
         baseUrl = baseUrl.substring(0, baseUrl.length - 1);
       }
-      String loginUrl = '$baseUrl/api/login';
+      final String loginUrl = '$baseUrl/api/login';
 
       // 发送登录请求
       final response = await http
@@ -557,7 +557,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         // 解析并保存 cookies
-        String cookies = _parseCookies(response);
+        final String cookies = _parseCookies(response);
 
         // 更新 cookies
         await UserDataService.saveUserData(
@@ -771,7 +771,7 @@ class ApiService {
 
   /// 解析 Set-Cookie 头部
   static String _parseCookies(http.Response response) {
-    List<String> cookies = [];
+    final List<String> cookies = [];
 
     // 获取所有 Set-Cookie 头部
     final setCookieHeaders = response.headers['set-cookie'];

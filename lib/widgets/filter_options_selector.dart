@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../utils/device_utils.dart';
-import 'filter_pill_hover.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/widgets/filter_pill_hover.dart';
 
 /// 显示筛选选项的公共方法
 /// 在 PC 端显示居中对话框，在移动端显示底部弹出

@@ -1,28 +1,79 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
-#
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
-
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
+# 分析器配置 - 优化版
+# 文档: https://dart.dev/guides/language/analysis-options
+# 继承 Flutter 官方推荐规则
 include: package:flutter_lints/flutter.yaml
-
+# 自定义分析器行为
+analyzer:
+  # 排除生成的代码和构建产物
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"
+    - "lib/generated/**"
+    - "test/.test_coverage.dart"
+  # 严格类型推断（捕获隐式 dynamic）
+  language:
+    strict-inference: true
+    strict-raw-types: true
+  # 错误级别定制（将警告升级为错误）
+  errors:
+    # 必须修复的严重问题
+    missing_required_param: error
+    dead_code: error
+    unused_element: error
+    # 建议修复的问题
+    always_declare_return_types: warning
+    prefer_const_constructors: warning
+    # 临时忽略的规则（技术债务）
+    avoid_print: ignore
+# 自定义 Lint 规则
 linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+    # ========== 强制规则（必须启用）==========
+    always_declare_return_types: true
+    always_require_non_null_named_parameters: true
+    annotate_overrides: true
+    avoid_empty_else: true
+    avoid_unnecessary_containers: true
+    cancel_subscriptions: true
+    close_sinks: true
+    comment_references: true
+    deprecated_member_use_from_same_package: true
+    directives_ordering: true
+    no_duplicate_case_values: true
+    prefer_final_fields: true
+    prefer_final_locals: true
+    prefer_if_null_operators: true
+    sized_box_for_whitespace: true
+    sort_pub_dependencies: true
+    test_types_in_equals: true
+    throw_in_finally: true
+    unawaited_futures: true
+    unnecessary_brace_in_string_interps: true
+    unnecessary_const: true
+    unnecessary_new: true
+    use_build_context_synchronously: true
+    use_full_hex_values_for_flutter_colors: true
+    use_is_even_rather_than_modulo: true
+    use_key_in_widget_constructors: true
+    use_rethrow_when_possible: true
+    use_string_buffers: true
+    valid_regexps: true
+    # ========== 选择性规则（按项目需求）==========
+    # 代码风格
+    prefer_single_quotes: true  # 统一使用单引号
+    lines_longer_than_80_chars: false  # 现代显示器可放宽
+    # 性能关键
+    avoid_slow_async_io: true
+    avoid_type_to_string: true
+    iterable_contains_unrelated_type: true
+    # 安全增强
+    always_use_package_imports: true
+    avoid_relative_lib_imports: true
+    secure_pubspec_urls: true
+    # 禁用规则（谨慎使用）
+    # unnecessary_null_in_if_null_operators: false
+    # diagnostic_describe_all_properties: false
+# 机器可读格式配置（CI/CD 专用）
+machine:
+  format: json

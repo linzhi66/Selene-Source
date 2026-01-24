@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/screens/player_screen.dart';
+import 'package:selene/services/douban_service.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/capsule_tab_switcher.dart';
+import 'package:selene/widgets/custom_refresh_indicator.dart';
+import 'package:selene/widgets/douban_movies_grid.dart';
+import 'package:selene/widgets/filter_options_selector.dart';
+import 'package:selene/widgets/filter_pill_hover.dart';
+import 'package:selene/widgets/pulsing_dots_indicator.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../models/douban_movie.dart';
-import '../models/video_info.dart';
-import '../services/douban_service.dart';
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import '../widgets/capsule_tab_switcher.dart';
-import '../widgets/custom_refresh_indicator.dart';
-import '../widgets/douban_movies_grid.dart';
-import '../widgets/filter_options_selector.dart';
-import '../widgets/filter_pill_hover.dart';
-import '../widgets/pulsing_dots_indicator.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
-import 'player_screen.dart';
 
 class ShowScreen extends StatefulWidget {
   const ShowScreen({super.key});
@@ -694,7 +693,7 @@ class _ShowScreenState extends State<ShowScreen> {
       String selectedValue, ValueChanged<String> onSelected) {
     final selectedOption = options.firstWhere((e) => e.value == selectedValue,
         orElse: () => options.first);
-    bool isDefault =
+    final bool isDefault =
         selectedValue == 'all' || (title == '排序' && selectedValue == 'T');
 
     return FilterPillHover(

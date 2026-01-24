@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/favorite_item.dart';
-import '../models/play_record.dart';
+import 'package:selene/models/favorite_item.dart';
+import 'package:selene/models/play_record.dart';
 
 /// 数据操作类型枚举
 enum DataType {

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/services/version_service.dart';
+import 'package:selene/utils/font_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../services/theme_service.dart';
-import '../services/version_service.dart';
-import '../utils/font_utils.dart';
 
 class UpdateDialog extends StatelessWidget {
   final VersionInfo versionInfo;

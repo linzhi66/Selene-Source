@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../utils/device_utils.dart';
+import 'package:selene/utils/device_utils.dart';
 
 /// 切换播放源/集数时的加载蒙版组件
 class SwitchLoadingOverlay extends StatelessWidget {

@@ -1,5 +1,5 @@
-import 'search_result.dart';
-import 'video_info.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/models/video_info.dart';
 
 /// 聚合搜索结果数据模型
 class AggregatedSearchResult {
@@ -32,10 +32,10 @@ class AggregatedSearchResult {
     final type = result.episodes.length > 1 ? 'tv' : 'movie';
     final key = '${result.title}_${result.year}_$type';
 
-    Map<String, int> episodeCounts = {};
+    final Map<String, int> episodeCounts = {};
     episodeCounts[result.sourceName] = result.episodes.length;
 
-    Map<String, int> doubanIds = {};
+    final Map<String, int> doubanIds = {};
     if (result.doubanId != null && result.doubanId! > 0) {
       doubanIds[result.doubanId.toString()] = 1;
     }
@@ -92,7 +92,7 @@ class AggregatedSearchResult {
     if (episodeCounts.isEmpty) return 0;
 
     // 统计每个集数的出现次数
-    Map<int, int> countFrequency = {};
+    final Map<int, int> countFrequency = {};
     for (int count in episodeCounts.values) {
       countFrequency[count] = (countFrequency[count] ?? 0) + 1;
     }

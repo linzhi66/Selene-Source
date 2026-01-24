@@ -4,10 +4,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/douban_movie.dart';
-import 'api_service.dart';
-import 'douban_cache_service.dart';
-import 'user_data_service.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/douban_cache_service.dart';
+import 'package:selene/services/user_data_service.dart';
 
 /// 豆瓣推荐数据请求参数
 class DoubanRecommendsParams {
@@ -305,7 +305,7 @@ class DoubanService {
       }
 
       // 提取推荐区域
-      List<DoubanRecommendItem> recommends = [];
+      final List<DoubanRecommendItem> recommends = [];
       try {
         // 查找推荐区域
         final recommendationsRegex = RegExp(
@@ -631,16 +631,16 @@ class DoubanService {
       debugPrint('读取缓存失败: $e');
     }
     // 处理筛选参数，将 'all' 转换为空字符串
-    String category = params.category == 'all' ? '' : params.category;
-    String format = params.format == 'all' ? '' : params.format;
-    String region = params.region == 'all' ? '' : params.region;
-    String year = params.year == 'all' ? '' : params.year;
-    String platform = params.platform == 'all' ? '' : params.platform;
-    String label = params.label == 'all' ? '' : params.label;
-    String sort = params.sort == 'T' ? '' : params.sort;
+    final String category = params.category == 'all' ? '' : params.category;
+    final String format = params.format == 'all' ? '' : params.format;
+    final String region = params.region == 'all' ? '' : params.region;
+    final String year = params.year == 'all' ? '' : params.year;
+    final String platform = params.platform == 'all' ? '' : params.platform;
+    final String label = params.label == 'all' ? '' : params.label;
+    final String sort = params.sort == 'T' ? '' : params.sort;
 
     // 构建 selected_categories
-    Map<String, dynamic> selectedCategories = {'类型': category};
+    final Map<String, dynamic> selectedCategories = {'类型': category};
     if (format.isNotEmpty) {
       selectedCategories['形式'] = format;
     }
@@ -649,7 +649,7 @@ class DoubanService {
     }
 
     // 构建 tags 数组
-    List<String> tags = [];
+    final List<String> tags = [];
     if (category.isNotEmpty) {
       tags.add(category);
     }

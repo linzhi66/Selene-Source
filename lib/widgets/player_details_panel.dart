@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../models/douban_movie.dart';
-import '../models/search_result.dart';
-import '../utils/image_url.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/utils/image_url.dart';
 
 class PlayerDetailsPanel extends StatelessWidget {
   final ThemeData theme;

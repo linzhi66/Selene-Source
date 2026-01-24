@@ -1,11 +1,10 @@
 import 'dart:convert';
 
+import 'package:selene/models/favorite_item.dart';
+import 'package:selene/models/live_source.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/search_resource.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../models/favorite_item.dart';
-import '../models/live_source.dart';
-import '../models/play_record.dart';
-import '../models/search_resource.dart';
 
 /// 本地模式存储服务
 /// 用于持久化存储本地模式下的订阅信息、播放记录、收藏夹和搜索记录

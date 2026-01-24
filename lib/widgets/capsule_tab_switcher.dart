@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
 
 class CapsuleTabSwitcher extends StatefulWidget {
   final List<String> tabs;

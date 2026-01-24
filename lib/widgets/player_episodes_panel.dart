@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../utils/device_utils.dart';
+import 'package:selene/utils/device_utils.dart';
 
 class PlayerEpisodesPanel extends StatefulWidget {
   final ThemeData theme;

@@ -2,13 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../models/bangumi.dart';
-import '../models/video_info.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import 'shimmer_effect.dart';
-import 'video_card.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/bangumi.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/shimmer_effect.dart';
+import 'package:selene/widgets/video_card.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 class BangumiGrid extends StatelessWidget {
   final List<BangumiItem>? bangumiItems;

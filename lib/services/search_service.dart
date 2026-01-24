@@ -1,13 +1,12 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-
-import '../models/search_resource.dart';
-import '../models/search_result.dart';
-import '../services/local_mode_storage_service.dart';
-import '../services/user_data_service.dart';
-import 'api_service.dart';
-import 'downstream_service.dart';
+import 'package:selene/models/search_resource.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/downstream_service.dart';
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/user_data_service.dart';
 
 /// 搜索服务
 class SearchService {
@@ -198,8 +197,8 @@ class SearchService {
 
         // 分集之间 # 分割，标题和播放链接 $ 分割
         for (final url in vodPlayUrlArray) {
-          List<String> matchEpisodes = [];
-          List<String> matchTitles = [];
+          final List<String> matchEpisodes = [];
+          final List<String> matchTitles = [];
 
           final titleUrlArray = url.split('#');
 
@@ -352,7 +351,7 @@ class SearchService {
   static String _cleanHtmlTags(String text) {
     if (text.isEmpty) return '';
 
-    String cleanedText = text
+    final String cleanedText = text
         .replaceAll(RegExp(r'<[^>]+>'), '\n')
         .replaceAll(RegExp(r'\n+'), '\n')
         .replaceAll(RegExp(r'[ \t]+'), ' ')

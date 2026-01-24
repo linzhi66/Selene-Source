@@ -1,4 +1,4 @@
-import 'video_info.dart';
+import 'package:selene/models/video_info.dart';
 
 /// 搜索结果数据模型
 class SearchResult {

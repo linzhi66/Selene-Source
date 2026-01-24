@@ -6,9 +6,9 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pip/pip.dart';
 
-import 'mobile_player_controls.dart';
-import 'pc_player_controls.dart';
-import 'video_player_surface.dart';
+import 'package:selene/widgets/mobile_player_controls.dart';
+import 'package:selene/widgets/pc_player_controls.dart';
+import 'package:selene/widgets/video_player_surface.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final VideoPlayerSurface surface;
@@ -465,7 +465,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<void> _enterPipMode() async {
     debugPrint('_enterPipMode');
     try {
-      var support = await _pip.isSupported();
+      final support = await _pip.isSupported();
       if (!support) {
         debugPrint('Device does not support PiP!');
         return;

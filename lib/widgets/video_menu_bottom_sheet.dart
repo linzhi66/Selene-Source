@@ -4,18 +4,17 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/models/bangumi.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/bangumi_service.dart';
+import 'package:selene/services/douban_service.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/utils/image_url.dart';
+import 'package:selene/widgets/fullscreen_image_viewer.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../models/bangumi.dart';
-import '../models/douban_movie.dart';
-import '../models/search_result.dart';
-import '../models/video_info.dart';
-import '../services/bangumi_service.dart';
-import '../services/douban_service.dart';
-import '../services/theme_service.dart';
-import '../utils/font_utils.dart';
-import '../utils/image_url.dart';
-import 'fullscreen_image_viewer.dart';
 
 /// 判断是否为iOS平台
 bool get _isIOS {
@@ -348,7 +347,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
   /// 如果有豆瓣ID，则加载豆瓣详情
   void _loadDoubanDetailsIfNeeded() {
     final doubanId = widget.videoInfo.doubanId;
-    if (doubanId != null && doubanId.isNotEmpty && doubanId != "0") {
+    if (doubanId != null && doubanId.isNotEmpty && doubanId != '0') {
       _loadDoubanDetails(doubanId);
     }
   }
@@ -1404,7 +1403,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
       return [];
     }
 
-    List<Widget> widgets = [];
+    final List<Widget> widgets = [];
 
     // 定义我们感兴趣的字段映射
     final Map<String, String> fieldMapping = {
@@ -1421,7 +1420,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
     };
 
     // 解析infobox信息
-    Map<String, String> parsedInfo = {};
+    final Map<String, String> parsedInfo = {};
     for (String info in _bangumiDetails!.infobox) {
       if (info.contains(':')) {
         final parts = info.split(':');
@@ -1496,7 +1495,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
               // 从videoInfo中获取doubanId，优先使用doubanId，如果为空或为0则使用id
               final doubanId = (widget.videoInfo.doubanId != null &&
                       widget.videoInfo.doubanId!.isNotEmpty &&
-                      widget.videoInfo.doubanId != "0")
+                      widget.videoInfo.doubanId != '0')
                   ? widget.videoInfo.doubanId!
                   : widget.videoInfo.id;
               await _openDoubanDetail(doubanId);
@@ -1577,7 +1576,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
     // 如果是聚合场景，显示播放和豆瓣详情（如果有）
     if (widget.from == 'agg') {
-      List<Widget> menuItems = [
+      final List<Widget> menuItems = [
         // 播放按钮
         _buildMenuItem(
           context,
@@ -1597,7 +1596,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
       // 如果有豆瓣ID且不为0，添加豆瓣详情选项
       if (widget.videoInfo.doubanId != null &&
           widget.videoInfo.doubanId!.isNotEmpty &&
-          widget.videoInfo.doubanId != "0") {
+          widget.videoInfo.doubanId != '0') {
         menuItems.addAll([
           _buildDivider(themeService),
           _buildMenuItem(
@@ -1619,7 +1618,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
     // 如果是搜索场景，显示播放、收藏/取消收藏，如果有豆瓣ID则显示豆瓣详情
     if (widget.from == 'search') {
-      List<Widget> menuItems = [
+      final List<Widget> menuItems = [
         _buildMenuItem(
           context,
           themeService,
@@ -1654,7 +1653,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
       // 如果有豆瓣ID且不为0，添加豆瓣详情选项
       if (widget.videoInfo.doubanId != null &&
           widget.videoInfo.doubanId!.isNotEmpty &&
-          widget.videoInfo.doubanId != "0") {
+          widget.videoInfo.doubanId != '0') {
         menuItems.addAll([
           _buildDivider(themeService),
           _buildMenuItem(

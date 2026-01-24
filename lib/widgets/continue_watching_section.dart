@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
-import '../models/play_record.dart';
-import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import '../utils/image_url.dart';
-import 'shimmer_effect.dart';
-import 'video_card.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/utils/image_url.dart';
+import 'package:selene/widgets/shimmer_effect.dart';
+import 'package:selene/widgets/video_card.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 继续观看组件
 class ContinueWatchingSection extends StatefulWidget {

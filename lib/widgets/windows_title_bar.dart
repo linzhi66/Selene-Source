@@ -2,7 +2,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/theme_service.dart';
+import 'package:selene/services/theme_service.dart';
 
 class WindowsTitleBar extends StatefulWidget {
   final bool forceBlack;

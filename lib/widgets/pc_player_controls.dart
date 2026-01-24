@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-import 'dlna_device_dialog.dart';
+import 'package:selene/widgets/dlna_device_dialog.dart';
 
 // 带 hover 效果的按钮组件
 class HoverButton extends StatefulWidget {

@@ -1,31 +1,30 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-
-import '../models/play_record.dart';
-import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
-import '../services/version_service.dart';
-import '../utils/font_utils.dart';
-import '../widgets/bangumi_section.dart';
-import '../widgets/continue_watching_section.dart';
-import '../widgets/custom_refresh_indicator.dart';
-import '../widgets/favorites_grid.dart';
-import '../widgets/history_grid.dart';
-import '../widgets/hot_movies_section.dart';
-import '../widgets/hot_show_section.dart';
-import '../widgets/hot_tv_section.dart';
-import '../widgets/main_layout.dart';
-import '../widgets/top_tab_switcher.dart';
-import '../widgets/update_dialog.dart';
-import '../widgets/video_menu_bottom_sheet.dart';
-import 'anime_screen.dart';
-import 'live_screen.dart';
-import 'movie_screen.dart';
-import 'player_screen.dart';
-import 'search_screen.dart';
-import 'show_screen.dart';
-import 'tv_screen.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/screens/anime_screen.dart';
+import 'package:selene/screens/live_screen.dart';
+import 'package:selene/screens/movie_screen.dart';
+import 'package:selene/screens/player_screen.dart';
+import 'package:selene/screens/search_screen.dart';
+import 'package:selene/screens/show_screen.dart';
+import 'package:selene/screens/tv_screen.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/services/version_service.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/bangumi_section.dart';
+import 'package:selene/widgets/continue_watching_section.dart';
+import 'package:selene/widgets/custom_refresh_indicator.dart';
+import 'package:selene/widgets/favorites_grid.dart';
+import 'package:selene/widgets/history_grid.dart';
+import 'package:selene/widgets/hot_movies_section.dart';
+import 'package:selene/widgets/hot_show_section.dart';
+import 'package:selene/widgets/hot_tv_section.dart';
+import 'package:selene/widgets/main_layout.dart';
+import 'package:selene/widgets/top_tab_switcher.dart';
+import 'package:selene/widgets/update_dialog.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

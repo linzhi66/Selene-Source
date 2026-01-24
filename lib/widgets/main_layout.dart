@@ -4,15 +4,14 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/services/api_service.dart';
 import 'package:selene/services/search_service.dart';
+import 'package:selene/services/theme_service.dart';
 import 'package:selene/services/user_data_service.dart';
-
-import '../services/api_service.dart';
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import 'user_menu.dart';
-import 'windows_title_bar.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/user_menu.dart';
+import 'package:selene/widgets/windows_title_bar.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget content;
@@ -932,11 +931,11 @@ class _MainLayoutState extends State<MainLayout> {
 
           // 导航按钮
           ...navItems.asMap().entries.expand((entry) {
-            int index = entry.key;
-            Map<String, dynamic> item = entry.value;
-            bool isSelected =
+            final int index = entry.key;
+            final Map<String, dynamic> item = entry.value;
+            final bool isSelected =
                 !widget.isSearchMode && widget.currentBottomNavIndex == index;
-            bool isHovered = DeviceUtils.isPC() && _hoveredNavIndex == index;
+            final bool isHovered = DeviceUtils.isPC() && _hoveredNavIndex == index;
 
             return [
               MouseRegion(

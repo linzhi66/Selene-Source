@@ -1,16 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-
-import '../models/favorite_item.dart';
-import '../models/play_record.dart';
-import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import '../widgets/video_card.dart';
-import 'shimmer_effect.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/favorite_item.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/shimmer_effect.dart';
+import 'package:selene/widgets/video_card.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 class FavoritesGrid extends StatefulWidget {
   final Function(PlayRecord) onVideoTap;

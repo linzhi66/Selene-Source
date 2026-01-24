@@ -1,7 +1,7 @@
 import 'package:dlna_dart/dlna.dart';
 import 'package:flutter/material.dart';
 
-import '../utils/device_utils.dart';
+import 'package:selene/utils/device_utils.dart';
 
 // 带 hover 效果的按钮组件（仅在 PC 端生效）
 class HoverButton extends StatefulWidget {

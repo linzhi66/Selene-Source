@@ -4,26 +4,26 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/douban_movie.dart';
-import '../models/play_record.dart';
-import '../models/search_result.dart';
-import '../services/api_service.dart';
-import '../services/douban_service.dart';
-import '../services/m3u8_service.dart';
-import '../services/page_cache_service.dart';
-import '../services/search_service.dart';
-import '../services/user_data_service.dart';
-import '../utils/device_utils.dart';
-import '../widgets/dlna_device_dialog.dart';
-import '../widgets/dlna_player.dart';
-import '../widgets/player_details_panel.dart';
-import '../widgets/player_episodes_panel.dart';
-import '../widgets/player_sources_panel.dart';
-import '../widgets/switch_loading_overlay.dart';
-import '../widgets/video_card.dart';
-import '../widgets/video_player_surface.dart';
-import '../widgets/video_player_widget.dart';
-import '../widgets/windows_title_bar.dart';
+import 'package:selene/models/douban_movie.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/douban_service.dart';
+import 'package:selene/services/m3u8_service.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/services/search_service.dart';
+import 'package:selene/services/user_data_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/widgets/dlna_device_dialog.dart';
+import 'package:selene/widgets/dlna_player.dart';
+import 'package:selene/widgets/player_details_panel.dart';
+import 'package:selene/widgets/player_episodes_panel.dart';
+import 'package:selene/widgets/player_sources_panel.dart';
+import 'package:selene/widgets/switch_loading_overlay.dart';
+import 'package:selene/widgets/video_card.dart';
+import 'package:selene/widgets/video_player_surface.dart';
+import 'package:selene/widgets/video_player_widget.dart';
+import 'package:selene/widgets/windows_title_bar.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String? source;
@@ -330,7 +330,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     totalEpisodes = detail.episodes.length;
 
     // 保存旧的豆瓣ID用于比较
-    int oldVideoDoubanID = videoDoubanID;
+    final int oldVideoDoubanID = videoDoubanID;
 
     // 设置当前豆瓣 ID
     if (detail.doubanId != null && detail.doubanId! > 0) {
@@ -338,9 +338,9 @@ class _PlayerScreenState extends State<PlayerScreen>
       videoDoubanID = detail.doubanId!;
     } else {
       // 否则统计出现次数最多的 doubanID
-      Map<int, int> doubanIDCount = {};
+      final Map<int, int> doubanIDCount = {};
       for (var result in allSources) {
-        int? tmpDoubanID = result.doubanId;
+        final int? tmpDoubanID = result.doubanId;
         if (tmpDoubanID == null || tmpDoubanID == 0) {
           continue;
         }
@@ -644,7 +644,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 动态更新视频数据源
   Future<void> updateVideoUrl(String newUrl, {Duration? startAt}) async {
-    debugPrint("newUrl: $newUrl");
+    debugPrint('newUrl: $newUrl');
     try {
       // 获取 M3U8 代理 URL
       final m3u8ProxyUrl = await UserDataService.getM3u8ProxyUrl();
@@ -653,7 +653,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (m3u8ProxyUrl.isNotEmpty) {
         final encodedUrl = Uri.encodeComponent(newUrl);
         finalUrl = '$m3u8ProxyUrl$encodedUrl';
-        debugPrint("使用 M3U8 代理: $finalUrl");
+        debugPrint('使用 M3U8 代理: $finalUrl');
       }
       if (_isCasting) {
         // 构建标题：{title} - {第 x 集} - {sourceName}

@@ -4,14 +4,13 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-import '../services/local_mode_storage_service.dart';
-import '../services/subscription_service.dart';
-import '../services/user_data_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import '../widgets/windows_title_bar.dart';
-import 'home_screen.dart';
+import 'package:selene/screens/home_screen.dart';
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/subscription_service.dart';
+import 'package:selene/services/user_data_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/windows_title_bar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -260,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String _parseCookies(http.Response response) {
     // 解析 Set-Cookie 头部
-    List<String> cookies = [];
+    final List<String> cookies = [];
 
     // 获取所有 Set-Cookie 头部
     final setCookieHeaders = response.headers['set-cookie'];
@@ -304,8 +303,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       try {
         // 处理 URL
-        String baseUrl = _processUrl(_urlController.text);
-        String loginUrl = '$baseUrl/api/login';
+        final String baseUrl = _processUrl(_urlController.text);
+        final String loginUrl = '$baseUrl/api/login';
 
         // 发送登录请求
         final response = await http.post(
@@ -327,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
         switch (response.statusCode) {
           case 200:
             // 解析并保存 cookies
-            String cookies = _parseCookies(response);
+            final String cookies = _parseCookies(response);
 
             // 保存用户数据
             await UserDataService.saveUserData(

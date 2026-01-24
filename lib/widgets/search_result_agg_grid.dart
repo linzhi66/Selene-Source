@@ -2,14 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../models/aggregated_search_result.dart';
-import '../models/search_result.dart';
-import '../models/video_info.dart';
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import 'video_card.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/aggregated_search_result.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/video_card.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 聚合搜索结果网格组件
 class SearchResultAggGrid extends StatefulWidget {

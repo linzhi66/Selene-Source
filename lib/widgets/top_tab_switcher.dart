@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/theme_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
 
 class TopTabSwitcher extends StatefulWidget {
   final String selectedTab;
@@ -217,7 +217,7 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
 
               if (label == '首页') {
                 // 首页按钮：动画值为0时选中
-                double progress = 1.0 - (_animation.value * 2).clamp(0.0, 1.0);
+                final double progress = 1.0 - (_animation.value * 2).clamp(0.0, 1.0);
                 textColor = Color.lerp(
                   themeService.isDarkMode
                       ? const Color(0xFFb0b0b0)
@@ -244,7 +244,7 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
                 fontWeight = progress > 0.5 ? FontWeight.w600 : FontWeight.w400;
               } else {
                 // 收藏夹按钮：动画值为1时选中
-                double progress =
+                final double progress =
                     ((_animation.value - 0.5) * 2).clamp(0.0, 1.0);
                 textColor = Color.lerp(
                   themeService.isDarkMode

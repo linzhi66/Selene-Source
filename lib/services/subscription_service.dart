@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:bs58check/bs58check.dart' as bs58;
 
-import '../models/live_source.dart';
-import '../models/search_resource.dart';
+import 'package:selene/models/live_source.dart';
+import 'package:selene/models/search_resource.dart';
 
 /// 订阅内容解析结果
 class SubscriptionContent {

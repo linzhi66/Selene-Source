@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../models/search_result.dart';
-import '../utils/device_utils.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/utils/device_utils.dart';
 
 class SourceSpeed {
   String quality = '';

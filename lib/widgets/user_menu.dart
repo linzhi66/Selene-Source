@@ -3,18 +3,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:selene/screens/login_screen.dart';
+import 'package:selene/services/douban_cache_service.dart';
+import 'package:selene/services/live_service.dart';
+import 'package:selene/services/local_search_cache_service.dart';
+import 'package:selene/services/page_cache_service.dart';
+import 'package:selene/services/user_data_service.dart';
+import 'package:selene/services/version_service.dart';
+import 'package:selene/utils/device_utils.dart';
+import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/update_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../screens/login_screen.dart';
-import '../services/douban_cache_service.dart';
-import '../services/live_service.dart';
-import '../services/local_search_cache_service.dart';
-import '../services/page_cache_service.dart';
-import '../services/user_data_service.dart';
-import '../services/version_service.dart';
-import '../utils/device_utils.dart';
-import '../utils/font_utils.dart';
-import 'update_dialog.dart';
 
 class UserMenu extends StatefulWidget {
   final bool isDarkMode;

@@ -6,16 +6,15 @@ import 'package:http/http.dart' as http;
 import 'package:macos_window_utils/macos_window_utils.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
-
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'services/api_service.dart';
-import 'services/douban_cache_service.dart';
-import 'services/local_mode_storage_service.dart';
-import 'services/subscription_service.dart';
-import 'services/theme_service.dart';
-import 'services/user_data_service.dart';
-import 'utils/http_overrides.dart';
+import 'package:selene/screens/home_screen.dart';
+import 'package:selene/screens/login_screen.dart';
+import 'package:selene/services/api_service.dart';
+import 'package:selene/services/douban_cache_service.dart';
+import 'package:selene/services/local_mode_storage_service.dart';
+import 'package:selene/services/subscription_service.dart';
+import 'package:selene/services/theme_service.dart';
+import 'package:selene/services/user_data_service.dart';
+import 'package:selene/utils/http_overrides.dart';
 
 // 应用程序入口点
 void main() async {
@@ -49,7 +48,7 @@ void main() async {
       win.size = size;
       win.minSize = size;
       win.alignment = Alignment.center;
-      win.title = "Selene";
+      win.title = 'Selene';
       win.show();
     });
   }
@@ -143,7 +142,7 @@ class _AppWrapperState extends State<AppWrapper> {
         }
         // 无论刷新成功与否，都进入首页
         if (mounted) {
-          Navigator.of(context).pushReplacement(
+          await Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         }
@@ -164,7 +163,7 @@ class _AppWrapperState extends State<AppWrapper> {
       if (mounted) {
         if (loginResult.success) {
           // 自动登录成功，进入首页
-          Navigator.of(context).pushReplacement(
+          await Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         } else {

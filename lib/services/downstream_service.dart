@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'package:gbk_codec/gbk_codec.dart';
 import 'package:http/http.dart' as http;
 
-import '../models/search_resource.dart';
-import '../models/search_result.dart';
-import 'content_filter_service.dart';
-import 'local_search_cache_service.dart';
+import 'package:selene/models/search_resource.dart';
+import 'package:selene/models/search_result.dart';
+import 'package:selene/services/content_filter_service.dart';
+import 'package:selene/services/local_search_cache_service.dart';
 
 /// 分页搜索结果
 class SearchPageResult {
@@ -91,7 +91,7 @@ class DownstreamService {
   static String _cleanHtmlTags(String text) {
     if (text.isEmpty) return '';
 
-    String cleanedText = text
+    final String cleanedText = text
         .replaceAll(RegExp(r'<[^>]+>'), '\n')
         .replaceAll(RegExp(r'\n+'), '\n')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
@@ -215,8 +215,8 @@ class DownstreamService {
               (item['vod_play_url'] as String).split('\$\$\$');
 
           for (final url in vodPlayUrlArray) {
-            List<String> matchEpisodes = [];
-            List<String> matchTitles = [];
+            final List<String> matchEpisodes = [];
+            final List<String> matchTitles = [];
 
             final titleUrlArray = url.split('#');
 

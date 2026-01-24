@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../models/bangumi.dart';
-import '../models/play_record.dart';
-import '../models/video_info.dart';
-import '../services/bangumi_service.dart';
-import 'recommendation_section.dart';
-import 'video_menu_bottom_sheet.dart';
+import 'package:selene/models/bangumi.dart';
+import 'package:selene/models/play_record.dart';
+import 'package:selene/models/video_info.dart';
+import 'package:selene/services/bangumi_service.dart';
+import 'package:selene/widgets/recommendation_section.dart';
+import 'package:selene/widgets/video_menu_bottom_sheet.dart';
 
 /// 新番放送组件
 class BangumiSection extends StatefulWidget {
