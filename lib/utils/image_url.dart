@@ -39,7 +39,6 @@ Map<String, String>? getImageRequestHeaders(String imageUrl, String? source) {
   final bool isDoubanSource = (source == 'douban') ||
       RegExp(r'https?://([^/]+\.)?douban(io|)\.com', caseSensitive: false)
           .hasMatch(imageUrl);
-
   if (isDoubanSource) {
     // 常见可用的 Referer 和 UA，避免 403 或 Android 解码失败
     return <String, String>{

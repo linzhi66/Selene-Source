@@ -644,11 +644,10 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   /// 动态更新视频数据源
   Future<void> updateVideoUrl(String newUrl, {Duration? startAt}) async {
-    debugPrint("newUrl: $newUrl, startAt: $startAt");
+    debugPrint("newUrl: $newUrl");
     try {
       // 获取 M3U8 代理 URL
       final m3u8ProxyUrl = await UserDataService.getM3u8ProxyUrl();
-
       // 如果代理 URL 不为空，则将 newUrl encode 后拼接到代理 URL 后面
       String finalUrl = newUrl;
       if (m3u8ProxyUrl.isNotEmpty) {
@@ -656,7 +655,6 @@ class _PlayerScreenState extends State<PlayerScreen>
         finalUrl = '$m3u8ProxyUrl$encodedUrl';
         debugPrint("使用 M3U8 代理: $finalUrl");
       }
-
       if (_isCasting) {
         // 构建标题：{title} - {第 x 集} - {sourceName}
         // 如果总集数为 1，则不显示集数

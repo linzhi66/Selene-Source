@@ -244,6 +244,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _playingSubscription = _player!.stream.playing.listen((playing) {
       if (!mounted) return;
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        return;
+      }
       if (!playing) {
         setState(() {
           _hasCompleted = false;

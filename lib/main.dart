@@ -19,7 +19,7 @@ import 'utils/http_overrides.dart';
 
 // 应用程序入口点
 void main() async {
-  // 全局禁用证书校验（仅开发使用）
+  // 全局禁用证书校验
   HttpOverrides.global = CustomizeHttpOverrides();
   // 初始化 Flutter
   WidgetsFlutterBinding.ensureInitialized();

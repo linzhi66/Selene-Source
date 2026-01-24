@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../models/play_record.dart';
@@ -210,19 +212,47 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   /// 预加载图片
   Future<void> _preloadImages(List<PlayRecord> records) async {
     if (!mounted) return;
-
     // 只预加载前几个图片，避免过度预加载
     final int preloadCount = math.min(records.length, 5);
     for (int i = 0; i < preloadCount; i++) {
       if (!mounted) break;
-
       final record = records[i];
       final imageUrl = await getImageUrl(record.cover, record.source);
       if (!mounted) break;
       if (imageUrl.isNotEmpty) {
         final headers = getImageRequestHeaders(imageUrl, record.source);
-        final provider = NetworkImage(imageUrl, headers: headers);
-        precacheImage(provider, context);
+        // Use CachedNetworkImageProvider which cooperates with cached_network_image
+        final provider = CachedNetworkImageProvider(
+          imageUrl,
+          headers: headers,
+        );
+        // Perform a lightweight HEAD check to avoid triggering framework image errors
+        try {
+          final uri = Uri.tryParse(imageUrl);
+          if (uri != null) {
+            // Some servers may not support HEAD; wrap in try/catch and fallback to skipping on failure
+            final headOk = await http
+                .head(uri, headers: headers ?? {})
+                .timeout(const Duration(seconds: 5))
+                .then((resp) => resp.statusCode >= 200 && resp.statusCode < 400)
+                .catchError((_) => false);
+            if (!headOk) {
+              // Skip precaching if the remote server doesn't respond to HEAD properly
+              continue;
+            }
+          }
+          // Precache with a timeout and catch errors so they don't bubble to the global image service
+          if (mounted) {
+            await precacheImage(provider, context)
+                .timeout(const Duration(seconds: 12))
+                .catchError((e) {
+              debugPrint('precacheImage failed for $imageUrl: $e');
+            });
+          }
+        } catch (e) {
+          // Silently ignore network/timeout errors during preload to avoid UI jank and noisy logs
+          debugPrint('Image preload skipped for $imageUrl: $e');
+        }
       }
     }
   }

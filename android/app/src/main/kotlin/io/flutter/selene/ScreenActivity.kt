@@ -5,6 +5,7 @@ import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugins.GeneratedPluginRegistrant
 
 /**
  * 屏幕活动类
@@ -45,33 +46,37 @@ class ScreenActivity : FlutterActivity() {
      * @param flutterEngine Flutter 引擎实例, 用于配置和注册方法通道
      */
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        // 调用父类方法配置 Flutter 引擎
         super.configureFlutterEngine(flutterEngine)
+        // 注册生成的插件
+        GeneratedPluginRegistrant.registerWith(flutterEngine)
+        // 创建方法通道并设置方法调用处理器
         orientationChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        // 设置方法调用处理器以响应来自 Dart 端的屏幕方向请求
         orientationChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
+                // 请求竖屏和横屏
                 "setPortraitLandscape" -> {
-                    // 请求竖屏和横屏
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
                     result.success(null)
                 }
-
+                // 仅请求竖屏
                 "setPortraitOnly" -> {
-                    // 仅请求竖屏
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     result.success(null)
                 }
-
+                // 仅请求横屏
                 "setLandscapeOnly" -> {
-                    // 仅请求横屏
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     result.success(null)
                 }
-
+                // 未知方法调用
                 else -> result.notImplemented()
             }
         }
     }
 
+    // 在 Activity 销毁时清理资源，防止内存泄漏
     override fun onDestroy() {
         // 在 Activity 销毁时清除 handler，防止 native 端在 Activity 被回收后仍尝试回调 Dart
         try {

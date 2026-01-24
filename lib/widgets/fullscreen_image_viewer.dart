@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:app_settings/app_settings.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gal/gal.dart';
 import 'package:provider/provider.dart';
 
@@ -297,37 +298,72 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
   /// 获取缓存的图片数据
   Future<Uint8List?> _getCachedImageBytes() async {
     try {
-      // 使用 CachedNetworkImage 的缓存机制获取图片数据
-      final imageProvider = CachedNetworkImageProvider(
-        widget.imageUrl,
-        headers: getImageRequestHeaders(widget.imageUrl, widget.source),
-      );
+      // 获取图片 URL 和请求头
+      final imageUrl = await getImageUrl(widget.imageUrl, widget.source);
+      // 获取图片请求头
+      final headers = getImageRequestHeaders(imageUrl, widget.source);
+      // 使用 DefaultCacheManager 获取缓存文件
+      final cacheManager = DefaultCacheManager();
+      // 1) 尝试从磁盘缓存读取
+      try {
+        final cachedFile = await cacheManager.getFileFromCache(imageUrl);
+        if (cachedFile != null && await cachedFile.file.exists()) {
+          final bytes = await cachedFile.file.readAsBytes();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (e) {
+        debugPrint('读取缓存文件失败: $e');
+        // 继续尝试网络获取
+      }
+      // 2) 如果缓存不存在，尝试通过 cache manager 下载（包含 headers 支持）
+      try {
+        final fetchedFile = await cacheManager
+            .getSingleFile(imageUrl, headers: headers)
+            .timeout(const Duration(seconds: 20));
 
-      // 获取图片数据
-      final imageStream = imageProvider.resolve(ImageConfiguration.empty);
-      final completer = Completer<Uint8List>();
+        if (await fetchedFile.exists()) {
+          final bytes = await fetchedFile.readAsBytes();
+          if (bytes.isNotEmpty) return bytes;
+        }
+      } catch (e) {
+        debugPrint('通过网络获取图片失败: $e');
+      }
+      // 3) 作为最后的回退，尝试使用 CachedNetworkImageProvider -> image stream
+      try {
+        final imageProvider =
+            CachedNetworkImageProvider(imageUrl, headers: headers);
+        final imageStream = imageProvider.resolve(ImageConfiguration.empty);
+        final completer = Completer<Uint8List>();
 
-      late ImageStreamListener listener;
-      listener =
-          ImageStreamListener((ImageInfo imageInfo, bool synchronousCall) {
-        final image = imageInfo.image;
-        image.toByteData(format: ui.ImageByteFormat.png).then((byteData) {
-          if (byteData != null) {
-            completer.complete(byteData.buffer.asUint8List());
-          } else {
-            completer.completeError('无法获取图片数据');
+        late ImageStreamListener listener;
+        listener = ImageStreamListener((ImageInfo imageInfo, bool sync) async {
+          try {
+            final byteData = await imageInfo.image
+                .toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              completer.complete(byteData.buffer.asUint8List());
+            } else {
+              completer.completeError('无法获取图片数据');
+            }
+          } catch (e) {
+            completer.completeError(e);
+          } finally {
+            imageStream.removeListener(listener);
           }
-        }).catchError((error) {
-          completer.completeError(error);
+        }, onError: (exception, stackTrace) {
+          // exception is non-nullable here; forward it or wrap if needed
+          completer.completeError(exception is Exception
+              ? exception
+              : Exception(exception.toString()));
+          imageStream.removeListener(listener);
         });
-        imageStream.removeListener(listener);
-      }, onError: (exception, stackTrace) {
-        completer.completeError(exception);
-        imageStream.removeListener(listener);
-      });
-
-      imageStream.addListener(listener);
-      return await completer.future;
+        imageStream.addListener(listener);
+        // 等待，但加上超时，防止永远阻塞
+        return await completer.future.timeout(const Duration(seconds: 20));
+      } catch (e) {
+        debugPrint('最终回退方式获取图片失败: $e');
+        return null;
+      }
     } catch (e) {
       debugPrint('获取缓存图片数据失败: $e');
       return null;
