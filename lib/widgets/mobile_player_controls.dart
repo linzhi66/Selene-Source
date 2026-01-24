@@ -85,6 +85,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Timer? _timeUpdateTimer;
   String _currentTime = '';
 
+  // 缓存全屏状态以避免调用可能尝试的 VideoState
+  // 在拆卸过程中使用停用的 BuildContext 查找 InheritedWidget。
+  bool _cachedIsFullscreen = false;
+
   @override
   void initState() {
     super.initState();
@@ -100,8 +104,23 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      _cachedIsFullscreen = widget.state.isFullscreen();
+    } catch (e) {
+      // 如果查找不安全，则保留先前的缓存值。
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant MobilePlayerControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    try {
+      _cachedIsFullscreen = widget.state.isFullscreen();
+    } catch (e) {
+      // 忽略 - 保留先前的值
+    }
     // 当 PIP 模式停止时，显示控制栏
     if (oldWidget.isPipMode && !widget.isPipMode) {
       setState(() => _controlsVisible = true);
@@ -171,7 +190,18 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     super.dispose();
   }
 
-  bool get _isFullscreen => widget.state.isFullscreen();
+  bool get _isFullscreen {
+    // 使用在安全生命周期回调中更新的缓存值。
+    // 如果需要，回退到受保护的直接调用。
+    if (_cachedIsFullscreen) return true;
+    try {
+      final v = widget.state.isFullscreen();
+      _cachedIsFullscreen = v;
+      return v;
+    } catch (e) {
+      return _cachedIsFullscreen;
+    }
+  }
 
   bool get _isPlaying => widget.player.state.playing;
 
@@ -651,7 +681,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
     Widget content = Stack(
       children: [
-        Positioned.fill(child: _buildGestureLayer()),
+        _buildGestureLayer(),
         _buildTopGradient(),
         _buildBottomGradient(),
         if (_isFullscreen) _buildCurrentTime(),
