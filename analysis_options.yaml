@@ -45,7 +45,7 @@ linter:
     prefer_final_locals: true
     prefer_if_null_operators: true
     sized_box_for_whitespace: true
-    sort_pub_dependencies: true
+    sort_pub_dependencies: false
     test_types_in_equals: true
     throw_in_finally: true
     unawaited_futures: true
