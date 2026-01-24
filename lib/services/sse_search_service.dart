@@ -428,7 +428,7 @@ class SSESearchService {
   }
 
   /// 处理 SSE 错误
-  void _handleError(error) {
+  void _handleError(dynamic error) {
     _isConnected = false;
 
     // 检查是否是连接关闭错误，如果是则忽略
