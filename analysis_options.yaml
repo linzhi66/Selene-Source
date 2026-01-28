@@ -24,7 +24,7 @@ analyzer:
     # 建议修复的问题
     always_declare_return_types: warning
     prefer_const_constructors: warning
-    # 临时忽略的规则（技术债务）
+    # 临时忽略的规则
     avoid_print: ignore
 # 自定义 Lint 规则
 linter:
@@ -59,7 +59,7 @@ linter:
     use_rethrow_when_possible: true
     use_string_buffers: true
     valid_regexps: true
-    # ========== 选择性规则（按项目需求）==========
+    # ========== 选择性规则 ==========
     # 代码风格
     prefer_single_quotes: true  # 统一使用单引号
     lines_longer_than_80_chars: false  # 现代显示器可放宽

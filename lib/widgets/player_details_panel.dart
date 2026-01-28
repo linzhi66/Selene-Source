@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-
 import 'package:selene/models/douban_movie.dart';
 import 'package:selene/models/search_result.dart';
 import 'package:selene/utils/image_url.dart';
@@ -9,6 +8,7 @@ class PlayerDetailsPanel extends StatelessWidget {
   final ThemeData theme;
   final DoubanMovieDetails? doubanDetails;
   final SearchResult? currentDetail;
+  final String? fallbackDescription;
   final bool showCloseButton;
   final bool showTitle;
 
@@ -17,6 +17,7 @@ class PlayerDetailsPanel extends StatelessWidget {
     required this.theme,
     this.doubanDetails,
     this.currentDetail,
+    this.fallbackDescription,
     this.showCloseButton = true,
     this.showTitle = true,
   });
@@ -68,14 +69,14 @@ class PlayerDetailsPanel extends StatelessWidget {
   /// 构建豆瓣详情面板
   Widget _buildDoubanDetailsPanel(BuildContext context, bool isDarkMode) {
     final String title = doubanDetails!.title;
-    final String cover = doubanDetails!.poster;
+    final String cover = _getCoverImage();
     final String year = doubanDetails!.year;
     final String? rate = doubanDetails!.rate;
     final List<String> genres = doubanDetails!.genres;
     final List<String> directors = doubanDetails!.directors;
     final List<String> writers = doubanDetails!.screenwriters;
     final List<String> actors = doubanDetails!.actors;
-    final String summary = doubanDetails!.summary ?? '暂无简介';
+    final String summary = _getSummary();
     final List<String> countries = doubanDetails!.countries;
     final List<String> languages = doubanDetails!.languages;
     final String? duration = doubanDetails!.duration;
@@ -597,5 +598,35 @@ class PlayerDetailsPanel extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  /// 获取摘要内容，优先级：豆瓣详情 -> fallbackDescription -> '暂无简介'
+  String _getSummary() {
+    // 优先使用豆瓣详情中的摘要
+    if (doubanDetails?.summary != null && doubanDetails!.summary!.isNotEmpty) {
+      return doubanDetails!.summary!;
+    }
+    // 如果豆瓣摘要为空，尝试使用fallbackDescription
+    if (fallbackDescription != null &&
+        fallbackDescription!.isNotEmpty &&
+        fallbackDescription != '暂无简介') {
+      return fallbackDescription!;
+    }
+    // 最后返回'暂无简介'
+    return '暂无简介';
+  }
+
+  /// 获取封面图片，优先级：豆瓣详情 -> currentDetail -> ''
+  String _getCoverImage() {
+    // 优先使用豆瓣详情中的海报
+    if (doubanDetails?.poster != null && doubanDetails!.poster.isNotEmpty) {
+      return doubanDetails!.poster;
+    }
+    // 如果豆瓣海报为空，尝试使用currentDetail的海报
+    if (currentDetail?.poster != null && currentDetail!.poster.isNotEmpty) {
+      return currentDetail!.poster;
+    }
+    // 最后返回空字符串
+    return '';
   }
 }

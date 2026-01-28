@@ -336,20 +336,38 @@ class _PlayerScreenState extends State<PlayerScreen>
       // 如果当前 searchResult 有有效的 doubanID，直接使用
       videoDoubanID = detail.doubanId!;
     } else {
-      // 否则统计出现次数最多的 doubanID
-      final Map<int, int> doubanIDCount = {};
+      // 如果当前结果没有豆瓣ID，查找与当前视频最匹配的豆瓣ID
+      // 优先查找标题匹配的源
+      int? matchedDoubanID;
       for (var result in allSources) {
-        final int? tmpDoubanID = result.doubanId;
-        if (tmpDoubanID == null || tmpDoubanID == 0) {
-          continue;
+        if (result.doubanId != null && result.doubanId! > 0) {
+          // 检查标题是否匹配
+          if (result.title.toLowerCase().contains(detail.title.toLowerCase()) ||
+              detail.title.toLowerCase().contains(result.title.toLowerCase())) {
+            matchedDoubanID = result.doubanId;
+            break;
+          }
         }
-        doubanIDCount[tmpDoubanID] = (doubanIDCount[tmpDoubanID] ?? 0) + 1;
       }
-      videoDoubanID = doubanIDCount.entries.isEmpty
-          ? 0
-          : doubanIDCount.entries
-              .reduce((a, b) => a.value > b.value ? a : b)
-              .key;
+
+      if (matchedDoubanID != null) {
+        videoDoubanID = matchedDoubanID;
+      } else {
+        // 如果没有找到标题匹配的，统计出现次数最多的 doubanID
+        final Map<int, int> doubanIDCount = {};
+        for (var result in allSources) {
+          final int? tmpDoubanID = result.doubanId;
+          if (tmpDoubanID == null || tmpDoubanID == 0) {
+            continue;
+          }
+          doubanIDCount[tmpDoubanID] = (doubanIDCount[tmpDoubanID] ?? 0) + 1;
+        }
+        videoDoubanID = doubanIDCount.entries.isEmpty
+            ? 0
+            : doubanIDCount.entries
+                .reduce((a, b) => a.value > b.value ? a : b)
+                .key;
+      }
     }
 
     // 如果豆瓣ID发生变化且有效，获取豆瓣详情
@@ -1884,6 +1902,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     theme: theme,
                     doubanDetails: doubanDetails,
                     currentDetail: currentDetail,
+                    fallbackDescription: videoDesc,
                   ),
                 ),
               ),
@@ -1914,6 +1933,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 theme: theme,
                 doubanDetails: doubanDetails,
                 currentDetail: currentDetail,
+                fallbackDescription: videoDesc,
               ),
             );
           },
@@ -2831,6 +2851,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     theme: theme,
                     doubanDetails: doubanDetails,
                     currentDetail: currentDetail,
+                    fallbackDescription: videoDesc,
                     showCloseButton: false,
                     showTitle: false,
                   ),
