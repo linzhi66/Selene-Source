@@ -1,14 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class VersionService {
   static const String githubRepoUrl = 'https://github.com/MoonTechLab/Selene';
   static const String githubApiUrl =
       'https://api.github.com/repos/MoonTechLab/Selene/releases/latest';
+  static const String _boxName = 'version_data';
   static const String _lastCheckKey = 'last_version_check';
   static const String _dismissedVersionKey = 'dismissed_version';
 
@@ -74,16 +75,16 @@ class VersionService {
 
   /// 检查是否应该显示更新提示（避免频繁提示）
   static Future<bool> shouldShowUpdatePrompt(String version) async {
-    final prefs = await SharedPreferences.getInstance();
+    final box = Hive.box<Object>(_boxName);
 
     // 检查用户是否已忽略此版本
-    final dismissedVersion = prefs.getString(_dismissedVersionKey);
+    final dismissedVersion = box.get(_dismissedVersionKey) as String?;
     if (dismissedVersion == version) {
       return false;
     }
 
     // 检查上次检查时间（每天最多提示一次）
-    final lastCheck = prefs.getInt(_lastCheckKey) ?? 0;
+    final lastCheck = box.get(_lastCheckKey) as int? ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
     const dayInMs = 24 * 60 * 60 * 1000;
 
@@ -92,20 +93,20 @@ class VersionService {
     }
 
     // 更新最后检查时间
-    await prefs.setInt(_lastCheckKey, now);
+    await box.put(_lastCheckKey, now);
     return true;
   }
 
   /// 标记用户已忽略某个版本
   static Future<void> dismissVersion(String version) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_dismissedVersionKey, version);
+    final box = Hive.box<Object>(_boxName);
+    await box.put(_dismissedVersionKey, version);
   }
 
   /// 清除忽略记录（用于测试或重置）
   static Future<void> clearDismissedVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_dismissedVersionKey);
+    final box = Hive.box<Object>(_boxName);
+    await box.delete(_dismissedVersionKey);
   }
 }
 

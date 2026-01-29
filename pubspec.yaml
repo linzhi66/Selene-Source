@@ -26,6 +26,8 @@ dependencies:
   google_fonts: ^8.0.0
   gpt_markdown: ^1.1.4
   http: ^1.2.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   intl: ^0.20.2
   lucide_icons_flutter: ^3.1.0
   macos_window_utils: ^1.5.1
@@ -38,7 +40,6 @@ dependencies:
   provider: ^6.1.2
   screen_brightness: ^2.1.7
   scrollable_positioned_list: ^0.3.8
-  shared_preferences: ^2.2.3
   url_launcher: ^6.3.0
   volume_controller: ^3.4.0
   web_socket_channel: ^3.0.3

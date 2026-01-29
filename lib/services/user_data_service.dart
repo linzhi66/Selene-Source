@@ -1,6 +1,7 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 
 class UserDataService {
+  static const String _boxName = 'user_data';
   static const String _serverUrlKey = 'server_url';
   static const String _usernameKey = 'username';
   static const String _passwordKey = 'password';
@@ -22,35 +23,35 @@ class UserDataService {
     required String password,
     required String cookies,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_serverUrlKey, serverUrl);
-    await prefs.setString(_usernameKey, username);
-    await prefs.setString(_passwordKey, password);
-    await prefs.setString(_cookiesKey, cookies);
+    final box = Hive.box<String>(_boxName);
+    await box.put(_serverUrlKey, serverUrl);
+    await box.put(_usernameKey, username);
+    await box.put(_passwordKey, password);
+    await box.put(_cookiesKey, cookies);
   }
 
   // 获取服务器地址
   static Future<String?> getServerUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_serverUrlKey);
+    final box = Hive.box<String>(_boxName);
+    return box.get(_serverUrlKey);
   }
 
   // 获取用户名
   static Future<String?> getUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_usernameKey);
+    final box = Hive.box<String>(_boxName);
+    return box.get(_usernameKey);
   }
 
   // 获取密码
   static Future<String?> getPassword() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_passwordKey);
+    final box = Hive.box<String>(_boxName);
+    return box.get(_passwordKey);
   }
 
   // 获取cookies
   static Future<String?> getCookies() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_cookiesKey);
+    final box = Hive.box<String>(_boxName);
+    return box.get(_cookiesKey);
   }
 
   // 检查是否已登录
@@ -61,28 +62,28 @@ class UserDataService {
 
   // 清除用户数据
   static Future<void> clearUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_serverUrlKey);
-    await prefs.remove(_usernameKey);
-    await prefs.remove(_passwordKey);
-    await prefs.remove(_cookiesKey);
+    final box = Hive.box<String>(_boxName);
+    await box.delete(_serverUrlKey);
+    await box.delete(_usernameKey);
+    await box.delete(_passwordKey);
+    await box.delete(_cookiesKey);
   }
 
   // 只清除密码和cookies，保留服务器地址和用户名
   static Future<void> clearPasswordAndCookies() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_passwordKey);
-    await prefs.remove(_cookiesKey);
+    final box = Hive.box<String>(_boxName);
+    await box.delete(_passwordKey);
+    await box.delete(_cookiesKey);
   }
 
   // 获取所有用户数据
   static Future<Map<String, String?>> getAllUserData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final box = Hive.box<String>(_boxName);
     return {
-      'serverUrl': prefs.getString(_serverUrlKey),
-      'username': prefs.getString(_usernameKey),
-      'password': prefs.getString(_passwordKey),
-      'cookies': prefs.getString(_cookiesKey),
+      'serverUrl': box.get(_serverUrlKey),
+      'username': box.get(_usernameKey),
+      'password': box.get(_passwordKey),
+      'cookies': box.get(_cookiesKey),
     };
   }
 
@@ -102,15 +103,15 @@ class UserDataService {
 
   // 保存豆瓣数据源设置（存储key值）
   static Future<void> saveDoubanDataSource(String dataSourceDisplayName) async {
-    final prefs = await SharedPreferences.getInstance();
+    final box = Hive.box<String>(_boxName);
     final key = _getDoubanDataSourceKeyFromDisplayName(dataSourceDisplayName);
-    await prefs.setString(_doubanDataSourceKey, key);
+    await box.put(_doubanDataSourceKey, key);
   }
 
   // 获取豆瓣数据源设置（返回key值）
   static Future<String> getDoubanDataSourceKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_doubanDataSourceKey) ?? 'direct';
+    final box = Hive.box<String>(_boxName);
+    return box.get(_doubanDataSourceKey) ?? 'direct';
   }
 
   // 获取豆瓣数据源显示名称
@@ -122,15 +123,15 @@ class UserDataService {
   // 保存豆瓣图片源设置（存储key值）
   static Future<void> saveDoubanImageSource(
       String imageSourceDisplayName) async {
-    final prefs = await SharedPreferences.getInstance();
+    final box = Hive.box<String>(_boxName);
     final key = _getDoubanImageSourceKeyFromDisplayName(imageSourceDisplayName);
-    await prefs.setString(_doubanImageSourceKey, key);
+    await box.put(_doubanImageSourceKey, key);
   }
 
   // 获取豆瓣图片源设置（返回key值）
   static Future<String> getDoubanImageSourceKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_doubanImageSourceKey) ?? 'direct';
+    final box = Hive.box<String>(_boxName);
+    return box.get(_doubanImageSourceKey) ?? 'direct';
   }
 
   // 获取豆瓣图片源显示名称
@@ -205,51 +206,51 @@ class UserDataService {
 
   // 保存 M3U8 代理 URL
   static Future<void> saveM3u8ProxyUrl(String url) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_m3u8ProxyUrlKey, url);
+    final box = Hive.box<String>(_boxName);
+    await box.put(_m3u8ProxyUrlKey, url);
   }
 
   // 获取 M3U8 代理 URL
   static Future<String> getM3u8ProxyUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_m3u8ProxyUrlKey) ?? '';
+    final box = Hive.box<String>(_boxName);
+    return box.get(_m3u8ProxyUrlKey) ?? '';
   }
 
   // 保存优选测速设置
   static Future<void> savePreferSpeedTest(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_preferSpeedTestKey, enabled);
+    final box = Hive.box<bool>(_boxName);
+    await box.put(_preferSpeedTestKey, enabled);
   }
 
   // 获取优选测速设置（默认为 true）
   static Future<bool> getPreferSpeedTest() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_preferSpeedTestKey) ?? true;
+    final box = Hive.box<bool>(_boxName);
+    return box.get(_preferSpeedTestKey) ?? true;
   }
 
   // 保存本地搜索设置
   static Future<void> saveLocalSearch(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_localSearchKey, enabled);
+    final box = Hive.box<bool>(_boxName);
+    await box.put(_localSearchKey, enabled);
   }
 
   // 获取本地搜索设置（默认为 false）
   static Future<bool> getLocalSearch() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_localSearchKey) ?? false;
+    final box = Hive.box<bool>(_boxName);
+    return box.get(_localSearchKey) ?? false;
   }
 
   // 保存本地模式设置
   static Future<void> saveIsLocalMode(bool isLocalMode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_isLocalModeKey, isLocalMode);
+    final box = Hive.box<bool>(_boxName);
+    await box.put(_isLocalModeKey, isLocalMode);
     _isLocalModeCache = isLocalMode; // 同步更新内存缓存
   }
 
   // 获取本地模式设置（默认为 false）
   static Future<bool> getIsLocalMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getBool(_isLocalModeKey) ?? false;
+    final box = Hive.box<bool>(_boxName);
+    final value = box.get(_isLocalModeKey) ?? false;
     _isLocalModeCache = value; // 缓存到内存
     return value;
   }

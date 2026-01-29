@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
-import 'package:selene/services/orientation_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
 import 'package:volume_controller/volume_controller.dart';
 
@@ -466,28 +465,18 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
   /// 设置屏幕方向的通用方法
   Future<void> _setScreenOrientation(bool shouldLockPortrait) async {
-    if (Platform.isAndroid) {
-      // 使用原生 Android 方向控制（更直接更快）
+    try {
       if (shouldLockPortrait) {
-        await OrientationService.setPortraitOnly();
+        await SystemChrome.setPreferredOrientations(
+            [DeviceOrientation.portraitUp]);
       } else {
-        await OrientationService.setLandscapeOnly();
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
       }
-    } else {
-      // iOS/其他平台使用 SystemChrome
-      try {
-        if (shouldLockPortrait) {
-          await SystemChrome.setPreferredOrientations(
-              [DeviceOrientation.portraitUp]);
-        } else {
-          await SystemChrome.setPreferredOrientations([
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ]);
-        }
-      } catch (e) {
-        debugPrint('[Fullscreen] Failed to set orientation: $e');
-      }
+    } catch (e) {
+      debugPrint('[Fullscreen] Failed to set orientation: $e');
     }
   }
 
@@ -555,16 +544,12 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Future<void> _restoreScreenOrientation() async {
     try {
       // 恢复允许的方向（竖/横皆可）
-      if (Platform.isAndroid) {
-        await OrientationService.setPortraitAndLandscape();
-      } else {
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-      }
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
     } catch (e) {
       debugPrint('[Fullscreen] Failed to restore orientation: $e');
     }

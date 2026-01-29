@@ -14,6 +14,7 @@ import 'package:selene/services/local_mode_storage_service.dart';
 import 'package:selene/services/subscription_service.dart';
 import 'package:selene/services/theme_service.dart';
 import 'package:selene/services/user_data_service.dart';
+import 'package:selene/utils/hive_initializer.dart';
 import 'package:selene/utils/http_overrides.dart';
 
 // 应用程序入口点
@@ -22,6 +23,8 @@ void main() async {
   HttpOverrides.global = CustomizeHttpOverrides();
   // 初始化 Flutter
   WidgetsFlutterBinding.ensureInitialized();
+  // 初始化 Hive
+  await HiveInitializer.init();
   // 初始化 media_kit
   MediaKit.ensureInitialized();
   // 初始化 macOS 窗口配置
