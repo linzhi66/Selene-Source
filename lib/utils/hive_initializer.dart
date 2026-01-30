@@ -9,13 +9,13 @@ class HiveInitializer {
     // 初始化 Hive
     await Hive.initFlutter();
     // 注册适配器
-    Hive.registerAdapter(FavoriteItemAdapter());
     Hive.registerAdapter(LiveSourceAdapter());
     Hive.registerAdapter(PlayRecordAdapter());
+    Hive.registerAdapter(FavoriteItemAdapter());
     Hive.registerAdapter(SearchResourceAdapter());
     // 打开本地模式数据盒子
-    await Hive.openBox<String>('local_mode_data');
-    await Hive.openBox<String>('user_data');
+    await Hive.openBox<dynamic>('user_data');
     await Hive.openBox<String>('version_data');
+    await Hive.openBox<String>('local_mode_data');
   }
 }

@@ -238,6 +238,14 @@ class SSESearchService {
               errorString.contains('clientexception') ||
               errorString.contains('connection terminated')) {
             // 连接被关闭，这是正常情况，静默处理
+            debugPrint('搜索连接已关闭: ${error.toString()}');
+            // 确保在此处也安全地关闭客户端
+            try {
+              _client?.close();
+            } catch (closeError) {
+              debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+            }
+            _client = null;
             return;
           }
           _handleError(error);
@@ -253,10 +261,22 @@ class SSESearchService {
           errorString.contains('clientexception') ||
           errorString.contains('connection terminated')) {
         // 连接被关闭，这是正常情况，静默处理
+        try {
+          _client?.close();
+        } catch (closeError) {
+          debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+        }
+        _client = null;
         return;
       }
 
       _errorController?.add('连接失败: ${e.toString()}');
+      try {
+        _client?.close();
+      } catch (closeError) {
+        debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+      }
+      _client = null;
       rethrow;
     }
   }
@@ -265,6 +285,12 @@ class SSESearchService {
   void _handleSSEResponse(http.StreamedResponse response) async {
     if (response.statusCode != 200) {
       _errorController?.add('SSE 连接失败: ${response.statusCode}');
+      try {
+        _client?.close();
+      } catch (closeError) {
+        debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+      }
+      _client = null;
       return;
     }
 
@@ -274,34 +300,53 @@ class SSESearchService {
     // 使用流式 UTF-8 解码器，自动处理跨 chunk 的多字节字符
     const utf8Decoder = Utf8Decoder(allowMalformed: false);
 
-    // 流式处理 SSE 数据
-    await for (final chunk in response.stream.transform(utf8Decoder)) {
-      try {
-        // 将新数据添加到缓冲区
-        _buffer += chunk;
+    try {
+      // 流式处理 SSE 数据
+      await for (final chunk in response.stream.transform(utf8Decoder)) {
+        try {
+          // 将新数据添加到缓冲区
+          _buffer += chunk;
 
-        // 按行分割并处理
-        final lines = _buffer.split('\n');
+          // 按行分割并处理
+          final lines = _buffer.split('\n');
 
-        // 保留最后一行（可能不完整）
-        if (lines.isNotEmpty) {
-          _buffer = lines.last;
-          lines.removeLast();
-        }
-
-        for (final line in lines) {
-          if (line.trim().isEmpty) continue;
-
-          // SSE 格式: data: {...}
-          if (line.startsWith('data: ')) {
-            final jsonStr = line.substring(6); // 移除 'data: ' 前缀
-            _handleSSEData(jsonStr);
+          // 保留最后一行（可能不完整）
+          if (lines.isNotEmpty) {
+            _buffer = lines.last;
+            lines.removeLast();
           }
+
+          for (final line in lines) {
+            if (line.trim().isEmpty) continue;
+
+            // SSE 格式: data: {...}
+            if (line.startsWith('data: ')) {
+              final jsonStr = line.substring(6); // 移除 'data: ' 前缀
+              _handleSSEData(jsonStr);
+            }
+          }
+        } catch (e) {
+          // 如果解码失败，尝试跳过这个块
+          continue;
         }
-      } catch (e) {
-        // 如果解码失败，尝试跳过这个块
-        continue;
       }
+    } catch (error) {
+      // 处理流异常，如连接关闭
+      final errorString = error.toString().toLowerCase();
+      if (errorString.contains('connection closed') ||
+          errorString.contains('clientexception') ||
+          errorString.contains('connection terminated')) {
+        debugPrint('SSE 流连接已关闭: ${error.toString()}');
+      } else {
+        debugPrint('SSE 流处理错误: ${error.toString()}');
+      }
+      // 确保在此处也安全地关闭客户端
+      try {
+        _client?.close();
+      } catch (closeError) {
+        debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+      }
+      _client = null;
     }
   }
 
@@ -422,7 +467,12 @@ class SSESearchService {
     _isConnected = false;
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
-    _client?.close();
+    try {
+      _client?.close();
+    } catch (e) {
+      // 静默处理连接关闭时的异常
+      debugPrint('关闭搜索连接时发生异常: ${e.toString()}');
+    }
     _client = null;
   }
 
@@ -437,11 +487,25 @@ class SSESearchService {
         errorString.contains('connection terminated')) {
       // 连接被关闭，这是正常情况，不显示错误
       debugPrint('搜索连接已关闭: ${error.toString()}');
+      // 确保在此处也安全地关闭客户端
+      try {
+        _client?.close();
+      } catch (closeError) {
+        debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+      }
+      _client = null;
       return;
     }
 
     // 其他错误才显示给用户
     _errorController?.add('SSE 错误: ${error.toString()}');
+    // 对于非连接关闭错误，也要确保安全地关闭客户端
+    try {
+      _client?.close();
+    } catch (closeError) {
+      debugPrint('关闭搜索连接时发生异常: ${closeError.toString()}');
+    }
+    _client = null;
   }
 
   /// 处理 SSE 关闭
@@ -457,7 +521,12 @@ class SSESearchService {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
 
-    _client?.close();
+    try {
+      _client?.close();
+    } catch (e) {
+      // 静默处理连接关闭时的异常
+      debugPrint('关闭搜索连接时发生异常: ${e.toString()}');
+    }
     _client = null;
 
     _isConnected = false;

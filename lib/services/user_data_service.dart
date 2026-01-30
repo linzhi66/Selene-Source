@@ -23,7 +23,7 @@ class UserDataService {
     required String password,
     required String cookies,
   }) async {
-    final box = Hive.box<String>(_boxName);
+    final box = Hive.box<dynamic>(_boxName);
     await box.put(_serverUrlKey, serverUrl);
     await box.put(_usernameKey, username);
     await box.put(_passwordKey, password);
@@ -32,26 +32,26 @@ class UserDataService {
 
   // 获取服务器地址
   static Future<String?> getServerUrl() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_serverUrlKey);
+    final value = Hive.box<dynamic>(_boxName).get(_serverUrlKey);
+    return value is String ? value : null;
   }
 
   // 获取用户名
   static Future<String?> getUsername() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_usernameKey);
+    final value = Hive.box<dynamic>(_boxName).get(_usernameKey);
+    return value is String ? value : null;
   }
 
   // 获取密码
   static Future<String?> getPassword() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_passwordKey);
+    final value = Hive.box<dynamic>(_boxName).get(_passwordKey);
+    return value is String ? value : null;
   }
 
   // 获取cookies
   static Future<String?> getCookies() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_cookiesKey);
+    final value = Hive.box<dynamic>(_boxName).get(_cookiesKey);
+    return value is String ? value : null;
   }
 
   // 检查是否已登录
@@ -62,7 +62,7 @@ class UserDataService {
 
   // 清除用户数据
   static Future<void> clearUserData() async {
-    final box = Hive.box<String>(_boxName);
+    final box = Hive.box<dynamic>(_boxName);
     await box.delete(_serverUrlKey);
     await box.delete(_usernameKey);
     await box.delete(_passwordKey);
@@ -71,19 +71,22 @@ class UserDataService {
 
   // 只清除密码和cookies，保留服务器地址和用户名
   static Future<void> clearPasswordAndCookies() async {
-    final box = Hive.box<String>(_boxName);
+    final box = Hive.box<dynamic>(_boxName);
     await box.delete(_passwordKey);
     await box.delete(_cookiesKey);
   }
 
   // 获取所有用户数据
   static Future<Map<String, String?>> getAllUserData() async {
-    final box = Hive.box<String>(_boxName);
+    final box = Hive.box<dynamic>(_boxName);
     return {
-      'serverUrl': box.get(_serverUrlKey),
-      'username': box.get(_usernameKey),
-      'password': box.get(_passwordKey),
-      'cookies': box.get(_cookiesKey),
+      'serverUrl':
+          box.get(_serverUrlKey) is String ? box.get(_serverUrlKey) : null,
+      'username':
+          box.get(_usernameKey) is String ? box.get(_usernameKey) : null,
+      'password':
+          box.get(_passwordKey) is String ? box.get(_passwordKey) : null,
+      'cookies': box.get(_cookiesKey) is String ? box.get(_cookiesKey) : null,
     };
   }
 
@@ -92,7 +95,6 @@ class UserDataService {
     final serverUrl = await getServerUrl();
     final username = await getUsername();
     final password = await getPassword();
-
     return serverUrl != null &&
         serverUrl.isNotEmpty &&
         username != null &&
@@ -103,44 +105,42 @@ class UserDataService {
 
   // 保存豆瓣数据源设置（存储key值）
   static Future<void> saveDoubanDataSource(String dataSourceDisplayName) async {
-    final box = Hive.box<String>(_boxName);
-    final key = _getDoubanDataSourceKeyFromDisplayName(dataSourceDisplayName);
-    await box.put(_doubanDataSourceKey, key);
+    await Hive.box<dynamic>(_boxName).put(_doubanDataSourceKey,
+        _getDoubanDataSourceKeyFromDisplayName(dataSourceDisplayName));
   }
 
   // 获取豆瓣数据源设置（返回key值）
   static Future<String> getDoubanDataSourceKey() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_doubanDataSourceKey) ?? 'direct';
+    final value = Hive.box<dynamic>(_boxName).get(_doubanDataSourceKey);
+    return (value is String ? value : 'direct');
   }
 
   // 获取豆瓣数据源显示名称
   static Future<String> getDoubanDataSourceDisplayName() async {
-    final key = await getDoubanDataSourceKey();
-    return _getDoubanDataSourceDisplayNameFromKey(key);
+    return _getDoubanDataSourceDisplayNameFromKey(
+        await getDoubanDataSourceKey());
   }
 
   // 保存豆瓣图片源设置（存储key值）
   static Future<void> saveDoubanImageSource(
       String imageSourceDisplayName) async {
-    final box = Hive.box<String>(_boxName);
-    final key = _getDoubanImageSourceKeyFromDisplayName(imageSourceDisplayName);
-    await box.put(_doubanImageSourceKey, key);
+    await Hive.box<dynamic>(_boxName).put(_doubanImageSourceKey,
+        _getDoubanImageSourceKeyFromDisplayName(imageSourceDisplayName));
   }
 
   // 获取豆瓣图片源设置（返回key值）
   static Future<String> getDoubanImageSourceKey() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_doubanImageSourceKey) ?? 'direct';
+    final value = Hive.box<dynamic>(_boxName).get(_doubanImageSourceKey);
+    return (value is String ? value : 'direct');
   }
 
   // 获取豆瓣图片源显示名称
   static Future<String> getDoubanImageSourceDisplayName() async {
-    final key = await getDoubanImageSourceKey();
-    return _getDoubanImageSourceDisplayNameFromKey(key);
+    return _getDoubanImageSourceDisplayNameFromKey(
+        await getDoubanImageSourceKey());
   }
 
-  // 根据显示名称获取豆瓣数据源的key值（私有方法）
+  // 根据显示名称获取豆瓣数据源的key值
   static String _getDoubanDataSourceKeyFromDisplayName(String dataSource) {
     switch (dataSource) {
       case '直连':
@@ -156,7 +156,7 @@ class UserDataService {
     }
   }
 
-  // 根据显示名称获取豆瓣图片源的key值（私有方法）
+  // 根据显示名称获取豆瓣图片源的key值
   static String _getDoubanImageSourceKeyFromDisplayName(String imageSource) {
     switch (imageSource) {
       case '直连':
@@ -172,7 +172,7 @@ class UserDataService {
     }
   }
 
-  // 根据key值获取豆瓣数据源显示名称（私有方法）
+  // 根据key值获取豆瓣数据源显示名称
   static String _getDoubanDataSourceDisplayNameFromKey(String key) {
     switch (key) {
       case 'direct':
@@ -188,7 +188,7 @@ class UserDataService {
     }
   }
 
-  // 根据key值获取豆瓣图片源显示名称（私有方法）
+  // 根据key值获取豆瓣图片源显示名称
   static String _getDoubanImageSourceDisplayNameFromKey(String key) {
     switch (key) {
       case 'direct':
@@ -206,53 +206,67 @@ class UserDataService {
 
   // 保存 M3U8 代理 URL
   static Future<void> saveM3u8ProxyUrl(String url) async {
-    final box = Hive.box<String>(_boxName);
-    await box.put(_m3u8ProxyUrlKey, url);
+    await Hive.box<dynamic>(_boxName).put(_m3u8ProxyUrlKey, url);
   }
 
   // 获取 M3U8 代理 URL
   static Future<String> getM3u8ProxyUrl() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_m3u8ProxyUrlKey) ?? '';
+    final value = Hive.box<dynamic>(_boxName).get(_m3u8ProxyUrlKey);
+    return (value is String ? value : '');
   }
 
   // 保存优选测速设置
   static Future<void> savePreferSpeedTest(bool enabled) async {
-    final box = Hive.box<bool>(_boxName);
-    await box.put(_preferSpeedTestKey, enabled);
+    await Hive.box<dynamic>(_boxName).put(_preferSpeedTestKey, enabled);
   }
 
   // 获取优选测速设置（默认为 true）
   static Future<bool> getPreferSpeedTest() async {
-    final box = Hive.box<bool>(_boxName);
-    return box.get(_preferSpeedTestKey) ?? true;
+    final value = Hive.box<dynamic>(_boxName).get(_preferSpeedTestKey);
+    if (value is bool) {
+      return value;
+    } else if (value is String) {
+      return value.toLowerCase() == 'true';
+    }
+    return true;
   }
 
   // 保存本地搜索设置
   static Future<void> saveLocalSearch(bool enabled) async {
-    final box = Hive.box<bool>(_boxName);
-    await box.put(_localSearchKey, enabled);
+    await Hive.box<dynamic>(_boxName).put(_localSearchKey, enabled);
   }
 
   // 获取本地搜索设置（默认为 false）
   static Future<bool> getLocalSearch() async {
-    final box = Hive.box<bool>(_boxName);
-    return box.get(_localSearchKey) ?? false;
+    final value = Hive.box<dynamic>(_boxName).get(_localSearchKey);
+    if (value is bool) {
+      return value;
+    } else if (value is String) {
+      return value.toLowerCase() == 'true';
+    }
+    return false;
   }
 
   // 保存本地模式设置
   static Future<void> saveIsLocalMode(bool isLocalMode) async {
-    final box = Hive.box<bool>(_boxName);
-    await box.put(_isLocalModeKey, isLocalMode);
-    _isLocalModeCache = isLocalMode; // 同步更新内存缓存
+    await Hive.box<dynamic>(_boxName).put(_isLocalModeKey, isLocalMode);
+    _isLocalModeCache = isLocalMode;
   }
 
   // 获取本地模式设置（默认为 false）
   static Future<bool> getIsLocalMode() async {
-    final box = Hive.box<bool>(_boxName);
-    final value = box.get(_isLocalModeKey) ?? false;
-    _isLocalModeCache = value; // 缓存到内存
-    return value;
+    final value = Hive.box<dynamic>(_boxName).get(_isLocalModeKey);
+    if (value is bool) {
+      _isLocalModeCache = value;
+      return value;
+    } else if (value is String) {
+      final bool parsedValue = value.toLowerCase() == 'true';
+      _isLocalModeCache = parsedValue;
+      return parsedValue;
+    }
+    final bool defaultValue = false;
+    _isLocalModeCache = defaultValue;
+    return defaultValue;
   }
 
   // 同步获取本地模式设置（从内存缓存读取）

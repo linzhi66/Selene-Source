@@ -24,41 +24,33 @@ class LocalModeStorageService {
 
   /// 保存订阅 URL
   static Future<void> saveSubscriptionUrl(String url) async {
-    final box = Hive.box<String>(_boxName);
-    await box.put(_subscriptionUrlKey, url);
+    await Hive.box<String>(_boxName).put(_subscriptionUrlKey, url);
   }
 
   /// 获取订阅 URL
   static Future<String?> getSubscriptionUrl() async {
-    final box = Hive.box<String>(_boxName);
-    return box.get(_subscriptionUrlKey);
+    return Hive.box<String>(_boxName).get(_subscriptionUrlKey);
   }
 
   /// 清除订阅 URL
   static Future<void> clearSubscriptionUrl() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_subscriptionUrlKey);
+    await Hive.box<String>(_boxName).delete(_subscriptionUrlKey);
   }
 
   // ==================== 搜索源列表 ====================
 
   /// 保存搜索源列表
   static Future<void> saveSearchSources(List<SearchResource> resources) async {
-    final box = Hive.box<String>(_boxName);
-    final jsonList = resources.map((r) => r.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    await box.put(_searchSourcesKey, jsonString);
+    await Hive.box<String>(_boxName).put(_searchSourcesKey,
+        jsonEncode(resources.map((r) => r.toJson()).toList()));
   }
 
   /// 获取搜索源列表
   static Future<List<SearchResource>> getSearchSources() async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = box.get(_searchSourcesKey);
-
+    final jsonString = Hive.box<String>(_boxName).get(_searchSourcesKey);
     if (jsonString == null || jsonString.isEmpty) {
       return [];
     }
-
     try {
       final jsonList = jsonDecode(jsonString) as List;
       return jsonList.map((json) => SearchResource.fromJson(json)).toList();
@@ -69,29 +61,23 @@ class LocalModeStorageService {
 
   /// 清除搜索源列表
   static Future<void> clearSearchSources() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_searchSourcesKey);
+    await Hive.box<String>(_boxName).delete(_searchSourcesKey);
   }
 
   // ==================== 直播源 ====================
 
   /// 保存直播源列表
   static Future<void> saveLiveSources(List<LiveSource> sources) async {
-    final box = Hive.box<String>(_boxName);
-    final jsonList = sources.map((s) => s.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    await box.put(_liveSourcesKey, jsonString);
+    await Hive.box<String>(_boxName).put(
+        _liveSourcesKey, jsonEncode(sources.map((s) => s.toJson()).toList()));
   }
 
   /// 获取直播源列表
   static Future<List<LiveSource>> getLiveSources() async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = box.get(_liveSourcesKey);
-
+    final jsonString = Hive.box<String>(_boxName).get(_liveSourcesKey);
     if (jsonString == null || jsonString.isEmpty) {
       return [];
     }
-
     try {
       final jsonList = jsonDecode(jsonString) as List;
       return jsonList.map((json) => LiveSource.fromJson(json)).toList();
@@ -102,43 +88,32 @@ class LocalModeStorageService {
 
   /// 清除直播源
   static Future<void> clearLiveSources() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_liveSourcesKey);
+    await Hive.box<String>(_boxName).delete(_liveSourcesKey);
   }
 
   // ==================== 播放记录 ====================
 
   /// 保存播放记录列表
   static Future<void> savePlayRecords(List<PlayRecord> records) async {
-    final box = Hive.box<String>(_boxName);
     final Map<String, dynamic> recordsMap = {};
-
     for (var record in records) {
-      final key = '${record.source}+${record.id}';
-      recordsMap[key] = record.toJson();
+      recordsMap['${record.source}+${record.id}'] = record.toJson();
     }
-
-    final jsonString = jsonEncode(recordsMap);
-    await box.put(_playRecordsKey, jsonString);
+    await Hive.box<String>(_boxName)
+        .put(_playRecordsKey, jsonEncode(recordsMap));
   }
 
   /// 获取播放记录列表
   static Future<List<PlayRecord>> getPlayRecords() async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = box.get(_playRecordsKey);
-
+    final jsonString = Hive.box<String>(_boxName).get(_playRecordsKey);
     if (jsonString == null || jsonString.isEmpty) {
       return [];
     }
-
     try {
-      final Map<String, dynamic> recordsMap = jsonDecode(jsonString);
       final records = <PlayRecord>[];
-
-      recordsMap.forEach((key, value) {
+      jsonDecode(jsonString).forEach((String key, dynamic value) {
         records.add(PlayRecord.fromJson(key, value));
       });
-
       // 按保存时间降序排序
       records.sort((a, b) => b.saveTime.compareTo(a.saveTime));
       return records;
@@ -150,13 +125,10 @@ class LocalModeStorageService {
   /// 添加或更新单条播放记录
   static Future<void> savePlayRecord(PlayRecord record) async {
     final records = await getPlayRecords();
-
     // 移除相同的记录（如果存在）
     records.removeWhere((r) => r.source == record.source && r.id == record.id);
-
     // 添加新记录到列表开头
     records.insert(0, record);
-
     // 保存更新后的列表
     await savePlayRecords(records);
   }
@@ -170,48 +142,38 @@ class LocalModeStorageService {
 
   /// 清除所有播放记录
   static Future<void> clearPlayRecords() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_playRecordsKey);
+    await Hive.box<String>(_boxName).delete(_playRecordsKey);
   }
 
   // ==================== 收藏夹 ====================
 
   /// 保存收藏夹列表
   static Future<void> saveFavorites(List<FavoriteItem> favorites) async {
-    final box = Hive.box<String>(_boxName);
     final Map<String, dynamic> favoritesMap = {};
-
     for (var favorite in favorites) {
       final key = '${favorite.source}+${favorite.id}';
       favoritesMap[key] = favorite.toJson();
     }
-
-    final jsonString = jsonEncode(favoritesMap);
-    await box.put(_favoritesKey, jsonString);
-    _favoritesCache = List.from(favorites); // 同步更新内存缓存
+    await Hive.box<String>(_boxName)
+        .put(_favoritesKey, jsonEncode(favoritesMap));
+    _favoritesCache = List.from(favorites);
   }
 
   /// 获取收藏夹列表
   static Future<List<FavoriteItem>> getFavorites() async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = box.get(_favoritesKey);
-
+    final jsonString = Hive.box<String>(_boxName).get(_favoritesKey);
     if (jsonString == null || jsonString.isEmpty) {
       _favoritesCache = [];
       return [];
     }
-
     try {
-      final Map<String, dynamic> favoritesMap = jsonDecode(jsonString);
       final favorites = <FavoriteItem>[];
-
-      favoritesMap.forEach((key, value) {
+      jsonDecode(jsonString).forEach((String key, dynamic value) {
         favorites.add(FavoriteItem.fromJson(key, value));
       });
-
       // 按保存时间降序排序
       favorites.sort((a, b) => b.saveTime.compareTo(a.saveTime));
-      _favoritesCache = favorites; // 缓存到内存
+      _favoritesCache = favorites;
       return favorites;
     } catch (e) {
       _favoritesCache = [];
@@ -222,14 +184,11 @@ class LocalModeStorageService {
   /// 添加或更新单个收藏项
   static Future<void> saveFavorite(FavoriteItem favorite) async {
     final favorites = await getFavorites();
-
     // 移除相同的收藏项（如果存在）
     favorites
         .removeWhere((f) => f.source == favorite.source && f.id == favorite.id);
-
     // 添加新收藏项到列表开头
     favorites.insert(0, favorite);
-
     // 保存更新后的列表
     await saveFavorites(favorites);
   }
@@ -258,29 +217,24 @@ class LocalModeStorageService {
 
   /// 清除所有收藏
   static Future<void> clearFavorites() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_favoritesKey);
-    _favoritesCache = []; // 同步清除内存缓存
+    await Hive.box<String>(_boxName).delete(_favoritesKey);
+    _favoritesCache = [];
   }
 
   // ==================== 搜索记录 ====================
 
   /// 保存搜索记录列表
   static Future<void> saveSearchHistory(List<String> history) async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = jsonEncode(history);
-    await box.put(_searchHistoryKey, jsonString);
+    await Hive.box<String>(_boxName)
+        .put(_searchHistoryKey, jsonEncode(history));
   }
 
   /// 获取搜索记录列表
   static Future<List<String>> getSearchHistory() async {
-    final box = Hive.box<String>(_boxName);
-    final jsonString = box.get(_searchHistoryKey);
-
+    final jsonString = Hive.box<String>(_boxName).get(_searchHistoryKey);
     if (jsonString == null || jsonString.isEmpty) {
       return [];
     }
-
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((e) => e.toString()).toList();
@@ -292,20 +246,15 @@ class LocalModeStorageService {
   /// 添加搜索记录
   static Future<void> addSearchHistory(String keyword) async {
     if (keyword.trim().isEmpty) return;
-
     final history = await getSearchHistory();
-
     // 移除重复的关键词
     history.remove(keyword);
-
     // 添加到列表开头
     history.insert(0, keyword);
-
     // 限制最多保存 50 条记录
     if (history.length > 20) {
       history.removeRange(20, history.length);
     }
-
     await saveSearchHistory(history);
   }
 
@@ -318,8 +267,7 @@ class LocalModeStorageService {
 
   /// 清除所有搜索记录
   static Future<void> clearSearchHistory() async {
-    final box = Hive.box<String>(_boxName);
-    await box.delete(_searchHistoryKey);
+    await Hive.box<String>(_boxName).delete(_searchHistoryKey);
   }
 
   // ==================== 清除所有本地模式数据 ====================
