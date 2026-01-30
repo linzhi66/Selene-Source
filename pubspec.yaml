@@ -11,7 +11,7 @@ dependencies:
   app_settings: ^7.0.0
   bitsdojo_window: ^0.1.6
   bs58check: ^1.0.2
-  cached_network_image: ^3.3.1
+  cached_network_image: ^3.4.1
   cupertino_icons: ^1.0.6
   dio: ^5.4.0
   dlna_dart: ^0.1.0
@@ -25,7 +25,6 @@ dependencies:
   gbk_codec: ^0.4.0
   google_fonts: ^8.0.0
   gpt_markdown: ^1.1.4
-  http: ^1.2.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   intl: ^0.20.2
