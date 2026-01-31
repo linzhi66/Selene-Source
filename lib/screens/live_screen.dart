@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:selene/models/live_channel.dart';
@@ -142,20 +144,18 @@ class _LiveScreenState extends State<LiveScreen>
   }
 
   Future<void> refreshChannels() async {
-    setState(() {
-      _isRefreshButtonHovered = false;
-      _isRefreshing = true;
-      _errorMessage = null;
-    });
-
-    // 开始旋转动画
-    await _refreshIconController.repeat();
-
+    if (mounted) {
+      setState(() {
+        _isRefreshButtonHovered = false;
+        _isRefreshing = true;
+        _errorMessage = null;
+      });
+    }
+    unawaited(_refreshIconController.repeat());
     try {
       LiveService.clearAllChannelsAndEpgCache();
       // 1. 重新获取所有直播源
       final liveSources = await LiveService.getLiveSources(forceRefresh: true);
-
       if (liveSources.isEmpty) {
         if (mounted) {
           setState(() {
@@ -166,7 +166,6 @@ class _LiveScreenState extends State<LiveScreen>
         }
         return;
       }
-
       // 2. 检查当前源是否还存在
       LiveSource? targetSource;
       if (_currentSource != null) {
@@ -186,10 +185,8 @@ class _LiveScreenState extends State<LiveScreen>
         // 没有当前源，使用第一个源
         targetSource = liveSources.first;
       }
-
       // 3. 获取目标源的频道列表
       final channels = await LiveService.getLiveChannels(targetSource.key);
-
       if (channels.isEmpty) {
         if (mounted) {
           setState(() {
@@ -200,7 +197,6 @@ class _LiveScreenState extends State<LiveScreen>
         }
         return;
       }
-
       // 4. 按 group 进行聚类
       final Map<String, List<LiveChannel>> groupedChannels = {};
       for (var channel in channels) {
@@ -210,7 +206,6 @@ class _LiveScreenState extends State<LiveScreen>
         }
         groupedChannels[groupName]!.add(channel);
       }
-
       // 5. 转换为 LiveChannelGroup 列表
       final groups = groupedChannels.entries
           .map((entry) => LiveChannelGroup(
@@ -218,7 +213,6 @@ class _LiveScreenState extends State<LiveScreen>
                 channels: entry.value,
               ))
           .toList();
-
       if (mounted) {
         setState(() {
           _channelGroups = groups;

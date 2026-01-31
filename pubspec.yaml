@@ -25,6 +25,7 @@ dependencies:
   gbk_codec: ^0.4.0
   google_fonts: ^8.0.0
   gpt_markdown: ^1.1.4
+  http: ^1.2.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   intl: ^0.20.2

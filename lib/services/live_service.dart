@@ -16,9 +16,13 @@ import 'package:xml/xml_events.dart';
 
 /// 缓存项
 class _CacheItem<T> {
+  /// 缓存数据
   final T data;
+
+  /// 缓存时间
   final DateTime cacheTime;
 
+  /// 构造函数
   _CacheItem(this.data, this.cacheTime);
 
   /// 检查缓存是否过期
@@ -47,7 +51,6 @@ class LiveService {
         !_liveSourcesCache!.isExpired(_sourceCacheDuration)) {
       return _liveSourcesCache!.data;
     }
-
     // 如果有缓存但已过期，先返回旧数据，然后异步刷新
     if (!forceRefresh && _liveSourcesCache != null) {
       // 异步刷新缓存（不等待）
@@ -55,7 +58,6 @@ class LiveService {
       // 立即返回旧数据
       return _liveSourcesCache!.data;
     }
-
     // 没有缓存或强制刷新，同步获取
     return await _fetchAndCacheLiveSources();
   }
