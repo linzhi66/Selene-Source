@@ -441,11 +441,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedTopTab == tab) {
       return;
     }
-
     setState(() {
       _selectedTopTab = tab;
     });
-
     // 同步 PageView 的页面切换
     int pageIndex;
     switch (tab) {
@@ -461,13 +459,14 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         pageIndex = 0;
     }
-
-    // 使用动画切换到对应页面
-    _pageController.animateToPage(
-      pageIndex,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    // 使用动画切换到对应页面，确保PageController已连接到PageView
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        pageIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   /// 处理点击搜索按钮
@@ -506,20 +505,22 @@ class _HomeScreenState extends State<HomeScreen> {
       // 切换到首页标签
       _selectedTopTab = '首页';
     });
-
-    // 使用动画切换到首页
-    _bottomNavPageController.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-
-    // 同时切换顶部标签到首页
-    _pageController.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    // 使用动画切换到首页，确保PageController已连接到PageView
+    if (_bottomNavPageController.hasClients) {
+      _bottomNavPageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+    // 同时切换顶部标签到首页，确保PageController已连接到PageView
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   /// 处理视频卡片点击

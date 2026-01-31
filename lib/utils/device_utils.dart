@@ -11,10 +11,7 @@ class DeviceUtils {
   ///
   /// 通过屏幕宽度判断，宽度 >= 600dp 视为平板
   static bool isTablet(BuildContext context) {
-    if (isPC()) {
-      return true;
-    }
-    return MediaQuery.of(context).size.width >= tabletMinWidth;
+    return isPC() ? true : MediaQuery.of(context).size.width >= tabletMinWidth;
   }
 
   /// 判断当前设备是否是平板竖屏
@@ -27,7 +24,6 @@ class DeviceUtils {
     if (isPC()) {
       return false;
     }
-
     final Size size = MediaQuery.of(context).size;
     final double aspectRatio = size.width / size.height;
     return aspectRatio <= 1.2;
@@ -56,17 +52,16 @@ class DeviceUtils {
   /// - >= 1200: 8列
   static int getTabletColumnCount(BuildContext context) {
     if (!isTablet(context)) {
-      return 3; // 手机模式固定3列
+      // 手机模式固定3列
+      return 3;
     }
-
-    final double width = MediaQuery.of(context).size.width;
-
-    if (width < 1000) {
-      return 6;
-    } else if (width < 1200) {
-      return 7;
-    } else {
-      return 8;
+    switch (MediaQuery.of(context).size.width) {
+      case < 1000:
+        return 6;
+      case < 1200:
+        return 7;
+      default:
+        return 8;
     }
   }
 
@@ -80,33 +75,32 @@ class DeviceUtils {
   static double getHorizontalVisibleCards(
       BuildContext context, double mobileCardCount) {
     if (!isTablet(context)) {
-      return mobileCardCount; // 手机模式使用传入的卡片数
+      // 手机模式使用传入的卡片数
+      return mobileCardCount;
     }
-
-    final double width = MediaQuery.of(context).size.width;
-
-    if (width < 1000) {
-      return 5.75;
-    } else if (width < 1200) {
-      return 6.75;
-    } else {
-      return 7.75;
+    switch (MediaQuery.of(context).size.width) {
+      case < 1000:
+        return 5.75;
+      case < 1200:
+        return 6.75;
+      default:
+        return 7.75;
     }
   }
 
   /// 根据屏幕宽度动态计算直播频道列表的列数
   static int getLiveChannelColumnCount(BuildContext context) {
     if (!isTablet(context)) {
-      return 2; // 手机模式固定2列
+      // 手机模式固定2列
+      return 2;
     }
-    final double width = MediaQuery.of(context).size.width;
-
-    if (width < 1000) {
-      return 3;
-    } else if (width < 1200) {
-      return 4;
-    } else {
-      return 5;
+    switch (MediaQuery.of(context).size.width) {
+      case < 1000:
+        return 3;
+      case < 1200:
+        return 4;
+      default:
+        return 5;
     }
   }
 }
