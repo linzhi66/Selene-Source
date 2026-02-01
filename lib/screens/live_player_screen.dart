@@ -40,8 +40,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   List<EpgProgram>? _programs;
   bool _isLoadingEpg = false;
   List<LiveChannel> _allChannels = [];
+  List<LiveChannel> _filteredChannels = [];
   List<LiveSource> _allSources = [];
   String _selectedGroup = '全部';
+  Map<String, List<LiveChannel>> _channelsByNameMap = {};
+  String? _currentTabChannelName;
 
   // 缓存设备类型
   late bool _isTablet;
@@ -92,12 +95,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     if (!_isInitialized) {
       // 缓存设备类型 - 在这里调用是安全的，因为 MediaQuery 已经可用
       _isTablet = DeviceUtils.isTablet(context);
       _isPortraitTablet = DeviceUtils.isPortraitTablet(context);
-
       // 保存当前的系统UI样式
       final theme = Theme.of(context);
       final isDarkMode = theme.brightness == Brightness.dark;
@@ -111,10 +112,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             isDarkMode ? Brightness.light : Brightness.dark,
       );
       _isInitialized = true;
-
       // 加载数据
       _loadAllSources();
       _loadAllChannels();
+      _loadAllSourcesChannels();
       _loadEpgData();
     }
   }
@@ -143,6 +144,8 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       if (mounted) {
         setState(() {
           _allChannels = channels;
+          // 默认显示所有频道
+          _filteredChannels = channels;
         });
 
         // 滚动到当前频道
@@ -153,8 +156,39 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       if (mounted) {
         setState(() {
           _allChannels = [];
+          _filteredChannels = [];
         });
       }
+    }
+  }
+
+  Future<void> _loadAllSourcesChannels() async {
+    try {
+      // 获取所有直播源，用于查找同名频道
+      final allSources = await LiveService.getLiveSources();
+      // 构建包含所有源的频道名称映射
+      final allChannelsByNameMap = <String, List<LiveChannel>>{};
+      for (final source in allSources) {
+        final sourceChannels = await LiveService.getLiveChannels(source.key);
+        final sourceMap = LiveService.getChannelsByNameMap(sourceChannels);
+        for (final entry in sourceMap.entries) {
+          final name = entry.key;
+          final channelsList = entry.value;
+          if (!allChannelsByNameMap.containsKey(name)) {
+            allChannelsByNameMap[name] = [];
+          }
+          allChannelsByNameMap[name]!.addAll(channelsList);
+        }
+      }
+
+      // 更新全局频道名称映射
+      if (mounted) {
+        setState(() {
+          _channelsByNameMap = allChannelsByNameMap;
+        });
+      }
+    } catch (e) {
+      debugPrint('加载所有源的频道列表失败: $e');
     }
   }
 
@@ -170,6 +204,29 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
 
     // 滚动到当前频道
     _scrollToCurrentChannel();
+  }
+
+  void _switchToChannelTab(String channelName) {
+    setState(() {
+      _currentTabChannelName = channelName;
+      // 获取该频道名称下的所有频道
+      _filteredChannels = _channelsByNameMap[channelName] ?? [];
+      // 如果有频道，则设置第一个为当前频道
+      if (_filteredChannels.isNotEmpty) {
+        _currentChannel = _filteredChannels.first;
+      }
+    });
+    // 重新加载 EPG
+    _loadEpgData();
+    // 滚动到当前频道
+    _scrollToCurrentChannel();
+  }
+
+  void _clearChannelTab() {
+    setState(() {
+      _currentTabChannelName = null;
+      _filteredChannels = _allChannels;
+    });
   }
 
   @override
@@ -980,7 +1037,27 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                     : const Color(0xFF7f8c8d),
               ),
             ),
-            onTap: () => _switchChannel(channel),
+            onTap: () {
+              // 检查当前是否在频道名称标签页模式下
+              if (_currentTabChannelName != null &&
+                  _currentTabChannelName == channel.name) {
+                // 如果已经在频道名称标签页模式下，并且点击的是同名频道，则直接切换到该频道
+                _switchChannel(channel);
+              } else {
+                // 检查是否有多个同名频道
+                final sameNamedChannels =
+                    _channelsByNameMap[channel.name] ?? [];
+                if (sameNamedChannels.length > 1) {
+                  // 如果有多个同名频道，切换到频道名称标签页
+                  _switchToChannelTab(channel.name);
+                  // 并同时切换到所选频道
+                  _switchChannel(channel);
+                } else {
+                  // 否则直接切换到频道
+                  _switchChannel(channel);
+                }
+              }
+            },
           ),
         );
       },
@@ -1011,62 +1088,70 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     // 判断是否只有一个直播源
     final showSourceFilter = _allSources.length > 1;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: themeService.isDarkMode
-                ? const Color(0xFF333333)
-                : const Color(0xFFe0e0e0),
+    return Column(
+      children: [
+        // 频道名称页签
+        _buildChannelNameTabs(themeService),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: themeService.isDarkMode
+                    ? const Color(0xFF333333)
+                    : const Color(0xFFe0e0e0),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              // 直播源筛选（只有多个源时显示）
+              if (showSourceFilter) ...[
+                _buildFilterPill(
+                  '直播源',
+                  sourceOptions,
+                  _currentSource.key,
+                  (value) async {
+                    final source =
+                        _allSources.firstWhere((s) => s.key == value);
+                    setState(() {
+                      _currentSource = source;
+                      _selectedGroup = '全部';
+                      _currentTabChannelName = null; // 清除频道标签
+                      _isLoading = true;
+                      _loadingMessage = '切换直播源...';
+                    });
+                    await _loadAllChannels();
+                    if (mounted && _allChannels.isNotEmpty) {
+                      _switchChannel(_allChannels.first);
+                    }
+                  },
+                  themeService,
+                ),
+                const SizedBox(width: 8),
+              ],
+              // 分组筛选
+              _buildFilterPill(
+                '分组',
+                groupOptions,
+                _selectedGroup,
+                (value) {
+                  setState(() {
+                    _selectedGroup = value;
+                  });
+                },
+                themeService,
+              ),
+              const Spacer(),
+              // 滚动到当前频道按钮
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildScrollToCurrentChannelButton(themeService),
+              ),
+            ],
           ),
         ),
-      ),
-      child: Row(
-        children: [
-          // 直播源筛选（只有多个源时显示）
-          if (showSourceFilter) ...[
-            _buildFilterPill(
-              '直播源',
-              sourceOptions,
-              _currentSource.key,
-              (value) async {
-                final source = _allSources.firstWhere((s) => s.key == value);
-                setState(() {
-                  _currentSource = source;
-                  _selectedGroup = '全部';
-                  _isLoading = true;
-                  _loadingMessage = '切换直播源...';
-                });
-                await _loadAllChannels();
-                if (mounted && _allChannels.isNotEmpty) {
-                  _switchChannel(_allChannels.first);
-                }
-              },
-              themeService,
-            ),
-            const SizedBox(width: 8),
-          ],
-          // 分组筛选
-          _buildFilterPill(
-            '分组',
-            groupOptions,
-            _selectedGroup,
-            (value) {
-              setState(() {
-                _selectedGroup = value;
-              });
-            },
-            themeService,
-          ),
-          const Spacer(),
-          // 滚动到当前频道按钮
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _buildScrollToCurrentChannelButton(themeService),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1096,6 +1181,58 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 构建频道名称页签列表
+  Widget _buildChannelNameTabs(ThemeService themeService) {
+    if (_currentTabChannelName == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          // 当前频道名称标签
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF27ae60),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _currentTabChannelName!,
+              style: FontUtils.poppins(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // 关闭标签按钮
+          GestureDetector(
+            onTap: _clearChannelTab,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: themeService.isDarkMode
+                    ? const Color(0xFF444444)
+                    : const Color(0xFFe0e0e0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.close,
+                size: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1240,10 +1377,19 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
 
   /// 获取筛选后的频道列表
   List<LiveChannel> _getFilteredChannels() {
+    // 如果当前在频道名称标签页模式下，显示该频道名称下的所有频道
+    if (_currentTabChannelName != null) {
+      return _filteredChannels;
+    }
+
+    // 否则，返回去重后的频道列表
+    final List<LiveChannel> uniqueChannels =
+        LiveService.getUniqueChannels(_allChannels);
+
     if (_selectedGroup == '全部') {
-      return _allChannels;
+      return uniqueChannels;
     } else {
-      return _allChannels.where((c) => c.group == _selectedGroup).toList();
+      return uniqueChannels.where((c) => c.group == _selectedGroup).toList();
     }
   }
 

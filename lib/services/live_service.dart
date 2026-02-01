@@ -90,7 +90,6 @@ class LiveService {
         return cache.data.channels;
       }
     }
-
     // 如果有缓存但已过期，先返回旧数据，然后异步刷新
     if (!forceRefresh && _channelsCache.containsKey(sourceKey)) {
       // 异步刷新缓存（不等待）
@@ -98,7 +97,6 @@ class LiveService {
       // 立即返回旧数据
       return _channelsCache[sourceKey]!.data.channels;
     }
-
     // 没有缓存或强制刷新，同步获取
     return await _fetchAndCacheChannels(sourceKey);
   }
@@ -111,31 +109,24 @@ class LiveService {
       final liveSource = _liveSourcesCache?.data.firstWhere(
           (source) => source.key == sourceKey,
           orElse: () => throw Exception('未找到直播源: $sourceKey'));
-
       if (liveSource == null) {
         throw Exception('未找到直播源: $sourceKey');
       }
-
       // 确定使用的 User-Agent
       final userAgent =
           liveSource.ua.isEmpty ? 'AptvPlayer/1.4.10' : liveSource.ua;
-
       // 请求 M3U 内容
       final response = await http.get(
         Uri.parse(liveSource.url),
         headers: {'User-Agent': userAgent},
       );
-
       if (response.statusCode != 200) {
         throw Exception('请求失败: ${response.statusCode}');
       }
-
       // 处理编码，尝试多种编码方式
       final m3uText = _decodeResponse(response.bodyBytes);
-
       // 解析 M3U 内容
       final m3uContent = _parseM3U(sourceKey, m3uText);
-
       // 缓存结果
       _channelsCache[sourceKey] = _CacheItem(m3uContent, DateTime.now());
       return m3uContent.channels;
@@ -143,6 +134,40 @@ class LiveService {
       debugPrint('获取直播频道失败: $e');
       return _channelsCache[sourceKey]?.data.channels ?? [];
     }
+  }
+
+  /// 获取按名称去重的频道列表和频道名称到频道列表的映射
+  static Map<String, List<LiveChannel>> _getUniqueChannelsMap(
+      List<LiveChannel> channels) {
+    // 创建频道名称到频道列表的映射
+    final Map<String, List<LiveChannel>> nameToChannelsMap = {};
+    // 遍历所有频道，按名称分组
+    for (final channel in channels) {
+      if (!nameToChannelsMap.containsKey(channel.name)) {
+        nameToChannelsMap[channel.name] = [];
+      }
+      nameToChannelsMap[channel.name]!.add(channel);
+    }
+    return nameToChannelsMap;
+  }
+
+  /// 获取唯一频道列表（相同名称只保留一个）
+  static List<LiveChannel> getUniqueChannels(List<LiveChannel> channels) {
+    final nameToChannelsMap = _getUniqueChannelsMap(channels);
+
+    // 从每个频道名称组中取第一个频道作为代表
+    final List<LiveChannel> uniqueChannels = [];
+    for (final entry in nameToChannelsMap.entries) {
+      uniqueChannels.add(entry.value.first);
+    }
+
+    return uniqueChannels;
+  }
+
+  /// 获取频道名称到频道列表的映射
+  static Map<String, List<LiveChannel>> getChannelsByNameMap(
+      List<LiveChannel> channels) {
+    return _getUniqueChannelsMap(channels);
   }
 
   /// 智能解码响应内容，支持 UTF-8、GBK、GB2312 等编码

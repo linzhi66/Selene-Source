@@ -69,7 +69,6 @@ class _LiveScreenState extends State<LiveScreen>
     try {
       // 1. 获取所有直播源
       final liveSources = await LiveService.getLiveSources();
-
       if (liveSources.isEmpty) {
         if (mounted) {
           setState(() {
@@ -82,10 +81,8 @@ class _LiveScreenState extends State<LiveScreen>
         }
         return;
       }
-
       // 2. 确定要使用的直播源
       final targetSource = source ?? _currentSource ?? liveSources.first;
-
       // 在确定加载源后立即展示源筛选（更新状态）
       if (mounted) {
         setState(() {
@@ -94,10 +91,8 @@ class _LiveScreenState extends State<LiveScreen>
           _isInitialLoad = false;
         });
       }
-
       // 3. 获取该直播源的频道列表
       final channels = await LiveService.getLiveChannels(targetSource.key);
-
       if (channels.isEmpty) {
         if (mounted) {
           setState(() {
@@ -107,18 +102,18 @@ class _LiveScreenState extends State<LiveScreen>
         }
         return;
       }
-
-      // 4. 按 group 进行聚类
+      // 4. 获取去重后的频道列表
+      final uniqueChannels = LiveService.getUniqueChannels(channels);
+      // 5. 按 group 进行聚类
       final Map<String, List<LiveChannel>> groupedChannels = {};
-      for (var channel in channels) {
+      for (var channel in uniqueChannels) {
         final groupName = channel.group.isEmpty ? '未分组' : channel.group;
         if (!groupedChannels.containsKey(groupName)) {
           groupedChannels[groupName] = [];
         }
         groupedChannels[groupName]!.add(channel);
       }
-
-      // 5. 转换为 LiveChannelGroup 列表
+      // 6. 转换为 LiveChannelGroup 列表
       final groups = groupedChannels.entries
           .map((entry) => LiveChannelGroup(
                 name: entry.key,
@@ -197,16 +192,18 @@ class _LiveScreenState extends State<LiveScreen>
         }
         return;
       }
-      // 4. 按 group 进行聚类
+      // 4. 获取去重后的频道列表
+      final uniqueChannels = LiveService.getUniqueChannels(channels);
+      // 5. 按 group 进行聚类
       final Map<String, List<LiveChannel>> groupedChannels = {};
-      for (var channel in channels) {
+      for (var channel in uniqueChannels) {
         final groupName = channel.group.isEmpty ? '未分组' : channel.group;
         if (!groupedChannels.containsKey(groupName)) {
           groupedChannels[groupName] = [];
         }
         groupedChannels[groupName]!.add(channel);
       }
-      // 5. 转换为 LiveChannelGroup 列表
+      // 6. 转换为 LiveChannelGroup 列表
       final groups = groupedChannels.entries
           .map((entry) => LiveChannelGroup(
                 name: entry.key,
