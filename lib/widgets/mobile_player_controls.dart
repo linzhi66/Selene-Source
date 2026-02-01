@@ -935,6 +935,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   Widget _buildProgressBar() {
+    // 直播模式下不显示进度条
+    if (widget.live) {
+      return const SizedBox.shrink();
+    }
     return Positioned(
       bottom: _isFullscreen ? 58.0 : 42.0,
       left: 0,

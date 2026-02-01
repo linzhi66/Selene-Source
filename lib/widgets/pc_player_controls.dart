@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-
 import 'package:selene/widgets/dlna_device_dialog.dart';
 
 // 带 hover 效果的按钮组件
@@ -731,43 +730,44 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
               ),
             ),
             // 进度条
-            Positioned(
-              bottom: effectiveFullscreen ? 58.0 : 42.0,
-              left: 0,
-              right: 0,
-              child: AnimatedOpacity(
-                opacity: _controlsVisible ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
-                  ignoring: !_controlsVisible,
-                  child: Container(
-                    height: 24,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    child: CustomVideoProgressBar(
-                      player: widget.player,
-                      onDragStart: _onSeekStart,
-                      onDragEnd: _onSeekEnd,
-                      onDragUpdate: () {
-                        if (!_controlsVisible) {
+            if (!widget.live)
+              Positioned(
+                bottom: effectiveFullscreen ? 58.0 : 42.0,
+                left: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  opacity: _controlsVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IgnorePointer(
+                    ignoring: !_controlsVisible,
+                    child: Container(
+                      height: 24,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      child: CustomVideoProgressBar(
+                        player: widget.player,
+                        onDragStart: _onSeekStart,
+                        onDragEnd: _onSeekEnd,
+                        onDragUpdate: () {
+                          if (!_controlsVisible) {
+                            setState(() {
+                              _controlsVisible = true;
+                            });
+                          }
+                          _hideTimer?.cancel();
+                        },
+                        onPositionUpdate: (duration) {
                           setState(() {
-                            _controlsVisible = true;
+                            _dragPosition = duration;
                           });
-                        }
-                        _hideTimer?.cancel();
-                      },
-                      onPositionUpdate: (duration) {
-                        setState(() {
-                          _dragPosition = duration;
-                        });
-                      },
-                      dragPosition: _dragPosition,
-                      isSeekingViaSwipe: _isSeekingViaSwipe,
-                      live: widget.live,
+                        },
+                        dragPosition: _dragPosition,
+                        isSeekingViaSwipe: _isSeekingViaSwipe,
+                        live: widget.live,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             // 底部控制栏
             Positioned(
               bottom: effectiveFullscreen ? 4.0 : -6.0,
