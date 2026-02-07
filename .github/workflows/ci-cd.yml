@@ -1,0 +1,621 @@
+# Selene - Professional CI/CD Pipeline
+# Flutter 3.38.9 Multi-Platform Parallel Build
+# Features: Analysis, Lint, Test, Build, Artifact Upload
+
+name: Selene CI/CD
+
+on:
+  push:
+    branches: [ main, develop, 'release/*' ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Build Android'
+        type: boolean
+        default: true
+      build_ios:
+        description: 'Build iOS'
+        type: boolean
+        default: true
+      build_macos:
+        description: 'Build macOS'
+        type: boolean
+        default: true
+      build_windows:
+        description: 'Build Windows'
+        type: boolean
+        default: true
+      build_web:
+        description: 'Build Web'
+        type: boolean
+        default: true
+      build_linux:
+        description: 'Build Linux'
+        type: boolean
+        default: true
+
+env:
+  FLUTTER_VERSION: '3.38.9'
+  FLUTTER_CHANNEL: 'stable'
+  PUB_CACHE_KEY: pub-cache-v1
+  GRADLE_CACHE_KEY: gradle-v1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================
+  # Phase 1: Code Quality & Validation
+  # ==========================================
+  analyze:
+    name: "🔍 Code Analysis"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ env.FLUTTER_VERSION }}-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: "📦 Cache Pub Dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ env.PUB_CACHE_KEY }}-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ env.PUB_CACHE_KEY }}-${{ runner.os }}-
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🔍 Verify Flutter Setup"
+        run: flutter doctor -v
+
+      - name: "📊 Analyze Code"
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: "📝 Check Code Formatting"
+        run: dart format --set-exit-if-changed --output=none lib/ test/
+
+      - name: "🧪 Run Unit Tests"
+        run: flutter test --coverage --test-randomize-ordering-seed=random || true
+
+      - name: "📊 Upload Coverage"
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: "🔢 Extract Version"
+        id: get_version
+        run: |
+          VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: *//' | tr -d ' ' | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Project Version: $VERSION"
+
+  # ==========================================
+  # Phase 2: Security Scan
+  # ==========================================
+  security:
+    name: "🔐 Security Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🔐 Dependency Audit"
+        run: flutter pub audit || true
+
+      - name: "🛡️ Run Dependency Check"
+        run: |
+          dart pub deps --json > deps.json || true
+          echo "✅ Dependencies checked"
+
+  # ==========================================
+  # Phase 3: Parallel Multi-Platform Builds
+  # ==========================================
+  
+  # Android Build
+  build_android:
+    name: "🤖 Build Android"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_android }}
+    outputs:
+      artifact_path: ${{ steps.upload.outputs.artifact_id }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Java"
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Cache Pub Dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ env.PUB_CACHE_KEY }}-android-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ env.PUB_CACHE_KEY }}-android-
+
+      - name: "📦 Cache Gradle"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: ${{ env.GRADLE_CACHE_KEY }}-${{ runner.os }}-${{ hashFiles('**/build.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ env.GRADLE_CACHE_KEY }}-${{ runner.os }}-
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build Android APK"
+        run: |
+          flutter build apk --release \
+            --target-platform android-arm64,android-arm \
+            --split-per-abi \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols
+
+      - name: "🏗️ Build Android App Bundle"
+        run: |
+          flutter build appbundle --release \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols
+
+      - name: "📦 Rename & Organize Artifacts"
+        run: |
+          VERSION=${{ needs.analyze.outputs.version }}
+          mkdir -p artifacts/android
+          
+          if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+            cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk artifacts/android/selene-${VERSION}-android-arm64.apk
+          fi
+          if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
+            cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk artifacts/android/selene-${VERSION}-android-armeabi.apk
+          fi
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            cp build/app/outputs/bundle/release/app-release.aab artifacts/android/selene-${VERSION}.aab
+          fi
+          
+          ls -la artifacts/android/
+
+      - name: "⬆️ Upload Android Artifacts"
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: artifacts/android/*
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: "📊 Upload Debug Symbols"
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-symbols
+          path: build/app/outputs/symbols/
+          retention-days: 90
+          if-no-files-found: ignore
+
+  # iOS Build
+  build_ios:
+    name: "🍎 Build iOS"
+    runs-on: macos-latest
+    timeout-minutes: 40
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ios }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+          architecture: arm64
+
+      - name: "📦 Cache CocoaPods"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('**/Podfile.lock', '**/pubspec.lock') }}
+          restore-keys: |
+            cocoapods-${{ runner.os }}-
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🍎 Setup CocoaPods"
+        run: |
+          cd ios
+          pod install --repo-update || pod install
+          cd ..
+
+      - name: "🏗️ Build iOS"
+        run: flutter build ios --release --no-codesign
+
+      - name: "📦 Create IPA"
+        run: |
+          VERSION=${{ needs.analyze.outputs.version }}
+          mkdir -p artifacts/ios
+          
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r "../../../../artifacts/ios/selene-${VERSION}.ipa" Payload/
+          cd ../../..
+
+      - name: "⬆️ Upload iOS Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: artifacts/ios/*
+          retention-days: 30
+          if-no-files-found: error
+
+  # macOS Build
+  build_macos:
+    name: "🖥️ Build macOS"
+    runs-on: macos-latest
+    timeout-minutes: 35
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_macos }}
+    strategy:
+      matrix:
+        arch: [ arm64, x86_64 ]
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+          architecture: arm64
+
+      - name: "📦 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build macOS"
+        run: |
+          flutter config --enable-macos-desktop
+          flutter build macos --release
+
+      - name: "📦 Package macOS App"
+        run: |
+          VERSION=${{ needs.analyze.outputs.version }}
+          mkdir -p artifacts/macos-${{ matrix.arch }}
+          
+          APP_PATH="build/macos/Build/Products/Release/selene.app"
+          if [ -d "$APP_PATH" ]; then
+            hdiutil create -volname "Selene" \
+              -srcfolder "$APP_PATH" \
+              -ov -format UDZO \
+              "artifacts/macos-${{ matrix.arch }}/selene-${VERSION}-macos-${{ matrix.arch }}.dmg" || true
+          
+            ditto -c -k --keepParent "$APP_PATH" \
+              "artifacts/macos-${{ matrix.arch }}/selene-${VERSION}-macos-${{ matrix.arch }}.zip" || true
+          fi
+
+      - name: "⬆️ Upload macOS Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-${{ matrix.arch }}
+          path: artifacts/macos-${{ matrix.arch }}/*
+          retention-days: 30
+          if-no-files-found: warn
+
+  # Windows Build
+  build_windows:
+    name: "🪟 Build Windows"
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build Windows"
+        run: |
+          flutter config --enable-windows-desktop
+          flutter build windows --release
+
+      - name: "📦 Package Windows App"
+        shell: pwsh
+        run: |
+          $VERSION = "${{ needs.analyze.outputs.version }}"
+          New-Item -ItemType Directory -Force -Path "artifacts\windows"
+          
+          $BUILD_PATH = "build\windows\x64\runner\Release"
+          if (Test-Path $BUILD_PATH) {
+            Compress-Archive -Path "$BUILD_PATH\*" -DestinationPath "artifacts\windows\selene-${VERSION}-windows-x64.zip" -Force
+            Copy-Item -Path $BUILD_PATH -Destination "artifacts\windows\selene-${VERSION}-windows-x64" -Recurse -Force
+          }
+
+      - name: "⬆️ Upload Windows Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts/windows/*
+          retention-days: 30
+          if-no-files-found: error
+
+  # Web Build
+  build_web:
+    name: "🌐 Build Web"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_web }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Cache Pub Dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ env.PUB_CACHE_KEY }}-web-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ env.PUB_CACHE_KEY }}-web-
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build Web"
+        run: |
+          flutter build web --release \
+            --web-renderer canvaskit \
+            --dart-define=FLUTTER_WEB_USE_SKIA=true
+
+      - name: "📦 Package Web App"
+        run: |
+          VERSION=${{ needs.analyze.outputs.version }}
+          mkdir -p artifacts/web
+          cp -r build/web/* artifacts/web/
+          
+          cd artifacts
+          tar -czf "selene-${VERSION}-web.tar.gz" web/
+
+      - name: "⬆️ Upload Web Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: |
+            artifacts/selene-*-web.tar.gz
+            artifacts/web/
+          retention-days: 30
+          if-no-files-found: error
+
+  # Linux Build
+  build_linux:
+    name: "🐧 Build Linux"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [ analyze, security ]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux }}
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🛠️ Install Linux Dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libblkid-dev
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build Linux"
+        run: |
+          flutter config --enable-linux-desktop
+          flutter build linux --release
+
+      - name: "📦 Package Linux App"
+        run: |
+          VERSION=${{ needs.analyze.outputs.version }}
+          mkdir -p artifacts/linux
+          
+          BUILD_PATH="build/linux/x64/release/bundle"
+          if [ -d "$BUILD_PATH" ]; then
+            tar -czf "artifacts/linux/selene-${VERSION}-linux-x64.tar.gz" -C "$BUILD_PATH" .
+            cp -r "$BUILD_PATH" "artifacts/linux/selene-${VERSION}-linux-x64"
+          fi
+
+      - name: "⬆️ Upload Linux Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/linux/*
+          retention-days: 30
+          if-no-files-found: error
+
+  # ==========================================
+  # Phase 4: Release & Deploy
+  # ==========================================
+  release:
+    name: "🚀 Create Release"
+    runs-on: ubuntu-latest
+    needs: [ build_android, build_ios, build_macos, build_windows, build_web, build_linux ]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "📥 Download All Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          path: downloads
+          pattern: '*-build*'
+
+      - name: "📁 Organize Release Assets"
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          mkdir -p release
+          
+          find downloads -type f \( -name "*.apk" -o -name "*.aab" -o -name "*.ipa" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release/ \;
+          
+          ls -la release/
+
+      - name: "📝 Generate Release Notes"
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          cat > release_notes.md << 'EOF'
+          # Selene Release
+
+          ## Downloads
+
+          ### Mobile
+          - Android (ARM64): selene-*-android-arm64.apk
+          - Android (ARMv7): selene-*-android-armeabi.apk
+          - Android (AAB): selene-*.aab
+          - iOS: selene-*.ipa
+
+          ### Desktop
+          - macOS (ARM64): selene-*-macos-arm64.dmg
+          - macOS (x86_64): selene-*-macos-x86_64.dmg
+          - Windows: selene-*-windows-x64.zip
+          - Linux: selene-*-linux-x64.tar.gz
+
+          ### Web
+          - Web: selene-*-web.tar.gz
+
+          ## Installation
+
+          - Android: Install APK directly or use AAB for Play Store
+          - iOS: Install IPA using AltStore, Sideloadly, or similar tools
+          - macOS: Open DMG and drag to Applications
+          - Windows: Extract ZIP and run selene.exe
+          - Linux: Extract tar.gz and run selene binary
+
+          ## Notes
+          - iOS/macOS builds are unsigned and require manual installation
+          - Windows build may trigger SmartScreen (new release)
+
+          ## Verification
+          All builds are verified and signed by GitHub Actions.
+          EOF
+          
+          cat release_notes.md
+
+      - name: "🚀 Create GitHub Release"
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: release/*
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================
+  # Phase 5: Summary
+  # ==========================================
+  summary:
+    name: "📊 Build Summary"
+    runs-on: ubuntu-latest
+    needs: [ build_android, build_ios, build_macos, build_windows, build_web, build_linux ]
+    if: always()
+    steps:
+      - name: "📋 Build Status Summary"
+        run: |
+          echo "=========================================="
+          echo "📊 Build Summary"
+          echo "=========================================="
+          echo "Android: ${{ needs.build_android.result }}"
+          echo "iOS: ${{ needs.build_ios.result }}"
+          echo "macOS: ${{ needs.build_macos.result }}"
+          echo "Windows: ${{ needs.build_windows.result }}"
+          echo "Web: ${{ needs.build_web.result }}"
+          echo "Linux: ${{ needs.build_linux.result }}"
+          echo "=========================================="

@@ -1,0 +1,85 @@
+# Selene - Pull Request Validation
+# Lightweight checks for PRs to ensure code quality
+
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+
+env:
+  FLUTTER_VERSION: '3.38.9'
+  FLUTTER_CHANNEL: 'stable'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Quick validation for PRs
+  pr_validation:
+    name: "🔍 PR Validation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📦 Cache Pub Dependencies"
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-pr-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            pub-pr-${{ runner.os }}-
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🔍 Analyze Code"
+        run: flutter analyze --fatal-infos
+
+      - name: "📝 Check Formatting"
+        run: dart format --set-exit-if-changed --output=none lib/ test/
+
+      - name: "🧪 Run Tests"
+        run: flutter test
+
+  # Smoke build test - ensures project compiles
+  smoke_build:
+    name: "🔥 Smoke Build Test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🎯 Setup Java"
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: "🎯 Setup Flutter"
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: "📥 Get Dependencies"
+        run: flutter pub get
+
+      - name: "🏗️ Build APK (Debug)"
+        run: flutter build apk --debug
