@@ -1,7 +1,6 @@
-# Selene - Professional CI/CD Pipeline
-# Flutter 3.38.9 Multi-Platform Parallel Build
-# Features: Analysis, Lint, Test, Build, Artifact Upload
-
+# Selene - CI/CD流水线
+# Flutter 3.38.9 多平台并行构建
+# 功能：分析、线索、测试、构建、产物上传
 name: Selene CI/CD
 
 on:
