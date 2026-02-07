@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
+import 'package:selene/services/screenshot_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
 import 'package:selene/widgets/video_player_widget.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -97,6 +98,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
   // 缓存全屏状态
   bool _cachedIsFullscreen = false;
+
+  // 截图服务
+  final ScreenshotService _screenshotService = ScreenshotService();
+  bool _isCapturingScreenshot = false;
 
   @override
   void initState() {
@@ -1295,6 +1300,54 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     );
   }
 
+  Future<void> _takeScreenshot() async {
+    _onUserInteraction();
+
+    if (_isCapturingScreenshot) return;
+
+    setState(() {
+      _isCapturingScreenshot = true;
+    });
+
+    try {
+      // 使用视频标题或默认名称
+      final fileName = widget.videoTitle != null
+          ? '${widget.videoTitle}_screenshot.png'
+          : null;
+
+      final path = await _screenshotService.captureScreenshot(
+        player: widget.player,
+        fileName: fileName,
+      );
+
+      if (mounted) {
+        if (path != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('截图已保存: $path'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green.withValues(alpha: 0.8),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('截图失败'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturingScreenshot = false;
+        });
+      }
+    }
+  }
+
   Widget _buildRightOverlay() {
     if (_showVolumeIndicator && !_isLocked) {
       return Positioned(
@@ -1367,34 +1420,76 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       top: 0,
       bottom: 0,
       child: Center(
-        child: AnimatedOpacity(
-          opacity: _controlsVisible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          child: IgnorePointer(
-            ignoring: !_controlsVisible,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _isLocked = !_isLocked;
-                  _controlsVisible = true;
-                });
-                _startHideTimer();
-              },
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Icon(
-                  _isLocked ? Icons.lock : Icons.lock_open,
-                  color: Colors.white,
-                  size: 24,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 截图按钮
+            AnimatedOpacity(
+              opacity: _controlsVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: IgnorePointer(
+                ignoring: !_controlsVisible,
+                child: GestureDetector(
+                  onTap: _isCapturingScreenshot ? null : _takeScreenshot,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: _isCapturingScreenshot
+                        ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 16),
+            // 屏幕锁定按钮
+            AnimatedOpacity(
+              opacity: _controlsVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: IgnorePointer(
+                ignoring: !_controlsVisible,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isLocked = !_isLocked;
+                      _controlsVisible = true;
+                    });
+                    _startHideTimer();
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Icon(
+                      _isLocked ? Icons.lock : Icons.lock_open,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

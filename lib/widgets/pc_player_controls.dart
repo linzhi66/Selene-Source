@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:selene/services/screenshot_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
 import 'package:selene/widgets/video_player_widget.dart';
 
@@ -136,6 +137,10 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   double _volumeBeforeMute = 1.0;
   Timer? _volumeMenuHideTimer;
   final FocusNode _focusNode = FocusNode();
+
+  // 截图服务
+  final ScreenshotService _screenshotService = ScreenshotService();
+  bool _isCapturingScreenshot = false;
 
   @override
   void initState() {
@@ -414,6 +419,56 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
           onCastStarted: widget.onCastStarted,
         ),
       );
+    }
+  }
+
+  // ===== 截图功能 =====
+
+  Future<void> _takeScreenshot() async {
+    _onUserInteraction();
+
+    if (_isCapturingScreenshot) return;
+
+    setState(() {
+      _isCapturingScreenshot = true;
+    });
+
+    try {
+      // 使用视频标题或默认名称
+      final fileName = widget.videoTitle != null
+          ? '${widget.videoTitle}_screenshot.png'
+          : null;
+
+      final path = await _screenshotService.captureScreenshot(
+        player: widget.player,
+        fileName: fileName,
+      );
+
+      if (mounted) {
+        if (path != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('截图已保存: $path'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green.withValues(alpha: 0.8),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('截图失败'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturingScreenshot = false;
+        });
+      }
     }
   }
 
@@ -718,7 +773,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
             // 顶部投屏按钮
             Positioned(
               top: effectiveFullscreen ? 8 : 4,
-              right: effectiveFullscreen ? 56.0 : 48.0,
+              right: effectiveFullscreen ? 96.0 : 88.0,
               child: AnimatedOpacity(
                 opacity: _controlsVisible ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
@@ -738,7 +793,40 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                 ),
               ),
             ),
-            // 顶部下载按钮
+            // 顶部截图按钮（非直播模式下在投屏和下载之间，直播模式下在投屏右侧）
+            Positioned(
+              top: effectiveFullscreen ? 8 : 4,
+              right: effectiveFullscreen
+                  ? (widget.live ? 56.0 : 56.0)
+                  : (widget.live ? 48.0 : 48.0),
+              child: AnimatedOpacity(
+                opacity: _controlsVisible ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible || _isCapturingScreenshot,
+                  child: HoverButton(
+                    onTap: _takeScreenshot,
+                    child: _isCapturingScreenshot
+                        ? SizedBox(
+                            width: effectiveFullscreen ? 24 : 20,
+                            height: effectiveFullscreen ? 24 : 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: effectiveFullscreen ? 24 : 20,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            // 顶部下载按钮（仅非直播模式）
             if (!widget.live)
               Positioned(
                 top: effectiveFullscreen ? 8 : 4,
