@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
+import 'package:selene/widgets/video_player_widget.dart';
 import 'package:volume_controller/volume_controller.dart';
 
 class MobilePlayerControls extends StatefulWidget {
@@ -33,6 +34,12 @@ class MobilePlayerControls extends StatefulWidget {
   final Future<void> Function() onEnterPipMode;
   final bool isPipMode;
 
+  // 下载相关参数
+  final VideoDownloadInfo downloadInfo;
+  final Future<void> Function({String? fileName}) onStartDownload;
+  final Future<void> Function() onCancelDownload;
+  final Future<String?> Function() onSaveAs;
+
   const MobilePlayerControls({
     super.key,
     required this.player,
@@ -56,6 +63,11 @@ class MobilePlayerControls extends StatefulWidget {
     required this.onSetSpeed,
     required this.onEnterPipMode,
     required this.isPipMode,
+    // 下载相关
+    this.downloadInfo = const VideoDownloadInfo(),
+    required this.onStartDownload,
+    required this.onCancelDownload,
+    required this.onSaveAs,
   });
 
   @override
@@ -83,8 +95,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Timer? _timeUpdateTimer;
   String _currentTime = '';
 
-  // 缓存全屏状态以避免调用可能尝试的 VideoState
-  // 在拆卸过程中使用停用的 BuildContext 查找 InheritedWidget。
+  // 缓存全屏状态
   bool _cachedIsFullscreen = false;
 
   @override
@@ -107,7 +118,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     try {
       _cachedIsFullscreen = widget.state.isFullscreen();
     } catch (e) {
-      // 如果查找不安全，则保留先前的缓存值。
+      // 保留先前的缓存值
     }
   }
 
@@ -117,7 +128,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     try {
       _cachedIsFullscreen = widget.state.isFullscreen();
     } catch (e) {
-      // 忽略 - 保留先前的值
+      // 忽略
     }
     // 当 PIP 模式停止时，显示控制栏
     if (oldWidget.isPipMode && !widget.isPipMode) {
@@ -177,7 +188,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     _brightnessHideTimer?.cancel();
     _timeUpdateTimer?.cancel();
     VolumeController.instance.showSystemUI = true;
-    // 恢复系统 UI 和 允许常见方向，防止控件释放后仍被锁定
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -189,8 +199,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   bool get _isFullscreen {
-    // 使用在安全生命周期回调中更新的缓存值。
-    // 如果需要，回退到受保护的直接调用。
     if (_cachedIsFullscreen) return true;
     try {
       final v = widget.state.isFullscreen();
@@ -412,24 +420,17 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 全屏操作
   Future<void> _enterFullscreen() async {
-    // 计算是否应当锁定为竖屏
     final shouldLockPortrait = _determineShouldLockPortrait();
-    // 先设置屏幕方向，再等待方向生效，然后再进入全屏并通知上层
     try {
       await _setScreenOrientation(shouldLockPortrait);
-      // 隐藏系统 UI
       await _hideSystemUI();
-      // 等待方向真正生效
       await _waitForOrientationApplied(shouldLockPortrait, maxAttempts: 12);
     } catch (e) {
       debugPrint('[Fullscreen] Failed while applying orientation/ui: $e');
     }
-    // 进入全屏
     await widget.state.enterFullscreen();
     widget.onFullscreenChange(true);
-    // 仅在 Android 平台作为兜底，短暂重设一次方向，帮助某些机型稳定锁定
     if (Platform.isAndroid) {
       await Future<void>.delayed(const Duration(milliseconds: 30));
       await _setScreenOrientation(shouldLockPortrait);
@@ -437,25 +438,16 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     _onUserInteraction();
   }
 
-  /// 根据当前屏幕和视频尺寸判断是否应该锁定为竖屏
   bool _determineShouldLockPortrait() {
     try {
-      // 屏幕尺寸
       final screenSize = MediaQuery.of(context).size;
-      // 屏幕纵横比
       final screenAspectRatio = screenSize.width / screenSize.height;
-      // 视频宽度
       final videoWidth = widget.player.state.width ?? 0;
-      // 视频高度
       final videoHeight = widget.player.state.height ?? 0;
-      // 视频长宽比
       final videoAspectRatio =
           (videoWidth > 0 && videoHeight > 0) ? videoWidth / videoHeight : 0;
-      // 是否屏幕纵向
       final isScreenPortrait = screenAspectRatio < 1.0;
-      // 是否视频肖像
       final isVideoPortrait = videoAspectRatio > 0 && videoAspectRatio < 1.0;
-      // 是否竖屏
       return isScreenPortrait && isVideoPortrait;
     } catch (e) {
       debugPrint('[Fullscreen] _determineShouldLockPortrait error: $e');
@@ -463,7 +455,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 设置屏幕方向的通用方法
   Future<void> _setScreenOrientation(bool shouldLockPortrait) async {
     try {
       if (shouldLockPortrait) {
@@ -480,13 +471,13 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 等待方向变更在 Flutter 层生效（通过轮询 MediaQuery 的宽高比）
-  Future<void> _waitForOrientationApplied(bool shouldLockPortrait,
-      {int maxAttempts = 8}) async {
+  Future<void> _waitForOrientationApplied(
+    bool shouldLockPortrait, {
+    int maxAttempts = 8,
+  }) async {
     try {
       for (var i = 0; i < maxAttempts; i++) {
         if (!mounted) return;
-        // 等待一帧以让 MediaQuery 有机会更新
         await Future<void>.delayed(const Duration(milliseconds: 50));
         if (!mounted) return;
         final ms = MediaQuery.of(context).size;
@@ -498,7 +489,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 隐藏系统 UI 的通用方法
   Future<void> _hideSystemUI() async {
     try {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -507,20 +497,16 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 退出全屏
   Future<void> _exitFullscreen() async {
-    // 更新 UI 状态并触发回调
     widget.onFullscreenChange(false);
     await widget.state.exitFullscreen();
     widget.onExitFullScreen?.call();
-    // 恢复控制栏和计时器
     setState(() {
       _controlsVisible = true;
       _isLocked = false;
     });
     widget.onControlsVisibilityChanged(true);
     _startHideTimer();
-    // 并行执行系统UI恢复和方向解锁
     try {
       await Future.wait([
         _restoreSystemUI(),
@@ -531,7 +517,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 恢复系统 UI 的通用方法
   Future<void> _restoreSystemUI() async {
     try {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -540,10 +525,8 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
   }
 
-  /// 恢复屏幕方向的通用方法
   Future<void> _restoreScreenOrientation() async {
     try {
-      // 恢复允许的方向（竖/横皆可）
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
@@ -625,11 +608,9 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
   Future<void> _enterPipMode() async {
     debugPrint('_enterPipMode');
-    // 隐藏控制栏
     setState(() => _controlsVisible = false);
     widget.onControlsVisibilityChanged(false);
     _hideTimer?.cancel();
-    // 调用父层的 PIP 逻辑
     await widget.onEnterPipMode();
   }
 
@@ -642,6 +623,82 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
     }
     return '${twoDigits(minutes)}:${twoDigits(seconds)}';
+  }
+
+  // ===== 下载按钮处理 =====
+
+  Future<void> _handleDownloadTap() async {
+    _onUserInteraction();
+
+    final info = widget.downloadInfo;
+
+    switch (info.state) {
+      case VideoDownloadState.idle:
+      case VideoDownloadState.failed:
+        // 开始下载
+        await widget.onStartDownload();
+        break;
+      case VideoDownloadState.downloading:
+        // 取消下载
+        await widget.onCancelDownload();
+        break;
+      case VideoDownloadState.paused:
+        // 恢复下载（移动端先取消重新下载）
+        await widget.onCancelDownload();
+        break;
+      case VideoDownloadState.completed:
+        // 另存为（移动端保存到相册）
+        try {
+          final path = await widget.onSaveAs();
+          if (path != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('视频已保存到相册'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('保存失败: $e'),
+                duration: const Duration(seconds: 3),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+        break;
+    }
+  }
+
+  IconData _getDownloadIcon() {
+    switch (widget.downloadInfo.state) {
+      case VideoDownloadState.idle:
+      case VideoDownloadState.failed:
+        return Icons.download;
+      case VideoDownloadState.downloading:
+        return Icons.close;
+      case VideoDownloadState.paused:
+        return Icons.play_arrow;
+      case VideoDownloadState.completed:
+        return Icons.save_alt;
+    }
+  }
+
+  Color _getDownloadColor() {
+    switch (widget.downloadInfo.state) {
+      case VideoDownloadState.idle:
+      case VideoDownloadState.failed:
+        return Colors.white;
+      case VideoDownloadState.downloading:
+        return Colors.orange;
+      case VideoDownloadState.paused:
+        return Colors.yellow;
+      case VideoDownloadState.completed:
+        return Colors.green;
+    }
   }
 
   @override
@@ -671,6 +728,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
         if (_isFullscreen) _buildCurrentTime(),
         _buildBackButton(),
         _buildCastButton(),
+        _buildDownloadButton(),
         _buildCenterPlayPause(),
         _buildProgressBar(),
         _buildBottomControls(),
@@ -882,7 +940,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Widget _buildCastButton() {
     return Positioned(
       top: _isFullscreen ? 8 : 4,
-      right: _isFullscreen ? 16.0 : 8.0,
+      right: _isFullscreen ? 56.0 : 48.0,
       child: AnimatedOpacity(
         opacity: (_controlsVisible && !_isLocked) ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 200),
@@ -904,6 +962,59 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
                 color: Colors.white,
                 size: _isFullscreen ? 24 : 20,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDownloadButton() {
+    // 直播模式不显示下载按钮
+    if (widget.live) return const SizedBox.shrink();
+
+    final info = widget.downloadInfo;
+    final isDownloading = info.state == VideoDownloadState.downloading;
+    final iconSize = _isFullscreen ? 24.0 : 20.0;
+
+    return Positioned(
+      top: _isFullscreen ? 8 : 4,
+      right: _isFullscreen ? 16.0 : 8.0,
+      child: AnimatedOpacity(
+        opacity: (_controlsVisible && !_isLocked) ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          ignoring: !_controlsVisible || _isLocked,
+          child: GestureDetector(
+            onTap: _handleDownloadTap,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 进度环（下载中始终显示，使用不确定进度或具体进度）
+                if (isDownloading)
+                  SizedBox(
+                    width: iconSize + 8,
+                    height: iconSize + 8,
+                    child: CircularProgressIndicator(
+                      value: info.progress > 0 ? info.progress : null,
+                      strokeWidth: 2,
+                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.orange,
+                      ),
+                    ),
+                  ),
+                // 图标
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    _getDownloadIcon(),
+                    color: _getDownloadColor(),
+                    size: iconSize,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -935,7 +1046,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   Widget _buildProgressBar() {
-    // 直播模式下不显示进度条
     if (widget.live) {
       return const SizedBox.shrink();
     }
@@ -1320,7 +1430,7 @@ class _MobileVideoProgressBar extends StatefulWidget {
 class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
   bool _isDragging = false;
   double _dragValue = 0.0;
-  bool _isSeeking = false; // 新增：标记是否正在 seek
+  bool _isSeeking = false;
   StreamSubscription<Duration>? _positionSubscription;
 
   @override
@@ -1384,17 +1494,15 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
 
                 setState(() {
                   _isDragging = false;
-                  _isSeeking = true; // 标记开始 seek
+                  _isSeeking = true;
                 });
 
                 await widget.player.seek(seekPosition);
-
-                // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
                 await Future<void>.delayed(const Duration(milliseconds: 100));
 
                 if (mounted) {
                   setState(() {
-                    _isSeeking = false; // 标记 seek 完成
+                    _isSeeking = false;
                   });
                 }
 
@@ -1411,17 +1519,15 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
               );
 
               setState(() {
-                _isSeeking = true; // 标记开始 seek
+                _isSeeking = true;
               });
 
               await widget.player.seek(seekPosition);
-
-              // seek 完成后，延迟一小段时间再允许位置更新，确保播放器状态已同步
               await Future<void>.delayed(const Duration(milliseconds: 100));
 
               if (mounted) {
                 setState(() {
-                  _isSeeking = false; // 标记 seek 完成
+                  _isSeeking = false;
                 });
               }
 

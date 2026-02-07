@@ -52,5 +52,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- 相册权限 - 用于保存视频 -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要访问相册以保存下载的视频</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问相册以保存下载的视频</string>
 </dict>
 </plist>

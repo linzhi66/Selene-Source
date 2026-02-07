@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:encrypt/encrypt.dart' hide Key, IV;
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 /// 下载任务状态枚举
@@ -19,9 +19,11 @@ enum DownloadStatus {
 
 /// 下载任务信息类
 class DownloadTask {
+  final String id;
   final String url;
   final String fileName;
   final String filePath;
+  final String tempFilePath;
   int totalBytes;
   int downloadedBytes;
   double progress;
@@ -29,12 +31,15 @@ class DownloadTask {
   String? errorMessage;
   final DateTime createdAt;
   DateTime updatedAt;
+  bool isM3u8;
 
   /// 构造函数
   DownloadTask({
+    required this.id,
     required this.url,
     required this.fileName,
     required this.filePath,
+    required this.tempFilePath,
     this.totalBytes = 0,
     this.downloadedBytes = 0,
     this.progress = 0.0,
@@ -42,15 +47,18 @@ class DownloadTask {
     this.errorMessage,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.isM3u8 = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   /// 从JSON创建DownloadTask实例
   factory DownloadTask.fromJson(Map<String, dynamic> json) {
     return DownloadTask(
+      id: json['id'] as String,
       url: json['url'] as String,
       fileName: json['fileName'] as String,
       filePath: json['filePath'] as String,
+      tempFilePath: json['tempFilePath'] as String? ?? '',
       totalBytes: json['totalBytes'] as int? ?? 0,
       downloadedBytes: json['downloadedBytes'] as int? ?? 0,
       progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
@@ -61,15 +69,18 @@ class DownloadTask {
       errorMessage: json['errorMessage'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      isM3u8: json['isM3u8'] as bool? ?? false,
     );
   }
 
   /// 转换DownloadTask实例为JSON
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'url': url,
       'fileName': fileName,
       'filePath': filePath,
+      'tempFilePath': tempFilePath,
       'totalBytes': totalBytes,
       'downloadedBytes': downloadedBytes,
       'progress': progress,
@@ -77,14 +88,17 @@ class DownloadTask {
       'errorMessage': errorMessage,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'isM3u8': isM3u8,
     };
   }
 
   /// 复制并更新DownloadTask实例
   DownloadTask copyWith({
+    String? id,
     String? url,
     String? fileName,
     String? filePath,
+    String? tempFilePath,
     int? totalBytes,
     int? downloadedBytes,
     double? progress,
@@ -92,12 +106,14 @@ class DownloadTask {
     String? errorMessage,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isM3u8,
   }) {
-    /// 返回一个新的 DownloadTask 实例，属性根据传入参数更新
     return DownloadTask(
+      id: id ?? this.id,
       url: url ?? this.url,
       fileName: fileName ?? this.fileName,
       filePath: filePath ?? this.filePath,
+      tempFilePath: tempFilePath ?? this.tempFilePath,
       totalBytes: totalBytes ?? this.totalBytes,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       progress: progress ?? this.progress,
@@ -105,6 +121,7 @@ class DownloadTask {
       errorMessage: errorMessage ?? this.errorMessage,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      isM3u8: isM3u8 ?? this.isM3u8,
     );
   }
 }
@@ -116,13 +133,13 @@ class _HlsSegment {
   final int? byteRangeLength;
   final int? byteRangeOffset;
 
-  // AES-128密钥URL
+  /// AES-128密钥URL
   final String? keyUri;
 
-  // 16字节IV（若无则用序列号生成）
+  /// 16字节IV（若无则用序列号生成）
   final Uint8List? iv;
 
-  // 媒体序列号（用于生成IV）
+  /// 媒体序列号（用于生成IV）
   final int sequenceNumber;
 
   /// 构造函数
@@ -148,7 +165,7 @@ class DownloadService {
   /// 内部构造函数
   DownloadService._internal();
 
-  late Dio _dio;
+  late final Dio _dio = _createDio();
 
   /// 下载任务映射
   final Map<String, DownloadTask> _downloadTasks = {};
@@ -159,26 +176,41 @@ class DownloadService {
   /// 取消令牌映射
   final Map<String, CancelToken> _cancelTokens = {};
 
-  /// 初始化
-  Future<void> initialize() async {
-    _dio = Dio(BaseOptions(
+  /// 内部锁对象
+  final Map<String, bool> _taskLocks = {};
+
+  /// 创建Dio实例
+  Dio _createDio() {
+    final dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'User-Agent': 'Mozilla/5.0'},
     ));
     if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
+      dio.interceptors.add(LogInterceptor(
         request: false,
         responseBody: false,
         error: true,
         requestBody: false,
       ));
     }
+    return dio;
+  }
+
+  /// 生成唯一任务ID
+  String _generateTaskId(String url) {
+    final hash = url.hashCode.abs().toRadixString(36);
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    return '$hash$timestamp';
   }
 
   /// 添加监听器
   void addListener(String taskId, ValueChanged<DownloadTask> listener) {
-    _listeners.putIfAbsent(taskId, () => []).add(listener);
+    final list = _listeners.putIfAbsent(
+      taskId,
+      () => <ValueChanged<DownloadTask>>[],
+    );
+    list.add(listener);
   }
 
   /// 移除监听器
@@ -186,7 +218,9 @@ class DownloadService {
     final list = _listeners[taskId];
     if (list != null) {
       list.remove(listener);
-      if (list.isEmpty) _listeners.remove(taskId);
+      if (list.isEmpty) {
+        _listeners.remove(taskId);
+      }
     }
   }
 
@@ -194,9 +228,9 @@ class DownloadService {
   void _notifyListeners(String taskId, DownloadTask task) {
     final list = _listeners[taskId];
     if (list != null) {
-      for (final l in List.of(list)) {
+      for (final listener in List<ValueChanged<DownloadTask>>.of(list)) {
         try {
-          l(task);
+          listener(task);
         } catch (e) {
           debugPrint('Listener error: $e');
         }
@@ -204,166 +238,219 @@ class DownloadService {
     }
   }
 
+  /// 获取临时目录
+  Future<Directory> _getTempDirectory() async {
+    final tempDir = await getTemporaryDirectory();
+    final downloadTempDir = Directory('${tempDir.path}/selene_downloads');
+    if (!downloadTempDir.existsSync()) {
+      await downloadTempDir.create(recursive: true);
+    }
+    return downloadTempDir;
+  }
+
   /// 启动下载
-  Future<DownloadTask> startDownload({
+  Future<DownloadTask?> startDownload({
     required String url,
     required String fileName,
-    String? customPath,
     Map<String, String>? headers,
     String? episodeInfo,
   }) async {
-    final taskId = url.hashCode.toString();
-    if (_downloadTasks.containsKey(taskId)) {
-      final existing = _downloadTasks[taskId]!;
-      if (existing.status == DownloadStatus.downloading) return existing;
+    final taskId = _generateTaskId(url);
+
+    // 检查是否已有相同URL的下载任务
+    final existingTask = _findTaskByUrl(url);
+    if (existingTask != null) {
+      if (existingTask.status == DownloadStatus.downloading ||
+          existingTask.status == DownloadStatus.completed) {
+        return existingTask;
+      }
     }
+
     try {
       final dir = await _getDownloadDirectory();
+      final tempDir = await _getTempDirectory();
+
+      // 构建最终文件名
       String finalName = fileName;
       if (episodeInfo != null && episodeInfo.isNotEmpty) {
         final ext = fileName.contains('.')
             ? fileName.substring(fileName.lastIndexOf('.'))
             : '.mp4';
         final base = fileName.substring(
-            0,
-            fileName.lastIndexOf('.') > 0
-                ? fileName.lastIndexOf('.')
-                : fileName.length);
+          0,
+          fileName.lastIndexOf('.') > 0
+              ? fileName.lastIndexOf('.')
+              : fileName.length,
+        );
         finalName = '${base.trim()}-$episodeInfo$ext';
       }
-      final path = customPath ?? '${dir.path}/$finalName';
-      final task = DownloadTask(url: url, fileName: finalName, filePath: path);
+
+      final filePath = '${dir.path}/$finalName';
+      final tempFilePath = '${tempDir.path}/${taskId}_$finalName';
+      final isM3u8 = url.toLowerCase().endsWith('.m3u8');
+
+      final task = DownloadTask(
+        id: taskId,
+        url: url,
+        fileName: finalName,
+        filePath: filePath,
+        tempFilePath: tempFilePath,
+        isM3u8: isM3u8,
+      );
+
       _downloadTasks[taskId] = task;
-      final downloadingTask = task.copyWith(status: DownloadStatus.downloading);
+      final downloadingTask = task.copyWith(
+        status: DownloadStatus.downloading,
+      );
       _downloadTasks[taskId] = downloadingTask;
       _notifyListeners(taskId, downloadingTask);
-      await _performDownload(taskId, headers: headers);
-      return _downloadTasks[taskId]!;
+
+      // 异步执行下载
+      unawaited(_performDownload(taskId, headers: headers));
+
+      return _downloadTasks[taskId];
     } catch (e, st) {
       debugPrint('Start download failed: $e\n$st');
-      final failed = _downloadTasks[taskId]?.copyWith(
-            status: DownloadStatus.failed,
-            errorMessage: e.toString(),
-          ) ??
-          DownloadTask(
-            url: url,
-            fileName: fileName,
-            filePath: customPath ??
-                '${(await _getDownloadDirectory()).path}/$fileName',
-            status: DownloadStatus.failed,
-            errorMessage: e.toString(),
-          );
-      _downloadTasks[taskId] = failed;
-      _notifyListeners(taskId, failed);
-      return failed;
+      return null;
     }
   }
 
+  /// 通过URL查找任务
+  DownloadTask? _findTaskByUrl(String url) {
+    for (final task in _downloadTasks.values) {
+      if (task.url == url) {
+        return task;
+      }
+    }
+    return null;
+  }
+
   /// 执行下载任务（支持M3U8和普通文件）
-  Future<void> _performDownload(String taskId,
-      {Map<String, String>? headers}) async {
-    final task = _downloadTasks[taskId];
-    if (task == null || task.status != DownloadStatus.downloading) return;
+  Future<void> _performDownload(
+    String taskId, {
+    Map<String, String>? headers,
+  }) async {
+    // 使用锁防止重复执行
+    if (_taskLocks[taskId] == true) {
+      return;
+    }
+    _taskLocks[taskId] = true;
     try {
-      if (task.url.toLowerCase().endsWith('.m3u8')) {
-        await _downloadAndMergeM3u8(taskId, headers: headers);
-      } else {
-        // 普通文件下载（保留原逻辑）
-        final Response<dynamic> headRes =
-            await _dio.head(task.url, options: Options(headers: headers));
-        final total =
-            int.tryParse(headRes.headers.value('content-length') ?? '0') ?? 0;
-        _downloadTasks[taskId] = task.copyWith(totalBytes: total);
-        final updatedTask = _downloadTasks[taskId];
-        if (updatedTask != null) {
-          _notifyListeners(taskId, updatedTask);
-        }
-        final cancelToken = CancelToken();
-        _cancelTokens[taskId] = cancelToken;
-        await _dio.download(
-          task.url,
-          task.filePath,
-          options: Options(
-              headers: headers, receiveTimeout: const Duration(minutes: 30)),
-          cancelToken: cancelToken,
-          onReceiveProgress: (received, total) {
-            if (total <= 0) return;
-            final task = _downloadTasks[taskId];
-            if (task != null) {
-              final updated = task.copyWith(
-                downloadedBytes: received,
-                progress: received / total,
-              );
-              _downloadTasks[taskId] = updated;
-              _notifyListeners(taskId, updated);
-            }
-          },
-        );
-      }
-      // 下载完成处理
-      final currentDownloadTask = _downloadTasks[taskId];
-      if (currentDownloadTask != null &&
-          currentDownloadTask.status == DownloadStatus.downloading) {
-        final completed = currentDownloadTask.copyWith(
-          status: DownloadStatus.completed,
-          downloadedBytes: await _getFileSize(task.filePath),
-          progress: 1.0,
-        );
-        _downloadTasks[taskId] = completed;
-        _notifyListeners(taskId, completed);
-        debugPrint('✅ Download completed: ${task.fileName}');
-      }
-    } catch (e) {
-      if (e is DioException && CancelToken.isCancel(e)) {
-        debugPrint('Download canceled: ${task.fileName}');
+      final task = _downloadTasks[taskId];
+      if (task == null || task.status != DownloadStatus.downloading) {
         return;
       }
+      if (task.isM3u8) {
+        await _downloadAndMergeM3u8(taskId, headers: headers);
+      } else {
+        await _downloadRegularFile(taskId, headers: headers);
+      }
+    } catch (e) {
       debugPrint('Download error: $e');
-      final currentDownloadTask = _downloadTasks[taskId];
-      if (currentDownloadTask != null) {
-        final failed = currentDownloadTask.copyWith(
+      final currentTask = _downloadTasks[taskId];
+      if (currentTask != null &&
+          currentTask.status == DownloadStatus.downloading) {
+        final failedTask = currentTask.copyWith(
           status: DownloadStatus.failed,
           errorMessage: e.toString(),
         );
-        _downloadTasks[taskId] = failed;
-        _notifyListeners(taskId, failed);
+        _downloadTasks[taskId] = failedTask;
+        _notifyListeners(taskId, failedTask);
       }
     } finally {
+      _taskLocks.remove(taskId);
       _cancelTokens.remove(taskId);
     }
   }
 
-  /// 下载并合并M3U8视频流
-  Future<void> _downloadAndMergeM3u8(String taskId,
-      {Map<String, String>? headers}) async {
+  /// 下载普通文件
+  Future<void> _downloadRegularFile(
+    String taskId, {
+    Map<String, String>? headers,
+  }) async {
     final task = _downloadTasks[taskId];
     if (task == null) return;
-    debugPrint('🎬 Starting M3U8 download: ${task.url}');
+
     final cancelToken = CancelToken();
     _cancelTokens[taskId] = cancelToken;
+    // 获取文件大小
+    final headRes = await _dio.head<dynamic>(
+      task.url,
+      options: Options(headers: headers),
+    );
+    final total = int.tryParse(
+          headRes.headers.value('content-length') ?? '0',
+        ) ??
+        0;
+    _updateTask(taskId, totalBytes: total);
+    // 下载到临时文件
+    await _dio.download(
+      task.url,
+      task.tempFilePath,
+      options: Options(
+        headers: headers,
+        receiveTimeout: const Duration(minutes: 30),
+      ),
+      cancelToken: cancelToken,
+      onReceiveProgress: (received, total) {
+        if (total <= 0) return;
+        final progress = received / total;
+        _updateProgress(taskId, progress, received);
+      },
+    );
+    // 下载完成，标记为完成状态（但还在临时目录）
+    await _finalizeDownload(taskId);
+  }
+
+  /// 下载并合并M3U8视频流
+  Future<void> _downloadAndMergeM3u8(
+    String taskId, {
+    Map<String, String>? headers,
+  }) async {
+    final task = _downloadTasks[taskId];
+    if (task == null) return;
+    debugPrint('Starting M3U8 download: ${task.url}');
+    final cancelToken = CancelToken();
+    _cancelTokens[taskId] = cancelToken;
+    // sink 需要在 finally 中关闭
+    IOSink? sink;
     try {
       // 1. 获取并解析M3U8（自动处理主列表→子列表）
-      final (segments, baseUrl) =
-          await _resolveM3u8Playlist(task.url, headers, cancelToken);
-      if (segments.isEmpty) throw Exception('No TS segments found');
-      debugPrint('📦 Found ${segments.length} TS segments (base: $baseUrl)');
+      final (segments, baseUrl) = await _resolveM3u8Playlist(
+        task.url,
+        headers,
+        cancelToken,
+      );
+      if (segments.isEmpty) {
+        throw Exception('No TS segments found');
+      }
+      debugPrint('Found ${segments.length} TS segments');
       _updateProgress(taskId, 0, 0);
       // 2. 创建输出文件（清空旧文件）
-      final outputFile = File(task.filePath);
-      if (outputFile.existsSync()) await outputFile.delete();
-      final sink = outputFile.openWrite(mode: FileMode.write);
+      final outputFile = File(task.tempFilePath);
+      if (outputFile.existsSync()) {
+        await outputFile.delete();
+      }
+      sink = outputFile.openWrite(mode: FileMode.write);
       // 3. 密钥缓存 & 下载状态
       final keyCache = <String, Uint8List>{};
-      int downloadedCount = 0;
-      int totalBytes = 0;
+      var downloadedCount = 0;
+      var totalBytes = 0;
       // 4. 流式处理每个片段
-      for (int i = 0; i < segments.length; i++) {
-        if (cancelToken.isCancelled ||
-            (_downloadTasks[taskId]?.status != DownloadStatus.downloading)) {
-          await sink.close();
+      for (var i = 0; i < segments.length; i++) {
+        if (cancelToken.isCancelled) {
           throw DioException(
-              type: DioExceptionType.cancel,
-              requestOptions: RequestOptions(path: ''));
+            type: DioExceptionType.cancel,
+            requestOptions: RequestOptions(path: task.url),
+          );
+        }
+        final currentTask = _downloadTasks[taskId];
+        if (currentTask == null ||
+            currentTask.status != DownloadStatus.downloading) {
+          throw DioException(
+            type: DioExceptionType.cancel,
+            requestOptions: RequestOptions(path: task.url),
+          );
         }
         final seg = segments[i];
         Uint8List? segmentData;
@@ -372,27 +459,27 @@ class DownloadService {
         if (seg.keyUri != null) {
           if (!keyCache.containsKey(seg.keyUri!)) {
             final keyUrl = _resolveUrl(baseUrl, seg.keyUri!);
-            final Response<List<int>> keyRes = await _dio.get<List<int>>(
+            final keyRes = await _dio.get<List<int>>(
               keyUrl,
-              options:
-                  Options(responseType: ResponseType.bytes, headers: headers),
+              options: Options(
+                responseType: ResponseType.bytes,
+                headers: headers,
+              ),
               cancelToken: cancelToken,
             );
-            keyCache[seg.keyUri!] =
-                Uint8List.fromList(keyRes.data as List<int>);
-            debugPrint('🔑 Cached key from $keyUrl');
+            keyCache[seg.keyUri!] = Uint8List.fromList(keyRes.data!);
           }
           keyBytes = keyCache[seg.keyUri!];
         }
         // 4.2 构建TS请求（处理字节范围）
         final tsUrl = _resolveUrl(baseUrl, seg.url);
-        final Options opts =
-            Options(headers: Map<String, String>.from(headers ?? {}));
+        final opts = Options(
+          headers: Map<String, String>.from(headers ?? {}),
+        );
         if (seg.byteRangeLength != null) {
           final start = seg.byteRangeOffset ?? 0;
           final end = start + seg.byteRangeLength! - 1;
           opts.headers?['Range'] = 'bytes=$start-$end';
-          debugPrint('byterange: $start-$end for ${seg.url}');
         }
         // 4.3 下载TS片段
         final tsRes = await _dio.get<List<int>>(
@@ -400,33 +487,45 @@ class DownloadService {
           options: opts..responseType = ResponseType.bytes,
           cancelToken: cancelToken,
         );
-        segmentData = Uint8List.fromList(tsRes.data as List<int>);
+        segmentData = Uint8List.fromList(tsRes.data!);
         totalBytes += segmentData.length;
         // 4.4 按需解密（AES-128 CBC 无填充）
         if (keyBytes != null) {
-          final iv = seg.iv ?? _generateIvFromSequence(seg.sequenceNumber);
+          // IV 可能为 null 或空列表，都需要生成
+          final iv = (seg.iv != null && seg.iv!.isNotEmpty)
+              ? seg.iv!
+              : _generateIvFromSequence(seg.sequenceNumber);
           segmentData = _decryptAes128Cbc(segmentData, keyBytes, iv);
-          debugPrint(
-              '🔓 Decrypted segment ${i + 1}/${segments.length} (seq: ${seg.sequenceNumber})');
         }
-        // 4.5 流式写入（关键：避免临时文件）
+        // 4.5 流式写入
         sink.add(segmentData);
         downloadedCount++;
-        // 4.6 更新进度（按片段数+字节数双维度）
+        // 4.6 更新进度
         final progress = downloadedCount / segments.length;
         _updateProgress(taskId, progress, totalBytes);
       }
+
       await sink.close();
-      debugPrint('✅ M3U8 merged successfully to ${task.filePath}');
+      sink = null;
+      debugPrint('M3U8 merged successfully');
+
+      // 下载完成
+      await _finalizeDownload(taskId);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         debugPrint('M3U8 download canceled');
-        rethrow;
       }
-      debugPrint('M3U8 download error: ${e.message}');
       rethrow;
     } finally {
-      _cancelTokens.remove(taskId);
+      // 确保 sink 被关闭
+      if (sink != null) {
+        try {
+          await sink.close();
+          debugPrint('M3U8 sink closed');
+        } catch (e) {
+          debugPrint('Failed to close sink: $e');
+        }
+      }
     }
   }
 
@@ -436,39 +535,41 @@ class DownloadService {
     Map<String, String>? headers,
     CancelToken cancelToken,
   ) async {
-    final Response<String> res = await _dio.get<String>(
+    final res = await _dio.get<String>(
       url,
       options: Options(responseType: ResponseType.plain, headers: headers),
       cancelToken: cancelToken,
     );
-    final content = res.data as String;
+    final content = res.data!;
     final baseUrl = _getBaseUrl(url);
+
     // 检查是否为主列表（含#EXT-X-STREAM-INF）
     if (content.contains('#EXT-X-STREAM-INF:')) {
-      debugPrint('🔍 Detected master playlist, selecting highest bitrate...');
+      debugPrint('Detected master playlist, selecting highest bitrate...');
       final subUrl = _selectHighestBitrateStream(content, baseUrl);
       if (subUrl.isEmpty) {
         throw Exception('No valid stream found in master playlist');
       }
-      return _resolveM3u8Playlist(subUrl, headers, cancelToken); // 递归解析子列表
+      return _resolveM3u8Playlist(subUrl, headers, cancelToken);
     }
+
     // 解析媒体列表
     return (_parseMediaPlaylist(content, baseUrl), baseUrl);
   }
 
   /// 从主列表选择最高码率流
   String _selectHighestBitrateStream(String content, String baseUrl) {
-    String bestUrl = '';
-    int maxBandwidth = 0;
+    var bestUrl = '';
+    var maxBandwidth = 0;
     final lines = content.split('\n');
-    for (int i = 0; i < lines.length; i++) {
+    for (var i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.startsWith('#EXT-X-STREAM-INF:')) {
         final bwMatch = RegExp(r'BANDWIDTH=(\d+)').firstMatch(line);
         if (bwMatch != null) {
           final bw = int.parse(bwMatch.group(1)!);
           // 找下一行非注释行
-          int j = i + 1;
+          var j = i + 1;
           while (j < lines.length &&
               (lines[j].trim().isEmpty || lines[j].trim().startsWith('#'))) {
             j++;
@@ -488,15 +589,18 @@ class DownloadService {
     final segments = <_HlsSegment>[];
     String? currentKeyUri;
     Uint8List? currentIv;
-    int currentDuration = 0;
-    int? currentByteRangeLength, currentByteRangeOffset;
+    var currentDuration = 0;
+    int? currentByteRangeLength;
+    int? currentByteRangeOffset;
     // 起始序列号
-    int mediaSequence = 0;
+    var mediaSequence = 0;
     // 当前片段在列表中的索引
-    int segmentIndex = 0;
+    var segmentIndex = 0;
     // 提取起始序列号（如有）
     final seqMatch = RegExp(r'#EXT-X-MEDIA-SEQUENCE:(\d+)').firstMatch(content);
-    if (seqMatch != null) mediaSequence = int.parse(seqMatch.group(1)!);
+    if (seqMatch != null) {
+      mediaSequence = int.parse(seqMatch.group(1)!);
+    }
     // 解析每行
     for (final line in content.split('\n')) {
       final trimmed = line.trim();
@@ -509,13 +613,23 @@ class DownloadService {
             currentKeyUri = uriMatch?.group(1);
             if (ivMatch != null) {
               final hex = ivMatch.group(1)!;
-              currentIv = Uint8List.fromList(
-                hex
-                    .split(RegExp('.{1,2}'))
-                    .where((s) => s.isNotEmpty)
-                    .map((b) => int.parse(b, radix: 16))
-                    .toList(),
-              );
+              // 确保 hex 是有效的 32 字符（16字节）
+              if (hex.length == 32) {
+                try {
+                  final bytes = <int>[];
+                  for (var i = 0; i < hex.length; i += 2) {
+                    bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
+                  }
+                  currentIv = Uint8List.fromList(bytes);
+                } catch (e) {
+                  debugPrint('Failed to parse IV hex: $hex, error: $e');
+                  currentIv = null;
+                }
+              } else {
+                // IV 格式不正确，使用序列号生成
+                debugPrint('Invalid IV format: $hex, using sequence number');
+                currentIv = null;
+              }
             } else {
               // 后续用序列号生成
               currentIv = null;
@@ -547,15 +661,17 @@ class DownloadService {
       // 提取TS URL（非注释非空行）
       if (trimmed.isNotEmpty && !trimmed.startsWith('#')) {
         final absUrl = _resolveUrl(baseUrl, trimmed);
-        segments.add(_HlsSegment(
-          url: absUrl,
-          durationMs: currentDuration,
-          byteRangeLength: currentByteRangeLength,
-          byteRangeOffset: currentByteRangeOffset,
-          keyUri: currentKeyUri,
-          iv: currentIv,
-          sequenceNumber: mediaSequence + segmentIndex, // 关键：序列号=起始+索引
-        ));
+        segments.add(
+          _HlsSegment(
+            url: absUrl,
+            durationMs: currentDuration,
+            byteRangeLength: currentByteRangeLength,
+            byteRangeOffset: currentByteRangeOffset,
+            keyUri: currentKeyUri,
+            iv: currentIv,
+            sequenceNumber: mediaSequence + segmentIndex,
+          ),
+        );
         segmentIndex++;
         // 重置字节范围（仅作用于下一个片段）
         currentByteRangeLength = null;
@@ -568,20 +684,23 @@ class DownloadService {
   /// 提取基础URL（用于相对路径解析）
   String _getBaseUrl(String url) {
     final uri = Uri.parse(url);
-    return '${uri.scheme}://${uri.host}${uri.path.substring(0, uri.path.lastIndexOf('/') + 1)}';
+    final pathEnd = uri.path.lastIndexOf('/') + 1;
+    return '${uri.scheme}://${uri.host}${uri.path.substring(0, pathEnd)}';
   }
 
   /// 解析相对URL为绝对URL
   String _resolveUrl(String baseUrl, String relative) {
-    if (relative.startsWith('http')) return relative;
-    if (relative.startsWith('//')) {
-      return '${Uri.parse(baseUrl).scheme}:$relative';
+    final trimmed = relative.trim();
+    if (trimmed.startsWith('http')) return trimmed;
+    if (trimmed.startsWith('//')) {
+      final scheme = Uri.parse(baseUrl).scheme;
+      return '$scheme:$trimmed';
     }
-    if (relative.startsWith('/')) {
+    if (trimmed.startsWith('/')) {
       final baseUri = Uri.parse(baseUrl);
-      return '${baseUri.scheme}://${baseUri.host}$relative';
+      return '${baseUri.scheme}://${baseUri.host}$trimmed';
     }
-    return baseUrl + relative;
+    return '$baseUrl$trimmed';
   }
 
   /// 生成HLS标准IV（16字节大端序列号）
@@ -599,68 +718,246 @@ class DownloadService {
 
   /// AES-128 CBC 无填充解密（HLS标准）
   Uint8List _decryptAes128Cbc(
-      Uint8List encrypted, Uint8List key, Uint8List iv) {
+    Uint8List encrypted,
+    Uint8List key,
+    Uint8List iv,
+  ) {
     if (key.length != 16 || iv.length != 16) {
-      throw ArgumentError('Key and IV must be 16 bytes for AES-128');
+      throw ArgumentError(
+        'Key and IV must be 16 bytes for AES-128, got key=${key.length}, iv=${iv.length}',
+      );
     }
     try {
       final ivParam = enc.IV(iv);
       final keyParam = enc.Key(key);
       final encrypter = Encrypter(
-          AES(keyParam, mode: AESMode.cbc, padding: null)); // null = NoPadding
+        AES(keyParam, mode: AESMode.cbc, padding: null),
+      );
       final encryptedData = Encrypted(encrypted);
-      final decrypted = encrypter.decrypt(encryptedData, iv: ivParam);
-      // 将解密后的字符串转换回 Uint8List
-      return Uint8List.fromList(utf8.encode(decrypted));
+      // 使用 decryptBytes 直接获取二进制数据，而不是 decrypt 转为字符串
+      final decrypted = encrypter.decryptBytes(encryptedData, iv: ivParam);
+      return Uint8List.fromList(decrypted);
     } catch (e) {
       debugPrint(
-          '⚠️ Decryption failed (length: ${encrypted.length}, key: ${key.length}, iv: ${iv.length}): $e');
+          'Decryption failed (encrypted length: ${encrypted.length}): $e');
       rethrow;
     }
+  }
+
+  /// 更新任务
+  void _updateTask(
+    String taskId, {
+    int? totalBytes,
+    int? downloadedBytes,
+    double? progress,
+    DownloadStatus? status,
+    String? errorMessage,
+  }) {
+    final task = _downloadTasks[taskId];
+    if (task == null) return;
+    final updated = task.copyWith(
+      totalBytes: totalBytes,
+      downloadedBytes: downloadedBytes,
+      progress: progress,
+      status: status,
+      errorMessage: errorMessage,
+    );
+    _downloadTasks[taskId] = updated;
+    _notifyListeners(taskId, updated);
   }
 
   /// 更新下载进度
   void _updateProgress(String taskId, double progress, int bytes) {
     final task = _downloadTasks[taskId];
-    if (task != null && task.status == DownloadStatus.downloading) {
-      final updated = task.copyWith(
-        progress: progress.clamp(0.0, 1.0),
-        downloadedBytes: bytes,
-      );
-      _downloadTasks[taskId] = updated;
-      _notifyListeners(taskId, updated);
-    }
+    if (task == null || task.status != DownloadStatus.downloading) return;
+    final updated = task.copyWith(
+      progress: progress.clamp(0.0, 1.0),
+      downloadedBytes: bytes,
+    );
+    _downloadTasks[taskId] = updated;
+    _notifyListeners(taskId, updated);
   }
 
-  /// 获取下载目录
-  Future<Directory> _getDownloadDirectory() async {
-    Directory dir;
-    if (Platform.isAndroid) {
-      // Android 10+ 需使用应用专属目录（避免Scoped Storage问题）
-      dir = await getApplicationDocumentsDirectory();
-      final videoDir = Directory('${dir.path}/videos');
-      if (!videoDir.existsSync()) await videoDir.create(recursive: true);
-      return videoDir;
-    } else if (Platform.isIOS) {
-      dir = await getApplicationDocumentsDirectory();
-      return dir;
-    } else {
-      dir = (await getDownloadsDirectory()) ??
-          await getApplicationDocumentsDirectory();
-      final videoDir = Directory('${dir.path}/MoonTV');
-      if (!videoDir.existsSync()) await videoDir.create(recursive: true);
-      return videoDir;
+  /// 完成下载（移动到目标位置）
+  Future<void> _finalizeDownload(String taskId) async {
+    final task = _downloadTasks[taskId];
+    if (task == null) return;
+    final tempFile = File(task.tempFilePath);
+    if (!tempFile.existsSync()) {
+      throw Exception('Temp file not found');
     }
+    // 获取文件大小
+    final fileSize = await tempFile.length();
+    final completedTask = task.copyWith(
+      status: DownloadStatus.completed,
+      downloadedBytes: fileSize,
+      progress: 1.0,
+    );
+    _downloadTasks[taskId] = completedTask;
+    _notifyListeners(taskId, completedTask);
+    debugPrint('Download completed: ${task.fileName}');
   }
 
-  /// 获取文件大小
-  Future<int> _getFileSize(String path) async {
+  /// 另存为 - 保存到 Download/MoonTV 目录
+  Future<String?> saveAs(String taskId) async {
+    final task = _downloadTasks[taskId];
+    if (task == null) return null;
+    final tempFile = File(task.tempFilePath);
+    if (!tempFile.existsSync()) {
+      debugPrint('Temp file not found: ${task.tempFilePath}');
+      return null;
+    }
     try {
-      final file = File(path);
-      return (file.existsSync()) ? await file.length() : 0;
-    } catch (_) {
-      return 0;
+      // 所有平台统一保存到 Download/MoonTV
+      return await _saveToDownloadDirectory(taskId, task, tempFile);
+    } catch (e) {
+      debugPrint('Save as failed: $e');
+      return null;
     }
+  }
+
+  /// 保存到 Download/MoonTV 目录（所有平台统一）
+  Future<String?> _saveToDownloadDirectory(
+    String taskId,
+    DownloadTask task,
+    File tempFile,
+  ) async {
+    try {
+      // 检查文件是否存在
+      if (!tempFile.existsSync()) {
+        throw Exception('临时文件不存在: ${tempFile.path}');
+      }
+      final fileSize = await tempFile.length();
+      debugPrint('Saving video to Download/MoonTV, file size: $fileSize bytes');
+      // 获取 Download/MoonTV 目录
+      final targetDir = await _getDownloadDirectory();
+      // 构建目标路径，处理文件名冲突
+      var targetPath = '${targetDir.path}/${task.fileName}';
+      var counter = 1;
+      final ext = path.extension(task.fileName);
+      final baseName = path.basenameWithoutExtension(task.fileName);
+      while (File(targetPath).existsSync()) {
+        targetPath = '${targetDir.path}/${baseName}_$counter$ext';
+        counter++;
+      }
+      // 复制文件到目标位置
+      await tempFile.copy(targetPath);
+      debugPrint('Video saved to: $targetPath');
+      // 更新任务路径
+      final updatedTask = task.copyWith(filePath: targetPath);
+      _downloadTasks[taskId] = updatedTask;
+      _notifyListeners(taskId, updatedTask);
+      return targetPath;
+    } catch (e) {
+      debugPrint('Failed to save video to Download/MoonTV: $e');
+      // 如果保存失败，尝试保存到应用目录作为备选
+      return await _saveToAppDirectory(taskId, task, tempFile);
+    }
+  }
+
+  /// 保存到应用目录（备用方案）
+  Future<String?> _saveToAppDirectory(
+    String taskId,
+    DownloadTask task,
+    File tempFile,
+  ) async {
+    try {
+      final targetDir = await _getDownloadDirectory();
+      // 构建目标路径
+      var targetPath = '${targetDir.path}/${task.fileName}';
+      var counter = 1;
+      final ext = path.extension(task.fileName);
+      final baseName = path.basenameWithoutExtension(task.fileName);
+      while (File(targetPath).existsSync()) {
+        targetPath = '${targetDir.path}/${baseName}_$counter$ext';
+        counter++;
+      }
+      // 复制文件
+      await tempFile.copy(targetPath);
+      // 更新任务路径
+      final updatedTask = task.copyWith(filePath: targetPath);
+      _downloadTasks[taskId] = updatedTask;
+      _notifyListeners(taskId, updatedTask);
+      debugPrint('File saved to app directory: $targetPath');
+      return targetPath;
+    } catch (e) {
+      debugPrint('Failed to save to app directory: $e');
+      return null;
+    }
+  }
+
+  /// 自动保存到 Download/MoonTV 目录
+  Future<String?> autoSave(String taskId) async {
+    final task = _downloadTasks[taskId];
+    if (task == null) return null;
+    final tempFile = File(task.tempFilePath);
+    if (!tempFile.existsSync()) {
+      return null;
+    }
+    try {
+      // 获取 Download/MoonTV 目录
+      final targetDir = await _getDownloadDirectory();
+      // 构建目标路径，处理文件名冲突
+      var targetPath = '${targetDir.path}/${task.fileName}';
+      var counter = 1;
+      final ext = path.extension(task.fileName);
+      final baseName = path.basenameWithoutExtension(task.fileName);
+      while (File(targetPath).existsSync()) {
+        targetPath = '${targetDir.path}/${baseName}_$counter$ext';
+        counter++;
+      }
+      // 移动临时文件到目标位置（使用 copy + delete 支持跨磁盘移动）
+      await tempFile.copy(targetPath);
+      await tempFile.delete();
+      // 更新任务
+      final updatedTask = task.copyWith(filePath: targetPath);
+      _downloadTasks[taskId] = updatedTask;
+      _notifyListeners(taskId, updatedTask);
+      debugPrint('File auto-saved to: $targetPath');
+      return targetPath;
+    } catch (e) {
+      debugPrint('Auto save failed: $e');
+      return null;
+    }
+  }
+
+  /// 获取下载目录 - 所有平台统一使用 Download/MoonTV
+  Future<Directory> _getDownloadDirectory() async {
+    Directory? dir;
+    try {
+      if (Platform.isAndroid) {
+        // Android: 尝试获取外部存储的 Download 目录
+        final externalDir = await getExternalStorageDirectory();
+        if (externalDir != null) {
+          // /storage/emulated/0/Android/data/<package>/files
+          // 需要返回到 /storage/emulated/0/Download
+          final match =
+              RegExp(r'^(/storage/emulated/\d+)').firstMatch(externalDir.path);
+          if (match != null) {
+            final storageRoot = match.group(1)!;
+            dir = Directory('$storageRoot/Download');
+          }
+        }
+        // 备选：使用 Downloads 目录
+        dir ??= await getDownloadsDirectory();
+      } else if (Platform.isIOS) {
+        // iOS: 使用应用文档目录（iOS 沙盒限制，无法访问公共 Download）
+        dir = await getApplicationDocumentsDirectory();
+      } else {
+        // Windows/macOS/Linux: 使用系统 Download 目录
+        dir = await getDownloadsDirectory();
+      }
+    } catch (e) {
+      debugPrint('Failed to get download directory: $e');
+    }
+    // 最终备选：应用文档目录
+    dir ??= await getApplicationDocumentsDirectory();
+    // 创建 MoonTV 子目录
+    final moonTVDir = Directory('${dir.path}/MoonTV');
+    if (!moonTVDir.existsSync()) {
+      await moonTVDir.create(recursive: true);
+    }
+    return moonTVDir;
   }
 
   /// 获取所有任务
@@ -669,51 +966,101 @@ class DownloadService {
   /// 获取指定任务
   DownloadTask? getTask(String taskId) => _downloadTasks[taskId];
 
+  /// 通过URL获取任务
+  DownloadTask? getTaskByUrl(String url) => _findTaskByUrl(url);
+
   /// 暂停下载
   Future<void> pauseDownload(String taskId) async {
-    final currentTask = _downloadTasks[taskId];
-    if (currentTask != null &&
-        currentTask.status == DownloadStatus.downloading) {
+    final task = _downloadTasks[taskId];
+    if (task != null && task.status == DownloadStatus.downloading) {
       _cancelTokens[taskId]?.cancel();
-      final paused = currentTask.copyWith(status: DownloadStatus.paused);
-      _downloadTasks[taskId] = paused;
-      _notifyListeners(taskId, paused);
+      final pausedTask = task.copyWith(status: DownloadStatus.paused);
+      _downloadTasks[taskId] = pausedTask;
+      _notifyListeners(taskId, pausedTask);
     }
   }
 
   /// 恢复下载
   Future<void> resumeDownload(String taskId) async {
-    final currentTask = _downloadTasks[taskId];
-    if (currentTask != null && currentTask.status == DownloadStatus.paused) {
-      final resumed = currentTask.copyWith(status: DownloadStatus.downloading);
-      _downloadTasks[taskId] = resumed;
-      _notifyListeners(taskId, resumed);
+    final task = _downloadTasks[taskId];
+    if (task != null && task.status == DownloadStatus.paused) {
+      final resumedTask = task.copyWith(status: DownloadStatus.downloading);
+      _downloadTasks[taskId] = resumedTask;
+      _notifyListeners(taskId, resumedTask);
       await _performDownload(taskId);
     }
   }
 
-  /// 取消下载并删除文件
+  /// 取消下载并删除临时文件
   Future<void> cancelDownload(String taskId) async {
+    // 取消下载
     _cancelTokens[taskId]?.cancel();
     final task = _downloadTasks[taskId];
     if (task != null) {
-      final file = File(task.filePath);
-      if (file.existsSync()) {
-        await file.delete();
-      }
+      // 删除临时文件
+      await _cleanupTempFile(task.tempFilePath);
+      // 从任务列表移除
       _downloadTasks.remove(taskId);
+      _listeners.remove(taskId);
       _notifyListeners(taskId, task.copyWith(status: DownloadStatus.paused));
+    }
+  }
+
+  /// 清理临时文件（带重试机制）
+  Future<void> _cleanupTempFile(String tempPath) async {
+    final file = File(tempPath);
+    if (!file.existsSync()) {
+      return;
+    }
+
+    // 重试机制：文件可能被占用，等待后重试
+    const maxRetries = 5;
+    const retryDelay = Duration(milliseconds: 200);
+
+    for (var i = 0; i < maxRetries; i++) {
+      try {
+        await file.delete();
+        debugPrint('Temp file deleted: $tempPath');
+        return;
+      } on PathAccessException catch (e) {
+        if (i < maxRetries - 1) {
+          debugPrint(
+            'Temp file busy, retrying ${i + 1}/$maxRetries: $tempPath',
+          );
+          await Future<void>.delayed(retryDelay);
+        } else {
+          debugPrint('Failed to delete temp file after retries: $e');
+        }
+      } catch (e) {
+        debugPrint('Failed to delete temp file: $e');
+        return;
+      }
+    }
+  }
+
+  /// 清理所有临时文件
+  Future<void> cleanupAllTempFiles() async {
+    try {
+      final tempDir = await _getTempDirectory();
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+        await tempDir.create(recursive: true);
+        debugPrint('All temp files cleaned up');
+      }
+    } catch (e) {
+      debugPrint('Failed to cleanup temp files: $e');
     }
   }
 
   /// 清理已完成任务
   Future<void> clearCompletedTasks() async {
-    final ids = _downloadTasks.entries
+    final completedIds = _downloadTasks.entries
         .where((e) => e.value.status == DownloadStatus.completed)
         .map((e) => e.key)
         .toList();
-    for (final id in ids) {
+    for (final id in completedIds) {
       _downloadTasks.remove(id);
+      _listeners.remove(id);
     }
   }
 
@@ -722,4 +1069,22 @@ class DownloadService {
 
   /// 检查文件是否存在
   bool isFileExists(String path) => File(path).existsSync();
+
+  /// 释放资源
+  Future<void> dispose() async {
+    // 取消所有进行中的下载
+    for (final entry in _cancelTokens.entries) {
+      final taskId = entry.key;
+      final token = entry.value;
+      token.cancel();
+      // 清理临时文件
+      final task = _downloadTasks[taskId];
+      if (task != null) {
+        await _cleanupTempFile(task.tempFilePath);
+      }
+    }
+    _cancelTokens.clear();
+    _listeners.clear();
+    _taskLocks.clear();
+  }
 }
