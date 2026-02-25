@@ -9,6 +9,7 @@ import 'services/theme_service.dart';
 import 'services/douban_cache_service.dart';
 import 'services/local_mode_storage_service.dart';
 import 'services/subscription_service.dart';
+import 'services/m3u8_download_service.dart';
 import 'dart:io' show Platform;
 import 'package:macos_window_utils/macos_window_utils.dart';
 import 'package:media_kit/media_kit.dart';
@@ -37,7 +38,11 @@ void main() async {
   // 启动定期清理
   cacheService.startPeriodicCleanup();
 
-  runApp(const SeleneApp());
+  // 初始化下载服务
+  final downloadService = M3U8DownloadService();
+  await downloadService.init();
+
+  runApp(SeleneApp(downloadService: downloadService));
 
   // 初始化 Windows 窗口配置
   if (Platform.isWindows) {
@@ -55,12 +60,17 @@ void main() async {
 }
 
 class SeleneApp extends StatelessWidget {
-  const SeleneApp({super.key});
+  final M3U8DownloadService downloadService;
+  
+  const SeleneApp({super.key, required this.downloadService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ThemeService(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeService()),
+        ChangeNotifierProvider.value(value: downloadService),
+      ],
       child: Consumer<ThemeService>(
         builder: (context, themeService, child) {
           return MaterialApp(

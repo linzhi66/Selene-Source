@@ -419,6 +419,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (!mounted || _playerDisposed) {
       return;
     }
+    
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        if (_isPipMode) {
+          await _pip.stop();
+        }
+        _pip.unregisterStateChangedObserver();
+        _pip.dispose();
+      } catch (e) {
+        debugPrint('VideoPlayerWidget: error disposing pip in externalDispose: $e');
+      }
+    }
+    
     await _disposePlayer();
   }
 
@@ -427,14 +440,30 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
     _playerDisposed = true;
+    
     _positionSubscription?.cancel();
+    _positionSubscription = null;
     _playingSubscription?.cancel();
+    _playingSubscription = null;
     _completedSubscription?.cancel();
+    _completedSubscription = null;
     _durationSubscription?.cancel();
+    _durationSubscription = null;
     _progressListeners.clear();
-    await _player?.dispose();
+    
+    final player = _player;
     _player = null;
     _videoController = null;
+    
+    if (player != null) {
+      try {
+        await player.pause();
+        await player.stop();
+        await player.dispose();
+      } catch (e) {
+        debugPrint('VideoPlayerWidget: error disposing player: $e');
+      }
+    }
   }
 
   @override
@@ -458,11 +487,47 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    
     if (Platform.isAndroid || Platform.isIOS) {
-      _pip.unregisterStateChangedObserver();
-      _pip.dispose();
+      try {
+        if (_isPipMode) {
+          _pip.stop();
+        }
+        _pip.unregisterStateChangedObserver();
+        _pip.dispose();
+      } catch (e) {
+        debugPrint('VideoPlayerWidget: error disposing pip: $e');
+      }
     }
-    _disposePlayer();
+    
+    _playerDisposed = true;
+    
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
+    _completedSubscription?.cancel();
+    _completedSubscription = null;
+    _durationSubscription?.cancel();
+    _durationSubscription = null;
+    _progressListeners.clear();
+    
+    final player = _player;
+    _player = null;
+    _videoController = null;
+    
+    if (player != null) {
+      Future.microtask(() async {
+        try {
+          await player.pause();
+          await player.stop();
+          await player.dispose();
+        } catch (e) {
+          debugPrint('VideoPlayerWidget: error disposing player in dispose: $e');
+        }
+      });
+    }
+    
     _playbackSpeed.dispose();
     super.dispose();
   }

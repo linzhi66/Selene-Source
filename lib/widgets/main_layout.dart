@@ -5,9 +5,11 @@ import 'package:selene/services/search_service.dart';
 import 'package:selene/services/user_data_service.dart';
 import '../services/theme_service.dart';
 import '../services/api_service.dart';
+import '../services/m3u8_download_service.dart';
 import '../utils/device_utils.dart';
 import '../utils/font_utils.dart';
 import 'user_menu.dart';
+import 'download_panel.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
 import 'windows_title_bar.dart';
@@ -767,6 +769,64 @@ class _MainLayoutState extends State<MainLayout> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 下载管理按钮
+        Consumer<M3U8DownloadService>(
+          builder: (context, downloadService, child) {
+            final downloadingCount = downloadService.downloadingTasks.length;
+            return MouseRegion(
+              cursor: DeviceUtils.isPC()
+                  ? SystemMouseCursors.click
+                  : MouseCursor.defer,
+              child: GestureDetector(
+                onTap: () => _showDownloadPanel(themeService),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.transparent,
+                  ),
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Icon(
+                          LucideIcons.download,
+                          color: themeService.isDarkMode
+                              ? const Color(0xFFffffff)
+                              : const Color(0xFF2c3e50),
+                          size: 24,
+                          weight: 1.0,
+                        ),
+                      ),
+                      if (downloadingCount > 0)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              downloadingCount > 9 ? '9+' : '$downloadingCount',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 12),
         // 深浅模式切换按钮
         MouseRegion(
           cursor:
@@ -878,6 +938,22 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showDownloadPanel(ThemeService themeService) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: screenHeight * 0.7,
+        child: DownloadPanel(
+          onClose: () => Navigator.pop(context),
+        ),
+      ),
     );
   }
 

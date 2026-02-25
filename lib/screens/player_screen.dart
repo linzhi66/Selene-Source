@@ -2,17 +2,21 @@ import 'dart:math' as math;
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../widgets/video_player_surface.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_card.dart';
+import '../widgets/download_panel.dart';
 import '../services/api_service.dart';
 import '../services/m3u8_service.dart';
+import '../services/m3u8_download_service.dart';
 import '../services/douban_service.dart';
 import '../services/user_data_service.dart';
 import '../services/search_service.dart';
 import '../models/search_result.dart';
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
+import '../models/download_task.dart';
 import '../services/page_cache_service.dart';
 import '../widgets/switch_loading_overlay.dart';
 import '../widgets/dlna_player.dart';
@@ -545,7 +549,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       // 异步保存播放记录（不等待结果）
       PageCacheService().savePlayRecord(playRecord, context).then((_) {
         debugPrint(
-            '保存播放进度 [场景: $scene]: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: ${playTime}秒');
+            '保存播放进度 [场景: $scene]: source: $currentSourceSnapshot, id: $currentIDSnapshot, 第${currentEpisodeIndexSnapshot + 1}集, 时间: $playTime秒');
       }).catchError((e) {
         debugPrint('保存播放进度失败 [场景: $scene]: $e');
       });
@@ -852,6 +856,173 @@ class _PlayerScreenState extends State<PlayerScreen>
           _isFavorite = true;
         });
       }
+    }
+  }
+
+  /// 显示下载选项
+  void _showDownloadOptions() {
+    if (currentDetail == null || currentDetail!.episodes.isEmpty) {
+      _showToast('没有可下载的内容');
+      return;
+    }
+
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: screenHeight * 0.6,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Text(
+                      '选择下载',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => _downloadAllEpisodes(context),
+                      child: const Text('下载全部'),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.close,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: currentDetail!.episodes.length,
+                  itemBuilder: (context, index) {
+                    final episodeUrl = currentDetail!.episodes[index];
+                    final episodeTitle = currentDetail!.episodesTitles.isNotEmpty &&
+                            index < currentDetail!.episodesTitles.length
+                        ? currentDetail!.episodesTitles[index]
+                        : '第${index + 1}集';
+                    final isCurrentEpisode = index == currentEpisodeIndex;
+                    final downloadService = M3U8DownloadService();
+                    final isDownloaded = downloadService.isTaskExists(episodeUrl);
+
+                    return _DownloadEpisodeItem(
+                      episodeTitle: episodeTitle,
+                      episodeIndex: index,
+                      isCurrentEpisode: isCurrentEpisode,
+                      isDownloaded: isDownloaded,
+                      isDarkMode: isDarkMode,
+                      theme: theme,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _startDownload(index);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 开始下载指定集数
+  void _startDownload(int episodeIndex) async {
+    if (currentDetail == null) return;
+
+    final episodeUrl = currentDetail!.episodes[episodeIndex];
+    final episodeTitle = currentDetail!.episodesTitles.isNotEmpty &&
+            episodeIndex < currentDetail!.episodesTitles.length
+        ? currentDetail!.episodesTitles[episodeIndex]
+        : '第${episodeIndex + 1}集';
+
+    final downloadService = M3U8DownloadService();
+    
+    if (downloadService.isTaskExists(episodeUrl)) {
+      _showToast('该集已在下载列表中');
+      return;
+    }
+
+    final task = await downloadService.createTask(
+      url: episodeUrl,
+      title: videoTitle,
+      episodeTitle: episodeTitle,
+      sourceName: currentDetail!.sourceName,
+      cover: videoCover,
+      episodeIndex: episodeIndex,
+      totalEpisodes: totalEpisodes,
+    );
+
+    if (task != null) {
+      _showToast('已添加到下载列表');
+      downloadService.startDownload(task.id);
+    } else {
+      _showToast('创建下载任务失败');
+    }
+  }
+
+  /// 下载全部集数
+  void _downloadAllEpisodes(BuildContext context) async {
+    if (currentDetail == null) return;
+
+    Navigator.pop(context);
+    
+    final downloadService = M3U8DownloadService();
+    int addedCount = 0;
+
+    for (int i = 0; i < currentDetail!.episodes.length; i++) {
+      final episodeUrl = currentDetail!.episodes[i];
+      
+      if (!downloadService.isTaskExists(episodeUrl)) {
+        final episodeTitle = currentDetail!.episodesTitles.isNotEmpty &&
+                i < currentDetail!.episodesTitles.length
+            ? currentDetail!.episodesTitles[i]
+            : '第${i + 1}集';
+
+        final task = await downloadService.createTask(
+          url: episodeUrl,
+          title: videoTitle,
+          episodeTitle: episodeTitle,
+          sourceName: currentDetail!.sourceName,
+          cover: videoCover,
+          episodeIndex: i,
+          totalEpisodes: totalEpisodes,
+        );
+
+        if (task != null) {
+          addedCount++;
+        }
+      }
+    }
+
+    if (addedCount > 0) {
+      _showToast('已添加 $addedCount 个下载任务');
+      downloadService.startAllPending();
+    } else {
+      _showToast('所有集数已在下载列表中');
     }
   }
 
@@ -1165,7 +1336,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 等待下一帧，确保 MobileVideoPlayerWidget 已经重新创建
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && currentDetail != null) {
-        debugPrint('恢复播放: 第${resumeEpisodeIndex + 1}集, ${resumeSeconds}秒');
+        debugPrint('恢复播放: 第${resumeEpisodeIndex + 1}集, $resumeSeconds秒');
         // 调用 startPlay 重新初始化播放器
         startPlay(resumeEpisodeIndex, resumeSeconds);
       }
@@ -1217,7 +1388,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       child: SingleChildScrollView(
         child: Column(
           children: [
-            // 标题和收藏按钮行
+            // 标题和操作按钮行
             Padding(
               padding: const EdgeInsets.only(
                   left: 16, right: 16, top: 16, bottom: 0),
@@ -1236,6 +1407,17 @@ class _PlayerScreenState extends State<PlayerScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // 下载按钮
+                  GestureDetector(
+                    onTap: _showDownloadOptions,
+                    child: Icon(
+                      Icons.download_outlined,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 收藏按钮
                   GestureDetector(
                     onTap: _toggleFavorite,
                     child: Icon(
@@ -1435,12 +1617,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final double screenWidth = constraints.maxWidth;
-        final double padding = 16.0;
-        final double spacing = 12.0;
+        const double padding = 16.0;
+        const double spacing = 12.0;
         final crossAxisCount = _isTablet ? 6 : 3;
         final double availableWidth =
             screenWidth - (padding * 2) - (spacing * (crossAxisCount - 1));
-        final double minItemWidth = 80.0;
+        const double minItemWidth = 80.0;
         final double calculatedItemWidth = availableWidth / crossAxisCount;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0;
@@ -1639,7 +1821,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           builder: (context, constraints) {
             // 计算按钮宽度：根据设备类型调整
             final screenWidth = constraints.maxWidth;
-            final horizontalPadding = 32.0; // 左右各16
+            const horizontalPadding = 32.0; // 左右各16
             final availableWidth = screenWidth - horizontalPadding;
             final cardsPerView = _isTablet ? 6.2 : 3.2;
             final buttonWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
@@ -1800,7 +1982,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerEpisodesPanel(
@@ -1901,7 +2083,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerDetailsPanel(
@@ -2038,7 +2220,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context, constraints) {
         // 计算卡片宽度：根据设备类型调整
         final screenWidth = constraints.maxWidth;
-        final horizontalPadding = 32.0; // 左右各16
+        const horizontalPadding = 32.0; // 左右各16
         final availableWidth = screenWidth - horizontalPadding;
         final cardsPerView = _isTablet ? 6.2 : 3.2;
         final cardWidth = (availableWidth / cardsPerView) - 6; // 减去右边距6
@@ -2168,7 +2350,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return Container(
+            return SizedBox(
               height: panelHeight,
               width: double.infinity,
               child: PlayerSourcesPanel(
@@ -2558,22 +2740,26 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   @override
   void dispose() {
-    // 保存进度
     _saveProgress(force: true, scene: '页面销毁');
-    // 移除视频进度监听器
     _removeVideoProgressListener();
-    // 移除应用生命周期监听器
     WidgetsBinding.instance.removeObserver(this);
-    // 恢复屏幕方向
     _restoreOrientation();
-    // 恢复原始的系统UI样式
     SystemChrome.setSystemUIOverlayStyle(_originalStyle);
-    // 销毁播放器
-    _videoPlayerController?.dispose();
-    // 释放滚动控制器
+    
+    final controller = _videoPlayerController;
+    _videoPlayerController = null;
+    if (controller != null) {
+      Future.microtask(() async {
+        try {
+          await controller.dispose();
+        } catch (e) {
+          debugPrint('PlayerScreen: error disposing controller: $e');
+        }
+      });
+    }
+    
     _episodesScrollController.dispose();
     _sourcesScrollController.dispose();
-    // 释放动画控制器
     _refreshAnimationController.dispose();
     _loadingAnimationController.dispose();
     _textAnimationController.dispose();
@@ -3305,6 +3491,119 @@ class _HoverButtonState extends State<_HoverButton> {
                     BlendMode.modulate,
                   ),
             child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 下载集数选项组件
+class _DownloadEpisodeItem extends StatefulWidget {
+  final String episodeTitle;
+  final int episodeIndex;
+  final bool isCurrentEpisode;
+  final bool isDownloaded;
+  final bool isDarkMode;
+  final ThemeData theme;
+  final VoidCallback onTap;
+
+  const _DownloadEpisodeItem({
+    required this.episodeTitle,
+    required this.episodeIndex,
+    required this.isCurrentEpisode,
+    required this.isDownloaded,
+    required this.isDarkMode,
+    required this.theme,
+    required this.onTap,
+  });
+
+  @override
+  State<_DownloadEpisodeItem> createState() => _DownloadEpisodeItemState();
+}
+
+class _DownloadEpisodeItemState extends State<_DownloadEpisodeItem> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: GestureDetector(
+        onTap: widget.isDownloaded ? null : widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: widget.isCurrentEpisode
+                ? Colors.green.withOpacity(0.1)
+                : (_isHovering
+                    ? (widget.isDarkMode ? Colors.grey[800] : Colors.grey[100])
+                    : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+            border: widget.isCurrentEpisode
+                ? Border.all(color: Colors.green.withOpacity(0.3))
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: widget.isCurrentEpisode
+                      ? Colors.green
+                      : (widget.isDarkMode ? Colors.grey[700] : Colors.grey[200]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    '${widget.episodeIndex + 1}',
+                    style: TextStyle(
+                      color: widget.isCurrentEpisode
+                          ? Colors.white
+                          : (widget.isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.episodeTitle,
+                  style: widget.theme.textTheme.bodyLarge?.copyWith(
+                    color: widget.isCurrentEpisode
+                        ? Colors.green
+                        : (widget.isDarkMode ? Colors.white : Colors.black87),
+                    fontWeight: widget.isCurrentEpisode ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (widget.isDownloaded)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '已添加',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  Icons.download,
+                  size: 20,
+                  color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                ),
+            ],
           ),
         ),
       ),
