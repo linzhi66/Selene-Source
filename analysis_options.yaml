@@ -31,7 +31,6 @@ linter:
   rules:
     # ========== 强制规则（必须启用）==========
     always_declare_return_types: true
-    always_require_non_null_named_parameters: true
     annotate_overrides: true
     avoid_empty_else: true
     avoid_unnecessary_containers: true
@@ -66,7 +65,7 @@ linter:
     # 性能关键
     avoid_slow_async_io: true
     avoid_type_to_string: true
-    iterable_contains_unrelated_type: true
+    # iterable_contains_unrelated_type: true  # 已在 Dart 3.3.0 中移除
     # 安全增强
     always_use_package_imports: true
     avoid_relative_lib_imports: true
