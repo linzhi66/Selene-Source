@@ -730,6 +730,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _updateDownloadInfo(const VideoDownloadInfo());
   }
 
+  /// 在 dispose 时清理下载资源（不调用 setState）
+  void _disposeDownload() {
+    if (_downloadInfo.taskId == null) return;
+
+    // 移除监听器
+    _downloadService.removeListener(
+      _downloadInfo.taskId!,
+      _onDownloadTaskUpdate,
+    );
+
+    // 取消下载（会删除临时文件）- 不等待完成，避免阻塞 dispose
+    unawaited(_downloadService.cancelDownload(_downloadInfo.taskId!));
+  }
+
   Future<String?> _saveAs() async {
     if (_downloadInfo.taskId == null) return null;
 
@@ -777,8 +791,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
-    // 取消下载并清理临时文件
-    unawaited(_cancelDownload());
+    // 取消下载并清理临时文件（不调用 setState）
+    _disposeDownload();
 
     if (Platform.isAndroid || Platform.isIOS) {
       if (_pipObserver != null) {

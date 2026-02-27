@@ -572,7 +572,7 @@ class _MovieScreenState extends State<MovieScreen> {
           const SizedBox(height: 16),
           // 使用固定高度的容器来避免高度跳跃
           SizedBox(
-            height: 66, // 增加高度以避免Column底部溢出
+            height: 72, // 增加高度以避免Column底部溢出
             child: _selectedCategoryValue == '全部'
                 ? _buildAdvancedFilterSection()
                 : _buildSimpleFilterSection(),

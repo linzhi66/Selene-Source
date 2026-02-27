@@ -16,9 +16,12 @@ import 'package:selene/services/theme_service.dart';
 import 'package:selene/services/user_data_service.dart';
 import 'package:selene/utils/hive_initializer.dart';
 import 'package:selene/utils/http_overrides.dart';
+import 'package:selene/utils/keyboard_error_handler.dart';
 
 // 应用程序入口点
 void main() async {
+  // 初始化键盘错误处理器
+  KeyboardErrorHandler.initialize();
   // 全局禁用证书校验
   HttpOverrides.global = CustomizeHttpOverrides();
   // 初始化 Flutter
@@ -76,15 +79,23 @@ class SeleneApp extends StatelessWidget {
             home: const AppWrapper(),
             builder: (context, child) {
               // 为 Windows 平台改善字体渲染
+              Widget app = child!;
               if (Platform.isWindows) {
-                return MediaQuery(
+                app = MediaQuery(
                   data: MediaQuery.of(context).copyWith(
                     textScaler: const TextScaler.linear(1.0),
                   ),
-                  child: child!,
+                  child: app,
                 );
               }
-              return child!;
+              // 添加键盘事件处理，抑制已知的 Flutter 键盘问题
+              return Focus(
+                onKeyEvent: (node, event) {
+                  // 正常处理键盘事件，不拦截
+                  return KeyEventResult.ignored;
+                },
+                child: app,
+              );
             },
           );
         },

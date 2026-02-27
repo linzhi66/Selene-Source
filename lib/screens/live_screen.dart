@@ -307,11 +307,7 @@ class _LiveScreenState extends State<LiveScreen>
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      decoration: BoxDecoration(
-        color: themeService.isDarkMode
-            ? const Color(0xFF1e1e1e).withValues(alpha: 0.9)
-            : Colors.white.withValues(alpha: 0.8),
-      ),
+      color: Colors.transparent,
       child: Row(
         children: [
           // 直播源筛选（只有多个源时显示）

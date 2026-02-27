@@ -1105,47 +1105,57 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           ),
           child: Row(
             children: [
-              // 直播源筛选（只有多个源时显示）
-              if (showSourceFilter) ...[
-                _buildFilterPill(
-                  '直播源',
-                  sourceOptions,
-                  _currentSource.key,
-                  (value) async {
-                    final source =
-                        _allSources.firstWhere((s) => s.key == value);
-                    setState(() {
-                      _currentSource = source;
-                      _selectedGroup = '全部';
-                      _currentTabChannelName = null; // 清除频道标签
-                      _isLoading = true;
-                      _loadingMessage = '切换直播源...';
-                    });
-                    await _loadAllChannels();
-                    if (mounted && _allChannels.isNotEmpty) {
-                      _switchChannel(_allChannels.first);
-                    }
-                  },
-                  themeService,
+              // 筛选器区域（可滚动）
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 直播源筛选（只有多个源时显示）
+                      if (showSourceFilter) ...[
+                        _buildFilterPill(
+                          '直播源',
+                          sourceOptions,
+                          _currentSource.key,
+                          (value) async {
+                            final source =
+                                _allSources.firstWhere((s) => s.key == value);
+                            setState(() {
+                              _currentSource = source;
+                              _selectedGroup = '全部';
+                              _currentTabChannelName = null; // 清除频道标签
+                              _isLoading = true;
+                              _loadingMessage = '切换直播源...';
+                            });
+                            await _loadAllChannels();
+                            if (mounted && _allChannels.isNotEmpty) {
+                              _switchChannel(_allChannels.first);
+                            }
+                          },
+                          themeService,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      // 分组筛选
+                      _buildFilterPill(
+                        '分组',
+                        groupOptions,
+                        _selectedGroup,
+                        (value) {
+                          setState(() {
+                            _selectedGroup = value;
+                          });
+                        },
+                        themeService,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-              ],
-              // 分组筛选
-              _buildFilterPill(
-                '分组',
-                groupOptions,
-                _selectedGroup,
-                (value) {
-                  setState(() {
-                    _selectedGroup = value;
-                  });
-                },
-                themeService,
               ),
-              const Spacer(),
               // 滚动到当前频道按钮
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 8, left: 8),
                 child: _buildScrollToCurrentChannelButton(themeService),
               ),
             ],

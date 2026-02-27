@@ -1,12 +1,20 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:macos_window_utils/macos_window_utils.dart';
 
+import 'package:selene/design/design_system.dart';
+
+/// 主题服务
+/// 
+/// 管理应用的主题模式和颜色方案
+/// 支持深色/浅色模式切换，并自动同步系统主题
 class ThemeService extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
+  
   bool get isDarkMode {
     if (_themeMode == ThemeMode.dark) return true;
     if (_themeMode == ThemeMode.light) return false;
@@ -31,6 +39,9 @@ class ThemeService extends ChangeNotifier {
     // 不再保存到 SharedPreferences，每次启动都重新遵循系统主题
     notifyListeners();
     _updateMacOSWindowAppearance();
+    
+    // 更新系统 UI 样式
+    _updateSystemUIOverlay();
   }
 
   // 更新 macOS 窗口外观
@@ -38,16 +49,30 @@ class ThemeService extends ChangeNotifier {
     if (!Platform.isMacOS) return;
 
     try {
-      // 使用 WindowManipulator.overrideMacOSBrightness 来设置窗口外观
       if (isDarkMode) {
         await WindowManipulator.overrideMacOSBrightness(dark: true);
       } else {
         await WindowManipulator.overrideMacOSBrightness(dark: false);
       }
     } catch (e) {
-      // 忽略错误，可能在某些环境下不支持
       debugPrint('Failed to update macOS window appearance: $e');
     }
+  }
+
+  // 更新系统 UI 覆盖样式
+  void _updateSystemUIOverlay() {
+    final brightness = isDarkMode ? Brightness.light : Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: brightness,
+        statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: isDarkMode 
+            ? AppColors.darkBackground 
+            : AppColors.lightBackground,
+        systemNavigationBarIconBrightness: brightness,
+      ),
+    );
   }
 
   void toggleTheme(BuildContext context) async {
@@ -70,135 +95,291 @@ class ThemeService extends ChangeNotifier {
     }
   }
 
+  /// 浅色主题
   ThemeData get lightTheme {
-    // Windows 下使用微软雅黑以获得更好的中文渲染
-    final textTheme = Platform.isWindows
-        ? ThemeData.light().textTheme.copyWith(
-              bodyLarge: const TextStyle(
-                color: Color(0xFF2c3e50),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              bodyMedium: const TextStyle(
-                color: Color(0xFF2c3e50),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              bodySmall: const TextStyle(
-                color: Color(0xFF7f8c8d),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleLarge: const TextStyle(
-                color: Color(0xFF2c3e50),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleMedium: const TextStyle(
-                color: Color(0xFF2c3e50),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleSmall: const TextStyle(
-                color: Color(0xFF2c3e50),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-            )
-        : const TextTheme(
-            bodyLarge: TextStyle(color: Color(0xFF2c3e50)),
-            bodyMedium: TextStyle(color: Color(0xFF2c3e50)),
-            bodySmall: TextStyle(color: Color(0xFF7f8c8d)),
-            titleLarge: TextStyle(color: Color(0xFF2c3e50)),
-            titleMedium: TextStyle(color: Color(0xFF2c3e50)),
-            titleSmall: TextStyle(color: Color(0xFF2c3e50)),
-          );
+    final textTheme = _buildTextTheme(isDark: false);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF2c3e50),
-        brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.primary,
+        onPrimary: Colors.white,
+        primaryContainer: AppColors.primaryLight,
+        onPrimaryContainer: Colors.white,
+        secondary: AppColors.secondary,
+        onSecondary: Colors.white,
+        secondaryContainer: AppColors.secondaryLight,
+        onSecondaryContainer: Colors.white,
+        surface: AppColors.lightSurface,
+        onSurface: AppColors.lightTextPrimary,
+        surfaceContainerHighest: AppColors.lightElevated,
+        onSurfaceVariant: AppColors.lightTextSecondary,
+        error: AppColors.error,
+        onError: Colors.white,
+        outline: AppColors.lightBorder,
+        shadow: Colors.black,
       ),
-      scaffoldBackgroundColor: const Color(0xFFf8f9fa),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFffffff),
-        foregroundColor: Color(0xFF2c3e50),
+      scaffoldBackgroundColor: AppColors.lightBackground,
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.lightSurface.withValues(alpha: 0.9),
+        foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
+        centerTitle: true,
+        titleTextStyle: AppTypography.headlineSmallStyle(isDark: false),
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
-      cardTheme: const CardThemeData(
-        color: Color(0xFFffffff),
-        elevation: 2,
+      cardTheme: CardThemeData(
+        color: AppColors.lightCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
       ),
       textTheme: textTheme,
       fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.buttonStyle(isDark: false),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.buttonStyle(isDark: false),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: AppTypography.buttonStyle(isDark: false),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.lightElevated,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        hintStyle: AppTypography.bodyMediumStyle(isDark: false).copyWith(
+          color: AppColors.lightTextTertiary,
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.lightSurface.withValues(alpha: 0.95),
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.lightTextTertiary,
+        selectedLabelStyle: AppTypography.labelMediumStyle(isDark: false).copyWith(
+          fontWeight: AppTypography.semiBold,
+        ),
+        unselectedLabelStyle: AppTypography.labelMediumStyle(isDark: false),
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.lightElevated,
+        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+        labelStyle: AppTypography.labelMediumStyle(isDark: false),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: AppColors.lightBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: AppColors.lightTextPrimary.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: AppTypography.labelMediumStyle(isDark: false).copyWith(
+          color: Colors.white,
+        ),
+      ),
     );
   }
 
+  /// 深色主题
   ThemeData get darkTheme {
-    // Windows 下使用微软雅黑以获得更好的中文渲染
-    final textTheme = Platform.isWindows
-        ? ThemeData.dark().textTheme.copyWith(
-              bodyLarge: const TextStyle(
-                color: Color(0xFFffffff),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              bodyMedium: const TextStyle(
-                color: Color(0xFFffffff),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              bodySmall: const TextStyle(
-                color: Color(0xFFb0b0b0),
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleLarge: const TextStyle(
-                color: Color(0xFFffffff),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleMedium: const TextStyle(
-                color: Color(0xFFffffff),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-              titleSmall: const TextStyle(
-                color: Color(0xFFffffff),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Microsoft YaHei',
-              ),
-            )
-        : const TextTheme(
-            bodyLarge: TextStyle(color: Color(0xFFffffff)),
-            bodyMedium: TextStyle(color: Color(0xFFffffff)),
-            bodySmall: TextStyle(color: Color(0xFFb0b0b0)),
-            titleLarge: TextStyle(color: Color(0xFFffffff)),
-            titleMedium: TextStyle(color: Color(0xFFffffff)),
-            titleSmall: TextStyle(color: Color(0xFFffffff)),
-          );
+    final textTheme = _buildTextTheme(isDark: true);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF2c3e50),
-        brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primaryLight,
+        onPrimary: Colors.white,
+        primaryContainer: AppColors.primary,
+        onPrimaryContainer: Colors.white,
+        secondary: AppColors.secondaryLight,
+        onSecondary: Colors.white,
+        secondaryContainer: AppColors.secondary,
+        onSecondaryContainer: Colors.white,
+        surface: AppColors.darkSurface,
+        onSurface: AppColors.darkTextPrimary,
+        surfaceContainerHighest: AppColors.darkElevated,
+        onSurfaceVariant: AppColors.darkTextSecondary,
+        error: AppColors.errorLight,
+        onError: Colors.white,
+        outline: AppColors.darkBorder,
+        shadow: Colors.black,
       ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1e1e1e),
-        foregroundColor: Color(0xFFffffff),
+      scaffoldBackgroundColor: AppColors.darkBackground,
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.darkSurface.withValues(alpha: 0.9),
+        foregroundColor: AppColors.darkTextPrimary,
         elevation: 0,
+        centerTitle: true,
+        titleTextStyle: AppTypography.headlineSmallStyle(isDark: true),
+        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
-      cardTheme: const CardThemeData(
-        color: Color(0xFF1e1e1e),
-        elevation: 2,
+      cardTheme: CardThemeData(
+        color: AppColors.darkCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        shadowColor: Colors.black.withValues(alpha: 0.3),
       ),
       textTheme: textTheme,
       fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.buttonStyle(isDark: true),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primaryLight,
+          side: const BorderSide(color: AppColors.primaryLight, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.buttonStyle(isDark: true),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primaryLight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: AppTypography.buttonStyle(isDark: true),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.darkElevated,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.errorLight, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        hintStyle: AppTypography.bodyMediumStyle(isDark: true).copyWith(
+          color: AppColors.darkTextTertiary,
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.darkSurface.withValues(alpha: 0.95),
+        selectedItemColor: AppColors.primaryLight,
+        unselectedItemColor: AppColors.darkTextTertiary,
+        selectedLabelStyle: AppTypography.labelMediumStyle(isDark: true).copyWith(
+          fontWeight: AppTypography.semiBold,
+        ),
+        unselectedLabelStyle: AppTypography.labelMediumStyle(isDark: true),
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.darkElevated,
+        selectedColor: AppColors.primary.withValues(alpha: 0.3),
+        labelStyle: AppTypography.labelMediumStyle(isDark: true),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: AppColors.darkBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: AppColors.darkTextPrimary.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: AppTypography.labelMediumStyle(isDark: true).copyWith(
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+
+  /// 构建文字主题
+  TextTheme _buildTextTheme({required bool isDark}) {
+    return TextTheme(
+      displayLarge: AppTypography.displayLargeStyle(isDark: isDark),
+      displayMedium: AppTypography.displayMediumStyle(isDark: isDark),
+      displaySmall: AppTypography.displaySmallStyle(isDark: isDark),
+      headlineLarge: AppTypography.headlineLargeStyle(isDark: isDark),
+      headlineMedium: AppTypography.headlineMediumStyle(isDark: isDark),
+      headlineSmall: AppTypography.headlineSmallStyle(isDark: isDark),
+      bodyLarge: AppTypography.bodyLargeStyle(isDark: isDark),
+      bodyMedium: AppTypography.bodyMediumStyle(isDark: isDark),
+      bodySmall: AppTypography.bodySmallStyle(isDark: isDark),
+      labelLarge: AppTypography.labelLargeStyle(isDark: isDark),
+      labelMedium: AppTypography.labelMediumStyle(isDark: isDark),
+      labelSmall: AppTypography.labelSmallStyle(isDark: isDark),
     );
   }
 }

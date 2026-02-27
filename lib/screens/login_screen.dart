@@ -3,15 +3,29 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+
 import 'package:http/http.dart' as http;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+
+import 'package:selene/components/animations/glass_card.dart';
+import 'package:selene/components/animations/neon_button.dart';
+import 'package:selene/design/design_system.dart';
 import 'package:selene/screens/home_screen.dart';
 import 'package:selene/services/local_mode_storage_service.dart';
 import 'package:selene/services/subscription_service.dart';
+import 'package:selene/services/theme_service.dart';
 import 'package:selene/services/user_data_service.dart';
 import 'package:selene/utils/device_utils.dart';
-import 'package:selene/utils/font_utils.dart';
 import 'package:selene/widgets/windows_title_bar.dart';
 
+/// 现代化登录页面
+/// 
+/// 采用 2026 设计系统：
+/// - 玻璃拟态卡片
+/// - 霓虹渐变按钮
+/// - 流畅的入场动画
+/// - 现代化的输入框样式
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,24 +33,35 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _urlController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _subscriptionUrlController = TextEditingController();
+
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   bool _isFormValid = false;
   bool _isLocalMode = false;
 
-  // 点击计数器相关
+  // 点击计数器（用于切换到本地模式）
   int _logoTapCount = 0;
   Timer? _tapTimer;
+
+  // 动画控制器
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: AppAnimations.showcase,
+    );
+    _animationController.forward();
+
     _urlController.addListener(_validateForm);
     _usernameController.addListener(_validateForm);
     _passwordController.addListener(_validateForm);
@@ -61,24 +86,20 @@ class _LoginScreenState extends State<LoginScreen> {
       hasData = true;
     }
 
-    // 加载订阅链接（用于回填）
     final subscriptionUrl = await LocalModeStorageService.getSubscriptionUrl();
     if (subscriptionUrl != null && subscriptionUrl.isNotEmpty) {
       _subscriptionUrlController.text = subscriptionUrl;
       hasData = true;
     }
 
-    // 如果有数据被加载，更新UI状态
     if (hasData && mounted) {
-      setState(() {
-        // 触发表单验证
-        _validateForm();
-      });
+      setState(() => _validateForm());
     }
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _urlController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -89,11 +110,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogoTap() {
     _logoTapCount++;
-
-    // 取消之前的计时器
     _tapTimer?.cancel();
 
-    // 如果达到10次，切换到本地模式
     if (_logoTapCount >= 10) {
       setState(() {
         _isLocalMode = !_isLocalMode;
@@ -102,14 +120,11 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       _showToast(
         _isLocalMode ? '已切换到本地模式' : '已切换到服务器模式',
-        const Color(0xFF27ae60),
+        AppColors.success,
       );
     } else {
-      // 设置新的计时器，2秒后重置计数
       _tapTimer = Timer(const Duration(seconds: 1), () {
-        setState(() {
-          _logoTapCount = 0;
-        });
+        setState(() => _logoTapCount = 0);
       });
     }
   }
@@ -126,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  // 处理回车键提交
   void _handleSubmit() {
     if (_isLocalMode) {
       _handleLocalModeLogin();
@@ -135,121 +149,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Widget _buildLocalModeForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 订阅链接输入框
-        TextFormField(
-          controller: _subscriptionUrlController,
-          style: FontUtils.poppins(
-            fontSize: 16,
-            color: const Color(0xFF2c3e50),
-          ),
-          decoration: InputDecoration(
-            labelText: '订阅链接',
-            labelStyle: FontUtils.poppins(
-              color: const Color(0xFF7f8c8d),
-              fontSize: 14,
-            ),
-            hintText: '请输入订阅链接',
-            hintStyle: FontUtils.poppins(
-              color: const Color(0xFFbdc3c7),
-              fontSize: 16,
-            ),
-            prefixIcon: const Icon(
-              Icons.link,
-              color: Color(0xFF7f8c8d),
-              size: 20,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.6),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 18,
-            ),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '请输入订阅链接';
-            }
-            return null;
-          },
-          onChanged: (value) => _validateForm(),
-          onFieldSubmitted: (_) => _handleSubmit(),
+  void _showToast(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: AppTypography.bodyMediumStyle().copyWith(color: Colors.white),
         ),
-        const SizedBox(height: 32),
-
-        // 登录按钮
-        ElevatedButton(
-          onPressed:
-              (_isLoading || !_isFormValid) ? null : _handleLocalModeLogin,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _isFormValid && !_isLoading
-                ? const Color(0xFF2c3e50)
-                : const Color(0xFFbdc3c7),
-            foregroundColor: _isFormValid && !_isLoading
-                ? Colors.white
-                : const Color(0xFF7f8c8d),
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
-            shadowColor: Colors.transparent,
-          ),
-          child: _isLoading
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '登录中...',
-                      style: FontUtils.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                )
-              : Text(
-                  '登录',
-                  style: FontUtils.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-        ),
-      ],
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
   String _processUrl(String url) {
-    // 去除尾部斜杠
     String processedUrl = url.trim();
     if (processedUrl.endsWith('/')) {
       processedUrl = processedUrl.substring(0, processedUrl.length - 1);
@@ -258,133 +174,83 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _parseCookies(http.Response response) {
-    // 解析 Set-Cookie 头部
     final List<String> cookies = [];
-
-    // 获取所有 Set-Cookie 头部
     final setCookieHeaders = response.headers['set-cookie'];
     if (setCookieHeaders != null) {
-      // HTTP 头部通常是 String 类型
       final cookieParts = setCookieHeaders.split(';');
       if (cookieParts.isNotEmpty) {
         cookies.add(cookieParts[0].trim());
       }
     }
-
     return cookies.join('; ');
-  }
-
-  void _showToast(String message, Color backgroundColor) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: FontUtils.poppins(
-            color: Colors.white,
-            fontSize: 14,
-          ),
-        ),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   void _handleLogin() async {
     if (_formKey.currentState!.validate() && _isFormValid) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
-        // 处理 URL
         final String baseUrl = _processUrl(_urlController.text);
         final String loginUrl = '$baseUrl/api/login';
 
-        // 发送登录请求
         final response = await http.post(
           Uri.parse(loginUrl),
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: {'Content-Type': 'application/json'},
           body: json.encode({
             'username': _usernameController.text,
             'password': _passwordController.text,
           }),
         );
 
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
 
-        // 根据状态码显示不同的消息
         switch (response.statusCode) {
           case 200:
-            // 解析并保存 cookies
             final String cookies = _parseCookies(response);
-
-            // 保存用户数据
             await UserDataService.saveUserData(
               serverUrl: baseUrl,
               username: _usernameController.text,
               password: _passwordController.text,
               cookies: cookies,
             );
-
-            // 保存模式状态为服务器模式
             await UserDataService.saveIsLocalMode(false);
 
-            // _showToast('登录成功！', const Color(0xFF27ae60));
-
-            // 跳转到首页，并清除所有路由栈（强制销毁所有旧页面）
             if (mounted) {
               await Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute<void>(
-                    builder: (context) => const HomeScreen()),
+                  builder: (context) => const HomeScreen(),
+                ),
                 (route) => false,
               );
             }
             break;
           case 401:
-            _showToast('用户名或密码错误', const Color(0xFFe74c3c));
+            _showToast('用户名或密码错误', AppColors.error);
             break;
           case 500:
-            _showToast('服务器错误', const Color(0xFFe74c3c));
+            _showToast('服务器错误', AppColors.error);
             break;
           default:
-            _showToast('网络异常', const Color(0xFFe74c3c));
+            _showToast('网络异常', AppColors.error);
         }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        _showToast('网络异常', const Color(0xFFe74c3c));
+        setState(() => _isLoading = false);
+        _showToast('网络异常', AppColors.error);
       }
     }
   }
 
   void _handleLocalModeLogin() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
         final newUrl = _subscriptionUrlController.text.trim();
-
-        // 获取并解析订阅内容
         final response = await http.get(Uri.parse(newUrl));
 
         if (response.statusCode != 200) {
-          setState(() {
-            _isLoading = false;
-          });
-          _showToast('获取订阅内容失败', const Color(0xFFe74c3c));
+          setState(() => _isLoading = false);
+          _showToast('获取订阅内容失败', AppColors.error);
           return;
         }
 
@@ -392,86 +258,36 @@ class _LoginScreenState extends State<LoginScreen> {
             await SubscriptionService.parseSubscriptionContent(response.body);
 
         if (content == null ||
-            (content.searchResources == null ||
-                    content.searchResources!.isEmpty) &&
-                (content.liveSources == null || content.liveSources!.isEmpty)) {
-          setState(() {
-            _isLoading = false;
-          });
-          _showToast('解析订阅内容失败', const Color(0xFFe74c3c));
+            (content.searchResources?.isEmpty ?? true) &&
+                (content.liveSources?.isEmpty ?? true)) {
+          setState(() => _isLoading = false);
+          _showToast('解析订阅内容失败', AppColors.error);
           return;
         }
 
-        // 检查是否已有订阅 URL
         final existingUrl = await LocalModeStorageService.getSubscriptionUrl();
 
         if (existingUrl != null &&
             existingUrl.isNotEmpty &&
             existingUrl != newUrl) {
-          // 弹窗询问是否清空
-          setState(() {
-            _isLoading = false;
-          });
+          setState(() => _isLoading = false);
 
           if (!mounted) return;
 
           final shouldClear = await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
-              title: Text(
-                '提示',
-                style: FontUtils.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2c3e50),
-                ),
-              ),
-              content: Text(
-                '检测到已有本地模式内容且订阅链接不一致，是否清空全部本地模式存储？',
-                style: FontUtils.poppins(
-                  fontSize: 14,
-                  color: const Color(0xFF2c3e50),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    '否',
-                    style: FontUtils.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFF7f8c8d),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(
-                    '是',
-                    style: FontUtils.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFFe74c3c),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            builder: (context) => _buildClearDataDialog(),
           );
 
           if (shouldClear == true) {
             await LocalModeStorageService.clearAllLocalModeData();
           } else if (shouldClear == null) {
-            // 用户取消了对话框
             return;
           }
 
-          setState(() {
-            _isLoading = true;
-          });
+          setState(() => _isLoading = true);
         }
 
-        // 保存订阅链接和内容
         await LocalModeStorageService.saveSubscriptionUrl(newUrl);
         if (content.searchResources != null &&
             content.searchResources!.isNotEmpty) {
@@ -482,16 +298,9 @@ class _LoginScreenState extends State<LoginScreen> {
           await LocalModeStorageService.saveLiveSources(content.liveSources!);
         }
 
-        // 保存模式状态为本地模式
         await UserDataService.saveIsLocalMode(true);
+        setState(() => _isLoading = false);
 
-        setState(() {
-          _isLoading = false;
-        });
-
-        // _showToast('本地模式登录成功！', const Color(0xFF27ae60));
-
-        // 跳转到首页，并清除所有路由栈（强制销毁所有旧页面）
         if (mounted) {
           await Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute<void>(builder: (context) => const HomeScreen()),
@@ -499,50 +308,83 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        _showToast('登录失败：${e.toString()}', const Color(0xFFe74c3c));
+        setState(() => _isLoading = false);
+        _showToast('登录失败：${e.toString()}', AppColors.error);
       }
     }
   }
 
+  Widget _buildClearDataDialog() {
+    return GlassCard(
+      isDark: false,
+      borderRadius: 20,
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '提示',
+            style: AppTypography.headlineSmallStyle(isDark: false),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '检测到已有本地模式内容且订阅链接不一致，是否清空全部本地模式存储？',
+            style: AppTypography.bodyMediumStyle(isDark: false),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  '否',
+                  style: AppTypography.bodyMediumStyle(isDark: false).copyWith(
+                    color: AppColors.lightTextSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              NeonButton(
+                text: '是',
+                onPressed: () => Navigator.of(context).pop(true),
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
+    final isDark = themeService.isDarkMode;
     final isTablet = DeviceUtils.isTablet(context);
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFe6f3fb), // #e6f3fb 0%
-              Color(0xFFeaf3f7), // #eaf3f7 18%
-              Color(0xFFf7f7f3), // #f7f7f3 38%
-              Color(0xFFe9ecef), // #e9ecef 60%
-              Color(0xFFdbe3ea), // #dbe3ea 80%
-              Color(0xFFd3dde6), // #d3dde6 100%
-            ],
-            stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-          ),
+        decoration: BoxDecoration(
+          gradient: AppColors.backgroundGradient(isDark),
         ),
         child: Column(
           children: [
-            // Windows 自定义标题栏（透明背景）
-            if (Platform.isWindows) const WindowsTitleBar(forceBlack: true),
-            // 主要内容
+            if (Platform.isWindows)
+              WindowsTitleBar(forceBlack: !themeService.isDarkMode),
             Expanded(
               child: SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.symmetric(
-                      horizontal: isTablet ? 0 : 32.0,
+                      horizontal: isTablet ? 0 : 24.0,
                       vertical: 24.0,
                     ),
-                    child:
-                        isTablet ? _buildTabletLayout() : _buildMobileLayout(),
+                    child: isTablet
+                        ? _buildTabletLayout(isDark)
+                        : _buildMobileLayout(isDark),
                   ),
                 ),
               ),
@@ -553,537 +395,254 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 手机端布局（保持原样）
-  Widget _buildMobileLayout() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Selene 标题 - 可点击
-        GestureDetector(
-          onTap: _handleLogoTap,
-          child: Text(
-            'Selene',
-            style: FontUtils.sourceCodePro(
-              fontSize: 42,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF2c3e50),
-              letterSpacing: 1.5,
+  Widget _buildMobileLayout(bool isDark) {
+    return AppAnimations.entrance(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Logo
+          _buildLogo(isDark),
+          const SizedBox(height: 48),
+          // 登录表单
+          _buildLoginForm(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(bool isDark) {
+    return AppAnimations.entrance(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 480),
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLogo(isDark),
+            const SizedBox(height: 48),
+            _buildLoginForm(isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo(bool isDark) {
+    return GestureDetector(
+      onTap: _handleLogoTap,
+      child: Column(
+        children: [
+          // 图标
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppShadows.neonPrimary,
+            ),
+            child: const Icon(
+              LucideIcons.play,
+              color: Colors.white,
+              size: 40,
             ),
           ),
+          const SizedBox(height: 24),
+          // 品牌名
+              ShaderMask(
+            shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+            child: Text(
+              'Selene',
+              style: AppTypography.brand(fontSize: 42).copyWith(color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 副标题
+          Text(
+            '沉浸式视频体验',
+            style: AppTypography.bodyLargeStyle(isDark: isDark).copyWith(
+              color: AppColors.textSecondary(isDark),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoginForm(bool isDark) {
+    return GlassCard(
+      isDark: isDark,
+      borderRadius: 24,
+      padding: const EdgeInsets.all(32),
+      child: Form(
+        key: _formKey,
+        child: _isLocalMode
+            ? _buildLocalModeForm(isDark)
+            : _buildServerModeForm(isDark),
+      ),
+    );
+  }
+
+  Widget _buildServerModeForm(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildTextField(
+          controller: _urlController,
+          label: '服务器地址',
+          hint: 'https://example.com',
+          icon: LucideIcons.link,
+          isDark: isDark,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '请输入服务器地址';
+            }
+            final uri = Uri.tryParse(value);
+            if (uri == null || uri.scheme.isEmpty || uri.host.isEmpty) {
+              return '请输入有效的URL地址';
+            }
+            return null;
+          },
         ),
-        const SizedBox(height: 40),
-
-        // 登录表单 - 无边框设计
-        Form(
-          key: _formKey,
-          child: _isLocalMode
-              ? _buildLocalModeForm()
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // URL 输入框
-                    TextFormField(
-                      controller: _urlController,
-                      style: FontUtils.poppins(
-                        fontSize: 16,
-                        color: const Color(0xFF2c3e50),
-                      ),
-                      decoration: InputDecoration(
-                        labelText: '服务器地址',
-                        labelStyle: FontUtils.poppins(
-                          color: const Color(0xFF7f8c8d),
-                          fontSize: 14,
-                        ),
-                        hintText: 'https://example.com',
-                        hintStyle: FontUtils.poppins(
-                          color: const Color(0xFFbdc3c7),
-                          fontSize: 16,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.link,
-                          color: Color(0xFF7f8c8d),
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.6),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请输入服务器地址';
-                        }
-                        final uri = Uri.tryParse(value);
-                        if (uri == null ||
-                            uri.scheme.isEmpty ||
-                            uri.host.isEmpty) {
-                          return '请输入有效的URL地址';
-                        }
-                        return null;
-                      },
-                      onFieldSubmitted: (_) => _handleSubmit(),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 用户名输入框
-                    TextFormField(
-                      controller: _usernameController,
-                      style: FontUtils.poppins(
-                        fontSize: 16,
-                        color: const Color(0xFF2c3e50),
-                      ),
-                      decoration: InputDecoration(
-                        labelText: '用户名',
-                        labelStyle: FontUtils.poppins(
-                          color: const Color(0xFF7f8c8d),
-                          fontSize: 14,
-                        ),
-                        hintText: '请输入用户名',
-                        hintStyle: FontUtils.poppins(
-                          color: const Color(0xFFbdc3c7),
-                          fontSize: 16,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.person,
-                          color: Color(0xFF7f8c8d),
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.6),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请输入用户名';
-                        }
-                        return null;
-                      },
-                      onFieldSubmitted: (_) => _handleSubmit(),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 密码输入框
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      style: FontUtils.poppins(
-                        fontSize: 16,
-                        color: const Color(0xFF2c3e50),
-                      ),
-                      decoration: InputDecoration(
-                        labelText: '密码',
-                        labelStyle: FontUtils.poppins(
-                          color: const Color(0xFF7f8c8d),
-                          fontSize: 14,
-                        ),
-                        hintText: '请输入密码',
-                        hintStyle: FontUtils.poppins(
-                          color: const Color(0xFFbdc3c7),
-                          fontSize: 16,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.lock,
-                          color: Color(0xFF7f8c8d),
-                          size: 20,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: const Color(0xFF7f8c8d),
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.6),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '请输入密码';
-                        }
-                        return null;
-                      },
-                      onFieldSubmitted: (_) => _handleSubmit(),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // 登录按钮
-                    ElevatedButton(
-                      onPressed:
-                          (_isLoading || !_isFormValid) ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid && !_isLoading
-                            ? const Color(0xFF2c3e50) // 与Selene logo相同的颜色
-                            : const Color(0xFFbdc3c7),
-                        // 禁用时的浅灰色
-                        foregroundColor: _isFormValid && !_isLoading
-                            ? Colors.white
-                            : const Color(0xFF7f8c8d),
-                        // 禁用时的文字颜色
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                      ),
-                      child: _isLoading
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  '登录中...',
-                                  style: FontUtils.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Text(
-                              '登录',
-                              style: FontUtils.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
+        const SizedBox(height: 20),
+        _buildTextField(
+          controller: _usernameController,
+          label: '用户名',
+          hint: '请输入用户名',
+          icon: LucideIcons.user,
+          isDark: isDark,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '请输入用户名';
+            }
+            return null;
+          },
         ),
+        const SizedBox(height: 20),
+        _buildTextField(
+          controller: _passwordController,
+          label: '密码',
+          hint: '请输入密码',
+          icon: LucideIcons.lock,
+          isDark: isDark,
+          isPassword: true,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '请输入密码';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 32),
+        _buildLoginButton(isDark),
       ],
     );
   }
 
-  // 平板端布局（与手机端风格一致，只是限制宽度）
-  Widget _buildTabletLayout() {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 480),
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Selene 标题 - 可点击
-          GestureDetector(
-            onTap: _handleLogoTap,
-            child: Text(
-              'Selene',
-              style: FontUtils.sourceCodePro(
-                fontSize: 42,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF2c3e50),
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
+  Widget _buildLocalModeForm(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildTextField(
+          controller: _subscriptionUrlController,
+          label: '订阅链接',
+          hint: '请输入订阅链接',
+          icon: LucideIcons.link,
+          isDark: isDark,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '请输入订阅链接';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 32),
+        _buildLoginButton(isDark),
+      ],
+    );
+  }
 
-          // 登录表单 - 无边框设计
-          Form(
-            key: _formKey,
-            child: _isLocalMode
-                ? _buildLocalModeForm()
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // URL 输入框
-                      TextFormField(
-                        controller: _urlController,
-                        style: FontUtils.poppins(
-                          fontSize: 16,
-                          color: const Color(0xFF2c3e50),
-                        ),
-                        decoration: InputDecoration(
-                          labelText: '服务器地址',
-                          labelStyle: FontUtils.poppins(
-                            color: const Color(0xFF7f8c8d),
-                            fontSize: 14,
-                          ),
-                          hintText: 'https://example.com',
-                          hintStyle: FontUtils.poppins(
-                            color: const Color(0xFFbdc3c7),
-                            fontSize: 16,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.link,
-                            color: Color(0xFF7f8c8d),
-                            size: 20,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.6),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入服务器地址';
-                          }
-                          final uri = Uri.tryParse(value);
-                          if (uri == null ||
-                              uri.scheme.isEmpty ||
-                              uri.host.isEmpty) {
-                            return '请输入有效的URL地址';
-                          }
-                          return null;
-                        },
-                        onFieldSubmitted: (_) => _handleSubmit(),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 用户名输入框
-                      TextFormField(
-                        controller: _usernameController,
-                        style: FontUtils.poppins(
-                          fontSize: 16,
-                          color: const Color(0xFF2c3e50),
-                        ),
-                        decoration: InputDecoration(
-                          labelText: '用户名',
-                          labelStyle: FontUtils.poppins(
-                            color: const Color(0xFF7f8c8d),
-                            fontSize: 14,
-                          ),
-                          hintText: '请输入用户名',
-                          hintStyle: FontUtils.poppins(
-                            color: const Color(0xFFbdc3c7),
-                            fontSize: 16,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.person,
-                            color: Color(0xFF7f8c8d),
-                            size: 20,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.6),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入用户名';
-                          }
-                          return null;
-                        },
-                        onFieldSubmitted: (_) => _handleSubmit(),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 密码输入框
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        style: FontUtils.poppins(
-                          fontSize: 16,
-                          color: const Color(0xFF2c3e50),
-                        ),
-                        decoration: InputDecoration(
-                          labelText: '密码',
-                          labelStyle: FontUtils.poppins(
-                            color: const Color(0xFF7f8c8d),
-                            fontSize: 14,
-                          ),
-                          hintText: '请输入密码',
-                          hintStyle: FontUtils.poppins(
-                            color: const Color(0xFFbdc3c7),
-                            fontSize: 16,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.lock,
-                            color: Color(0xFF7f8c8d),
-                            size: 20,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: const Color(0xFF7f8c8d),
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.6),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入密码';
-                          }
-                          return null;
-                        },
-                        onFieldSubmitted: (_) => _handleSubmit(),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // 登录按钮
-                      ElevatedButton(
-                        onPressed:
-                            (_isLoading || !_isFormValid) ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isFormValid && !_isLoading
-                              ? const Color(0xFF2c3e50)
-                              : const Color(0xFFbdc3c7),
-                          foregroundColor: _isFormValid && !_isLoading
-                              ? Colors.white
-                              : const Color(0xFF7f8c8d),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
-                        ),
-                        child: _isLoading
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '登录中...',
-                                    style: FontUtils.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                '登录',
-                                style: FontUtils.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required bool isDark,
+    bool isPassword = false,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword && !_isPasswordVisible,
+      style: AppTypography.bodyLargeStyle(isDark: isDark),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? LucideIcons.eye : LucideIcons.eyeOff,
+                  color: AppColors.textTertiary(isDark),
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() => _isPasswordVisible = !_isPasswordVisible);
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: isDark
+            ? AppColors.darkElevated.withValues(alpha: 0.5)
+            : AppColors.lightElevated.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+        labelStyle: AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
+          color: AppColors.textSecondary(isDark),
+        ),
+        hintStyle: AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
+          color: AppColors.textTertiary(isDark),
+        ),
       ),
+      validator: validator,
+      onFieldSubmitted: (_) => _handleSubmit(),
+    );
+  }
+
+  Widget _buildLoginButton(bool isDark) {
+    return NeonButton(
+      text: _isLoading ? '登录中...' : '登录',
+      onPressed: (_isLoading || !_isFormValid) ? null : _handleSubmit,
+      isLoading: _isLoading,
+      isFullWidth: true,
+      height: 56,
+      borderRadius: 16,
+      gradient: _isFormValid && !_isLoading
+          ? AppColors.primaryGradient
+          : LinearGradient(
+              colors: [
+                AppColors.textTertiary(isDark),
+                AppColors.textTertiary(isDark),
+              ],
+            ),
     );
   }
 }

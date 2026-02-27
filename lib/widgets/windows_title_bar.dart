@@ -2,92 +2,48 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:selene/design/design_system.dart';
 import 'package:selene/services/theme_service.dart';
 
-class WindowsTitleBar extends StatefulWidget {
+/// Windows 无边框标题栏
+/// 
+/// 完全透明融入应用，仅显示悬浮控制按钮
+class WindowsTitleBar extends StatelessWidget {
   final bool forceBlack;
   final Color? customBackgroundColor;
-  final String? title;
 
   const WindowsTitleBar({
     super.key,
     this.forceBlack = false,
     this.customBackgroundColor,
-    this.title,
   });
 
-  @override
-  State<WindowsTitleBar> createState() => _WindowsTitleBarState();
-}
-
-class _WindowsTitleBarState extends State<WindowsTitleBar> {
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         final isDark = themeService.isDarkMode;
 
-        // 优先使用自定义背景色，其次使用 forceBlack，最后使用默认颜色
-        final backgroundColor = widget.customBackgroundColor ??
-            (widget.forceBlack
-                ? Colors.transparent
-                : (isDark
-                    ? const Color(0xFF1e1e1e).withValues(alpha: 0.9)
-                    : Colors.white.withValues(alpha: 0.8)));
+        // 文字/图标颜色
+        final foregroundColor = isDark
+            ? AppColors.darkTextSecondary
+            : AppColors.lightTextSecondary;
 
-        // Windows 11 风格的文字和图标颜色
-        final foregroundColor = widget.forceBlack
-            ? Colors.white
-            : (isDark ? Colors.white : const Color(0xFF202020));
-
-        return Container(
+        return SizedBox(
           height: 40,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-          ),
           child: Row(
             children: [
-              // 左侧标题（可选）
-              if (widget.title != null) ...[
-                const SizedBox(width: 12),
-                Text(
-                  widget.title!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: foregroundColor.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w400,
+              // 左侧可拖动区域
+              Expanded(
+                child: MoveWindow(
+                  child: Container(
+                    height: 40,
+                    color: Colors.transparent,
                   ),
                 ),
-              ],
-              // 可拖动区域
-              Expanded(
-                child: MoveWindow(),
               ),
-              // 右侧 Windows 风格按钮
-              _buildWindowsButton(
-                onPressed: () {
-                  appWindow.minimize();
-                },
-                icon: _MinimizeIcon(color: foregroundColor),
-                isDark: isDark,
-                isCloseButton: false,
-              ),
-              _buildWindowsButton(
-                onPressed: () {
-                  appWindow.maximizeOrRestore();
-                },
-                icon: _MaximizeIcon(color: foregroundColor),
-                isDark: isDark,
-                isCloseButton: false,
-              ),
-              _buildWindowsButton(
-                onPressed: () {
-                  appWindow.close();
-                },
-                icon: Icon(Icons.close, size: 16, color: foregroundColor),
-                isDark: isDark,
-                isCloseButton: true,
-              ),
+              // 右侧窗口控制按钮组
+              _buildWindowControls(foregroundColor, isDark),
             ],
           ),
         );
@@ -95,44 +51,65 @@ class _WindowsTitleBarState extends State<WindowsTitleBar> {
     );
   }
 
-  Widget _buildWindowsButton({
-    required VoidCallback onPressed,
-    required Widget icon,
-    required bool isDark,
-    required bool isCloseButton,
-  }) {
-    return SizedBox(
-      width: 46,
-      height: 40,
-      child: _WindowsButtonHover(
-        onPressed: onPressed,
-        icon: icon,
-        isDark: isDark,
-        isCloseButton: isCloseButton,
+  Widget _buildWindowControls(Color foregroundColor, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
+      decoration: BoxDecoration(
+        color: isDark 
+            ? AppColors.darkSurface.withValues(alpha: 0.6)
+            : AppColors.lightSurface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark
+              ? AppColors.darkBorder.withValues(alpha: 0.3)
+              : AppColors.lightBorder.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _WindowControlButton(
+            onPressed: () => appWindow.minimize(),
+            icon: _MinimizeIcon(color: foregroundColor),
+            isDark: isDark,
+          ),
+          _WindowControlButton(
+            onPressed: () => appWindow.maximizeOrRestore(),
+            icon: _MaximizeIcon(color: foregroundColor),
+            isDark: isDark,
+          ),
+          _WindowControlButton(
+            onPressed: () => appWindow.close(),
+            icon: Icon(Icons.close, size: 14, color: foregroundColor),
+            isDark: isDark,
+            isCloseButton: true,
+          ),
+        ],
       ),
     );
   }
 }
 
-// Windows 风格的按钮悬停效果
-class _WindowsButtonHover extends StatefulWidget {
+/// 窗口控制按钮
+class _WindowControlButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget icon;
   final bool isDark;
   final bool isCloseButton;
 
-  const _WindowsButtonHover({
+  const _WindowControlButton({
     required this.onPressed,
     required this.icon,
     required this.isDark,
-    required this.isCloseButton,
+    this.isCloseButton = false,
   });
 
   @override
-  State<_WindowsButtonHover> createState() => _WindowsButtonHoverState();
+  State<_WindowControlButton> createState() => _WindowControlButtonState();
 }
 
-class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
+class _WindowControlButtonState extends State<_WindowControlButton> {
   bool _isHovered = false;
   bool _isPressed = false;
 
@@ -142,16 +119,16 @@ class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
 
     if (_isPressed) {
       backgroundColor = widget.isCloseButton
-          ? const Color(0xFF8B0000) // 深红色
+          ? const Color(0xFFDC2626)
           : (widget.isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.06));
+              ? Colors.white.withValues(alpha: 0.15)
+              : Colors.black.withValues(alpha: 0.08));
     } else if (_isHovered) {
       backgroundColor = widget.isCloseButton
-          ? const Color(0xFFE81123) // Windows 11 红色
+          ? const Color(0xFFEF4444)
           : (widget.isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.04));
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.05));
     }
 
     return MouseRegion(
@@ -168,12 +145,17 @@ class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
         },
         onTapCancel: () => setState(() => _isPressed = false),
         child: Container(
-          color: backgroundColor ?? Colors.transparent,
+          width: 36,
+          height: 28,
+          decoration: BoxDecoration(
+            color: backgroundColor ?? Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: Center(
             child: widget.isCloseButton && _isHovered
                 ? const Icon(
                     Icons.close,
-                    size: 16,
+                    size: 14,
                     color: Colors.white,
                   )
                 : widget.icon,
@@ -184,7 +166,7 @@ class _WindowsButtonHoverState extends State<_WindowsButtonHover> {
   }
 }
 
-// 最小化图标
+/// 最小化图标
 class _MinimizeIcon extends StatelessWidget {
   final Color color;
 
@@ -192,41 +174,19 @@ class _MinimizeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 16,
-      height: 16,
-      child: CustomPaint(
-        painter: _MinimizePainter(color: color),
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: color, width: 1.5),
+        ),
       ),
     );
   }
 }
 
-class _MinimizePainter extends CustomPainter {
-  final Color color;
-
-  _MinimizePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    final y = size.height / 2;
-    canvas.drawLine(
-      Offset(size.width * 0.3, y),
-      Offset(size.width * 0.7, y),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// 最大化/还原图标
+/// 最大化/还原图标
 class _MaximizeIcon extends StatelessWidget {
   final Color color;
 
@@ -234,38 +194,13 @@ class _MaximizeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 16,
-      height: 16,
-      child: CustomPaint(
-        painter: _MaximizePainter(color: color),
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        border: Border.all(color: color, width: 1.5),
+        borderRadius: BorderRadius.circular(2),
       ),
     );
   }
-}
-
-class _MaximizePainter extends CustomPainter {
-  final Color color;
-
-  _MaximizePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    final rect = Rect.fromLTWH(
-      size.width * 0.3,
-      size.height * 0.3,
-      size.width * 0.4,
-      size.height * 0.4,
-    );
-
-    canvas.drawRect(rect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

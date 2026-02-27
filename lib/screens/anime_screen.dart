@@ -688,7 +688,7 @@ class _AnimeScreenState extends State<AnimeScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 66,
+            height: 72,
             child: _buildSecondaryFilterSection(),
           ),
         ],
