@@ -7,6 +7,7 @@ import 'package:selene/models/epg_program.dart';
 import 'package:selene/models/live_channel.dart';
 import 'package:selene/models/live_source.dart';
 import 'package:selene/services/live_service.dart';
+import 'package:selene/services/source_speed_test_service.dart';
 import 'package:selene/services/theme_service.dart';
 import 'package:selene/utils/device_utils.dart';
 import 'package:selene/utils/font_utils.dart';
@@ -78,6 +79,12 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   bool _isLoading = true;
   String _loadingMessage = '正在加载直播频道...';
   late AnimationController _loadingAnimationController;
+
+  // 测速相关
+  SourceSpeedTestService? _speedTestService;
+  final Map<String, bool> _sourceAvailability = {}; // 源可用性缓存
+  final Map<String, int> _sourceLatency = {}; // 源延迟缓存
+  bool _isSpeedTesting = false; // 是否正在测速
 
   @override
   void initState() {
@@ -187,6 +194,21 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           _channelsByNameMap = allChannelsByNameMap;
         });
       }
+
+      // 设置当前频道标签并触发自动测速
+      if (mounted) {
+        final currentChannelName = _currentChannel.name;
+        final sameNameChannels = allChannelsByNameMap[currentChannelName] ?? [];
+        if (sameNameChannels.length > 1) {
+          // 有多个同名源，设置标签并触发测速
+          setState(() {
+            _currentTabChannelName = currentChannelName;
+            _filteredChannels = sameNameChannels;
+          });
+          // 触发自动测速
+          await _autoTestAndSelectBestSource();
+        }
+      }
     } catch (e) {
       debugPrint('加载所有源的频道列表失败: $e');
     }
@@ -220,13 +242,81 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     _loadEpgData();
     // 滚动到当前频道
     _scrollToCurrentChannel();
+    // 自动测速同名频道源
+    _autoTestAndSelectBestSource();
   }
 
-  void _clearChannelTab() {
+  /// 自动测速同名频道源并切换到最佳源
+  Future<void> _autoTestAndSelectBestSource() async {
+    // 如果没有同名频道或只有一个，不需要测速
+    if (_filteredChannels.length <= 1) return;
+
+    // 取消之前的测速
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = SourceSpeedTestService();
+
     setState(() {
-      _currentTabChannelName = null;
-      _filteredChannels = _allChannels;
+      _isSpeedTesting = true;
+      _sourceAvailability.clear();
+      _sourceLatency.clear();
     });
+
+    try {
+      // 构建测速列表
+      final urls = _filteredChannels
+          .map((c) => {'id': c.id, 'url': c.url})
+          .where((item) => item['url']!.isNotEmpty)
+          .toList();
+
+      // 存储最佳源信息
+      String? bestChannelId;
+      var bestLatency = 999999;
+
+      await _speedTestService!.batchCheckUrls(
+        urls: urls,
+        maxConcurrency: 10,
+        onResult: (String id, bool isAvailable, int latencyMs) {
+          setState(() {
+            _sourceAvailability[id] = isAvailable;
+            _sourceLatency[id] = latencyMs;
+          });
+
+          // 记录最佳可用源（延迟最低的）
+          if (isAvailable && latencyMs >= 0 && latencyMs < bestLatency) {
+            bestLatency = latencyMs;
+            bestChannelId = id;
+          }
+        },
+      );
+
+      // 如果找到更好的源，自动切换
+      if (bestChannelId != null && bestChannelId != _currentChannel.id) {
+        final bestChannel = _filteredChannels.firstWhere(
+          (c) => c.id == bestChannelId,
+          orElse: () => _currentChannel,
+        );
+
+        // 延迟一下再切换，让用户看到测速结果
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+
+        if (mounted && bestChannel.id != _currentChannel.id) {
+          debugPrint('自动切换到最佳源: ${bestChannel.name} (${bestLatency}ms)');
+          _switchChannel(bestChannel);
+        }
+      }
+    } catch (e) {
+      debugPrint('自动测速失败: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSpeedTesting = false;
+        });
+      }
+      // 清理测速服务
+      _speedTestService?.dispose();
+      _speedTestService = null;
+    }
   }
 
   @override
@@ -237,6 +327,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     _verticalProgramScrollController.dispose();
     _channelScrollController.dispose();
     _loadingAnimationController.dispose();
+    // 清理测速服务
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = null;
     super.dispose();
   }
 
@@ -1037,6 +1131,8 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                     : const Color(0xFF7f8c8d),
               ),
             ),
+            // 测速状态指示器（只在有测速结果时显示）
+            trailing: _buildSpeedTestIndicator(channel, themeService),
             onTap: () {
               // 检查当前是否在频道名称标签页模式下
               if (_currentTabChannelName != null &&
@@ -1064,22 +1160,93 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     );
   }
 
-  /// 构建播放源和分组选择器
-  Widget _buildSourceSelector(ThemeData theme, ThemeService themeService) {
-    // 获取所有分组，保持原始顺序
-    final allGroups = ['全部'];
-    final seenGroups = <String>{};
-    for (var channel in _allChannels) {
-      if (channel.group.isNotEmpty && !seenGroups.contains(channel.group)) {
-        seenGroups.add(channel.group);
-        allGroups.add(channel.group);
-      }
+  /// 构建测速状态指示器
+  Widget? _buildSpeedTestIndicator(
+      LiveChannel channel, ThemeService themeService) {
+    // 如果正在测速，显示进度指示器
+    if (_isSpeedTesting && !_sourceAvailability.containsKey(channel.id)) {
+      return SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: themeService.isDarkMode
+              ? const Color(0xFF666666)
+              : const Color(0xFFcccccc),
+        ),
+      );
     }
 
-    // 构建分组选项
-    final groupOptions =
-        allGroups.map((g) => SelectorOption(label: g, value: g)).toList();
+    // 如果没有测速结果，不显示
+    if (!_sourceAvailability.containsKey(channel.id)) {
+      return null;
+    }
 
+    final isAvailable = _sourceAvailability[channel.id] ?? false;
+    final latencyMs = _sourceLatency[channel.id] ?? 0;
+
+    // 不可用 - 红色
+    if (!isAvailable) {
+      return Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: const Color(0xFFe74c3c),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: themeService.isDarkMode
+                ? const Color(0xFF2a2a2a)
+                : Colors.white,
+            width: 1,
+          ),
+        ),
+      );
+    }
+
+    // 根据延迟显示颜色和数值
+    Color color;
+    if (latencyMs < 200) {
+      color = const Color(0xFF27ae60); // 极快 - 绿色
+    } else if (latencyMs < 500) {
+      color = const Color(0xFFf39c12); // 一般 - 橙色
+    } else {
+      color = const Color(0xFFe67e22); // 较慢 - 深橙
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 延迟数值
+        Text(
+          '${latencyMs}ms',
+          style: FontUtils.poppins(
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 4),
+        // 状态点
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: themeService.isDarkMode
+                  ? const Color(0xFF2a2a2a)
+                  : Colors.white,
+              width: 1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 构建播放源和频道信息栏
+  Widget _buildSourceSelector(ThemeData theme, ThemeService themeService) {
     // 构建直播源选项
     final sourceOptions = _allSources
         .map((s) => SelectorOption(label: s.name, value: s.key))
@@ -1088,12 +1255,15 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
     // 判断是否只有一个直播源
     final showSourceFilter = _allSources.length > 1;
 
+    // 计算可用源数量
+    final availableCount =
+        _sourceAvailability.entries.where((e) => e.value).length;
+    final hasSpeedTest = _sourceAvailability.isNotEmpty;
+
     return Column(
       children: [
-        // 频道名称页签
-        _buildChannelNameTabs(themeService),
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
@@ -1104,8 +1274,9 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 筛选器区域（可滚动）
+              // 左侧信息区域
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -1124,7 +1295,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                             setState(() {
                               _currentSource = source;
                               _selectedGroup = '全部';
-                              _currentTabChannelName = null; // 清除频道标签
+                              _currentTabChannelName = null;
                               _isLoading = true;
                               _loadingMessage = '切换直播源...';
                             });
@@ -1137,25 +1308,77 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                         ),
                         const SizedBox(width: 8),
                       ],
-                      // 分组筛选
-                      _buildFilterPill(
-                        '分组',
-                        groupOptions,
-                        _selectedGroup,
-                        (value) {
-                          setState(() {
-                            _selectedGroup = value;
-                          });
-                        },
-                        themeService,
+                      // 当前频道名称和源数量信息
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: themeService.isDarkMode
+                              ? const Color(0xFF27ae60).withValues(alpha: 0.2)
+                              : const Color(0xFF27ae60).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF27ae60),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tv,
+                              size: 14,
+                              color: themeService.isDarkMode
+                                  ? const Color(0xFF27ae60)
+                                  : const Color(0xFF27ae60),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _currentChannel.name,
+                              style: FontUtils.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: themeService.isDarkMode
+                                    ? Colors.white
+                                    : const Color(0xFF2c3e50),
+                              ),
+                            ),
+                            if (hasSpeedTest) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: themeService.isDarkMode
+                                      ? const Color(0xFF999999)
+                                      : const Color(0xFF999999),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$availableCount/${_filteredChannels.length} 可用',
+                                style: FontUtils.poppins(
+                                  fontSize: 11,
+                                  color: availableCount > 0
+                                      ? const Color(0xFF27ae60)
+                                      : const Color(0xFFe74c3c),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
               // 滚动到当前频道按钮
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8, left: 8),
+              Container(
+                padding: const EdgeInsets.only(left: 8),
                 child: _buildScrollToCurrentChannelButton(themeService),
               ),
             ],
@@ -1191,58 +1414,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// 构建频道名称页签列表
-  Widget _buildChannelNameTabs(ThemeService themeService) {
-    if (_currentTabChannelName == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          // 当前频道名称标签
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF27ae60),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _currentTabChannelName!,
-              style: FontUtils.poppins(
-                fontSize: 12,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // 关闭标签按钮
-          GestureDetector(
-            onTap: _clearChannelTab,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: themeService.isDarkMode
-                    ? const Color(0xFF444444)
-                    : const Color(0xFFe0e0e0),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.close,
-                size: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

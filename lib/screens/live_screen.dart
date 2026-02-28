@@ -6,6 +6,7 @@ import 'package:selene/models/live_channel.dart';
 import 'package:selene/models/live_source.dart';
 import 'package:selene/screens/live_player_screen.dart';
 import 'package:selene/services/live_service.dart';
+import 'package:selene/services/source_speed_test_service.dart';
 import 'package:selene/services/theme_service.dart';
 import 'package:selene/utils/device_utils.dart';
 import 'package:selene/utils/font_utils.dart';
@@ -33,6 +34,14 @@ class _LiveScreenState extends State<LiveScreen>
   late AnimationController _refreshIconController;
   bool _isRefreshButtonHovered = false;
 
+  // 测速相关
+  SourceSpeedTestService? _speedTestService;
+  final Map<String, bool> _channelAvailability = {}; // 频道可用性缓存
+  final Map<String, int> _channelLatency = {}; // 频道延迟缓存
+  bool _isSpeedTesting = false; // 是否正在测速
+  int _speedTestProgress = 0; // 测速进度
+  int _speedTestTotal = 0; // 测速总数
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +56,59 @@ class _LiveScreenState extends State<LiveScreen>
   void dispose() {
     _scrollController.dispose();
     _refreshIconController.dispose();
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = null;
     super.dispose();
+  }
+
+  /// 批量测速当前显示的频道
+  Future<void> _testChannelsSpeed() async {
+    final channels = _getFilteredChannels();
+    if (channels.isEmpty) return;
+
+    // 取消之前的测速
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = SourceSpeedTestService();
+
+    setState(() {
+      _isSpeedTesting = true;
+      _speedTestProgress = 0;
+      _speedTestTotal = channels.length;
+      // 清空之前的测速结果
+      _channelAvailability.clear();
+      _channelLatency.clear();
+    });
+
+    try {
+      // 构建测速列表
+      final urls = channels
+          .map((c) => {'id': c.id, 'url': c.url})
+          .where((item) => item['url']!.isNotEmpty)
+          .toList();
+
+      await _speedTestService!.batchCheckUrls(
+        urls: urls,
+        maxConcurrency: 10, // 直播测速并发数可以高一些
+        onResult: (String id, bool isAvailable, int latencyMs) {
+          setState(() {
+            _channelAvailability[id] = isAvailable;
+            _channelLatency[id] = latencyMs;
+            _speedTestProgress++;
+          });
+        },
+      );
+    } catch (e) {
+      debugPrint('测速失败: $e');
+    } finally {
+      setState(() {
+        _isSpeedTesting = false;
+      });
+      // 清理测速服务
+      _speedTestService?.dispose();
+      _speedTestService = null;
+    }
   }
 
   void _scrollToTop() {
@@ -345,6 +406,9 @@ class _LiveScreenState extends State<LiveScreen>
               themeService,
             ),
           const Spacer(),
+          // 测速按钮
+          if (!_isInitialLoad && _channelGroups.isNotEmpty)
+            _buildSpeedTestButton(themeService),
           // 刷新按钮
           Padding(
             padding: const EdgeInsets.only(right: 4),
@@ -393,6 +457,84 @@ class _LiveScreenState extends State<LiveScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建测速按钮
+  Widget _buildSpeedTestButton(ThemeService themeService) {
+    return MouseRegion(
+      cursor: DeviceUtils.isPC() && !_isSpeedTesting
+          ? SystemMouseCursors.click
+          : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: _isSpeedTesting ? null : _testChannelsSpeed,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            color: _isSpeedTesting
+                ? const Color(0xFF27ae60).withValues(alpha: 0.1)
+                : (_channelAvailability.isNotEmpty
+                    ? const Color(0xFF3498db).withValues(alpha: 0.1)
+                    : Colors.transparent),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isSpeedTesting
+                  ? const Color(0xFF27ae60)
+                  : (_channelAvailability.isNotEmpty
+                      ? const Color(0xFF3498db)
+                      : (themeService.isDarkMode
+                          ? Colors.grey[600]!
+                          : Colors.grey[400]!)),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: _isSpeedTesting
+                    ? CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: _speedTestTotal > 0
+                            ? _speedTestProgress / _speedTestTotal
+                            : null,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF27ae60)),
+                      )
+                    : Icon(
+                        Icons.speed,
+                        size: 16,
+                        color: _channelAvailability.isNotEmpty
+                            ? const Color(0xFF3498db)
+                            : (themeService.isDarkMode
+                                ? Colors.grey[500]
+                                : Colors.grey[600]),
+                      ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                _isSpeedTesting
+                    ? '$_speedTestProgress/$_speedTestTotal'
+                    : (_channelAvailability.isNotEmpty ? '已测速' : '测速'),
+                style: FontUtils.poppins(
+                  fontSize: 12,
+                  color: _isSpeedTesting
+                      ? const Color(0xFF27ae60)
+                      : (_channelAvailability.isNotEmpty
+                          ? const Color(0xFF3498db)
+                          : (themeService.isDarkMode
+                              ? Colors.grey[500]
+                              : Colors.grey[600])),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -656,6 +798,10 @@ class _LiveScreenState extends State<LiveScreen>
   }
 
   Widget _buildChannelCard(LiveChannel channel, ThemeService themeService) {
+    // 获取测速结果
+    final isAvailable = _channelAvailability[channel.id];
+    final latencyMs = _channelLatency[channel.id];
+
     return _LiveChannelCard(
       channel: channel,
       themeService: themeService,
@@ -671,6 +817,8 @@ class _LiveScreenState extends State<LiveScreen>
         ).then((_) => _loadChannels());
       },
       buildChannelLogo: _buildChannelLogo,
+      isAvailable: isAvailable,
+      latencyMs: latencyMs,
     );
   }
 
@@ -730,12 +878,16 @@ class _LiveChannelCard extends StatefulWidget {
   final ThemeService themeService;
   final VoidCallback onTap;
   final Widget Function(LiveChannel, ThemeService) buildChannelLogo;
+  final bool? isAvailable; // 测速结果：是否可用
+  final int? latencyMs; // 测速结果：延迟毫秒
 
   const _LiveChannelCard({
     required this.channel,
     required this.themeService,
     required this.onTap,
     required this.buildChannelLogo,
+    this.isAvailable,
+    this.latencyMs,
   });
 
   @override
@@ -744,6 +896,91 @@ class _LiveChannelCard extends StatefulWidget {
 
 class _LiveChannelCardState extends State<_LiveChannelCard> {
   bool _isHovered = false;
+
+  /// 获取状态颜色
+  Color _getStatusColor() {
+    if (widget.isAvailable == null) {
+      return Colors.transparent; // 未测速
+    }
+    if (!widget.isAvailable!) {
+      return const Color(0xFFe74c3c); // 不可用 - 红色
+    }
+    // 根据延迟显示不同颜色
+    final latency = widget.latencyMs ?? 0;
+    if (latency < 200) {
+      return const Color(0xFF27ae60); // 极快 - 绿色
+    } else if (latency < 500) {
+      return const Color(0xFFf39c12); // 一般 - 橙色
+    } else {
+      return const Color(0xFFe67e22); // 较慢 - 深橙
+    }
+  }
+
+  /// 构建状态指示器
+  Widget _buildStatusIndicator() {
+    if (widget.isAvailable == null) {
+      return const SizedBox.shrink(); // 未测速不显示
+    }
+
+    final color = _getStatusColor();
+
+    return Positioned(
+      top: 8,
+      right: 8,
+      child: Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: widget.themeService.isDarkMode
+                ? const Color(0xFF1e1e1e)
+                : Colors.white,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建延迟文本
+  Widget _buildLatencyText() {
+    if (widget.isAvailable == null || widget.latencyMs == null) {
+      return const SizedBox.shrink();
+    }
+
+    if (!widget.isAvailable!) {
+      return const SizedBox.shrink(); // 不可用不显示延迟
+    }
+
+    return Positioned(
+      bottom: 8,
+      right: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          '${widget.latencyMs}ms',
+          style: FontUtils.poppins(
+            fontSize: 10,
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -781,6 +1018,10 @@ class _LiveChannelCardState extends State<_LiveChannelCard> {
                           child: widget.buildChannelLogo(
                               widget.channel, widget.themeService),
                         ),
+                        // 状态指示器
+                        _buildStatusIndicator(),
+                        // 延迟文本
+                        _buildLatencyText(),
                       ],
                     ),
                   ),

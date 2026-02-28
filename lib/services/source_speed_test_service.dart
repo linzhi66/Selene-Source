@@ -640,6 +640,110 @@ class SourceSpeedTestService {
     _cancelTokens.clear();
   }
 
+  /// 快速检测单个 URL 是否可用（适用于直播）
+  ///
+  /// [url] - 要检测的 URL
+  /// [timeout] - 超时时间，默认3秒
+  /// Returns: 延迟毫秒数，-1 表示不可用
+  Future<int> quickCheckUrl(String url, {Duration? timeout}) async {
+    if (_isDisposed) {
+      throw StateError('Service has been disposed');
+    }
+
+    final cancelToken = CancelToken();
+    _cancelTokens.add(cancelToken);
+
+    try {
+      final effectiveTimeout = timeout ?? const Duration(seconds: 3);
+      final stopwatch = Stopwatch()..start();
+
+      // 使用 HEAD 请求快速检测
+      await _dio
+          .head<void>(
+            url,
+            options: Options(
+              validateStatus: (status) => status != null && status < 500,
+            ),
+            cancelToken: cancelToken,
+          )
+          .timeout(effectiveTimeout);
+
+      stopwatch.stop();
+      return stopwatch.elapsedMilliseconds;
+    } on DioException catch (e) {
+      // 有响应但状态码不是 2xx 也算可用
+      if (e.response != null) {
+        return 0;
+      }
+      return -1;
+    } catch (e) {
+      return -1;
+    } finally {
+      _cancelTokens.remove(cancelToken);
+    }
+  }
+
+  /// 批量快速检测 URL（适用于直播频道列表）
+  ///
+  /// [urls] - URL 列表，每个元素需要包含 id 和 url 字段
+  /// [onResult] - 每个 URL 检测完成后的回调
+  /// [maxConcurrency] - 最大并发数，默认8
+  Future<Map<String, bool>> batchCheckUrls({
+    required List<Map<String, String>> urls,
+    required void Function(String id, bool isAvailable, int latencyMs) onResult,
+    int maxConcurrency = 8,
+  }) async {
+    if (_isDisposed) {
+      throw StateError('Service has been disposed');
+    }
+
+    final results = <String, bool>{};
+    final pendingUrls = Queue<Map<String, String>>.from(urls);
+
+    // 使用信号量控制并发数
+    final semaphore = _Semaphore(maxConcurrency);
+    final futures = <Future<void>>[];
+
+    while (pendingUrls.isNotEmpty) {
+      final item = pendingUrls.removeFirst();
+      final id = item['id'] ?? '';
+      final url = item['url'] ?? '';
+
+      if (id.isEmpty || url.isEmpty) continue;
+
+      final permit = await semaphore.acquire();
+
+      final future = _checkSingleUrlWithSemaphore(
+        id: id,
+        url: url,
+        semaphorePermit: permit,
+        onResult: (isAvailable, latencyMs) {
+          results[id] = isAvailable;
+          onResult(id, isAvailable, latencyMs);
+        },
+      );
+
+      futures.add(future);
+    }
+
+    await Future.wait(futures);
+    return results;
+  }
+
+  Future<void> _checkSingleUrlWithSemaphore({
+    required String id,
+    required String url,
+    required _SemaphorePermit semaphorePermit,
+    required void Function(bool isAvailable, int latencyMs) onResult,
+  }) async {
+    try {
+      final latency = await quickCheckUrl(url);
+      onResult(latency >= 0, latency);
+    } finally {
+      semaphorePermit.release();
+    }
+  }
+
   /// 释放资源
   void dispose() {
     _isDisposed = true;

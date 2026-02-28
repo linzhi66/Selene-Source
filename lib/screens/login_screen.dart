@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-
 import 'package:selene/components/animations/glass_card.dart';
 import 'package:selene/components/animations/neon_button.dart';
 import 'package:selene/design/design_system.dart';
@@ -20,7 +18,7 @@ import 'package:selene/utils/device_utils.dart';
 import 'package:selene/widgets/windows_title_bar.dart';
 
 /// 现代化登录页面
-/// 
+///
 /// 采用 2026 设计系统：
 /// - 玻璃拟态卡片
 /// - 霓虹渐变按钮
@@ -449,19 +447,13 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 24),
           // 品牌名
-              ShaderMask(
-            shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
+          ShaderMask(
+            shaderCallback: (bounds) =>
+                AppColors.primaryGradient.createShader(bounds),
             child: Text(
               'Selene',
-              style: AppTypography.brand(fontSize: 42).copyWith(color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // 副标题
-          Text(
-            '沉浸式视频体验',
-            style: AppTypography.bodyLargeStyle(isDark: isDark).copyWith(
-              color: AppColors.textSecondary(isDark),
+              style: AppTypography.brand(fontSize: 42)
+                  .copyWith(color: Colors.white),
             ),
           ),
         ],

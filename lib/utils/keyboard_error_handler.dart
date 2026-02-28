@@ -30,6 +30,10 @@ class KeyboardErrorHandler {
     return errorString.contains('KeyDownEvent') ||
         errorString.contains('KeyUpEvent') ||
         errorString.contains('_pressedKeys') ||
-        errorString.contains('HardwareKeyboard');
+        errorString.contains('HardwareKeyboard') ||
+        errorString.contains('RawKeyDownEvent') ||
+        errorString.contains('RawKeyUpEvent') ||
+        errorString.contains('keysPressed') ||
+        errorString.contains('raw_keyboard.dart');
   }
 }

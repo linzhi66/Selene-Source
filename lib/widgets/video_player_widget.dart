@@ -275,18 +275,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_currentUrl != null) {
       await _openCurrentMedia();
     }
-    setState(() {
-      _isInitialized = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+    }
   }
 
   Future<void> _openCurrentMedia({Duration? startAt}) async {
     if (_playerDisposed || _player == null || _currentUrl == null) {
       return;
     }
-    setState(() {
-      _isLoadingVideo = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingVideo = true;
+      });
+    }
     try {
       await _player!.open(
         Media(
@@ -297,9 +301,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         play: true,
       );
       await _player!.setRate(_playbackSpeed.value);
-      setState(() {
-        _hasCompleted = false;
-      });
+      if (mounted) {
+        setState(() {
+          _hasCompleted = false;
+        });
+      }
     } catch (error) {
       debugPrint('VideoPlayerWidget: failed to open media $error');
       if (mounted) {
@@ -423,9 +429,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
 
-    setState(() {
-      _isLoadingVideo = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingVideo = true;
+      });
+    }
 
     try {
       final currentSpeed = _player!.state.rate;
