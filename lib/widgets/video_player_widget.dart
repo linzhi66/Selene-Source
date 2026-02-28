@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pip/pip.dart';
+import 'package:selene/components/animations/video_loading_animation.dart';
 import 'package:selene/services/download_service.dart';
 import 'package:selene/widgets/mobile_player_controls.dart';
 import 'package:selene/widgets/pc_player_controls.dart';
@@ -908,7 +909,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               },
             )
           : const Center(
-              child: CircularProgressIndicator(
+              child: VideoLoadingIndicator(
+                size: 48,
                 color: Colors.white,
               ),
             ),

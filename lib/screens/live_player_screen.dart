@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/components/animations/video_loading_animation.dart';
+import 'package:selene/design/design_system.dart';
 import 'package:selene/models/epg_program.dart';
 import 'package:selene/models/live_channel.dart';
 import 'package:selene/models/live_source.dart';
@@ -1760,7 +1762,10 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(),
+              VideoLoadingIndicator(
+                color:
+                    themeService.isDarkMode ? Colors.white : AppColors.primary,
+              ),
               const SizedBox(height: 16),
               Text(
                 '加载节目单中...',

@@ -69,11 +69,8 @@ linter:
     always_use_package_imports: true
     avoid_relative_lib_imports: true
     secure_pubspec_urls: true
-    # 禁用规则（谨慎使用）
-    # unnecessary_null_in_if_null_operators: false
-    # diagnostic_describe_all_properties: false
     # ========== 性能与 Widget 优化 ==========
-    # Widget 优化 - 使用更轻量级的 Widget
+    # Widget 优化
     use_colored_box: true
     use_decorated_box: true
     sized_box_shrink_expand: true

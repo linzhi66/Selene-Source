@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:selene/components/animations/video_loading_animation.dart';
+import 'package:selene/design/design_system.dart';
 import 'package:selene/models/douban_movie.dart';
 import 'package:selene/models/play_record.dart';
 import 'package:selene/models/search_result.dart';
@@ -2881,7 +2883,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  /// 构建加载覆盖层
+  /// 构建加载覆盖层 - Design System 2026 风格
   Widget _buildLoadingOverlay(ThemeData theme) {
     final isDarkMode = theme.brightness == Brightness.dark;
 
@@ -2895,24 +2897,42 @@ class _PlayerScreenState extends State<PlayerScreen>
       height: double.infinity,
       decoration: BoxDecoration(
         gradient: isDarkMode
-            ? null
+            ? LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF0a0a0a),
+                  const Color(0xFF141414),
+                  AppColors.darkSurface,
+                ],
+              )
             : const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFFe6f3fb),
-                  Color(0xFFeaf3f7),
-                  Color(0xFFf7f7f3),
-                  Color(0xFFe9ecef),
-                  Color(0xFFdbe3ea),
-                  Color(0xFFd3dde6),
+                  Color(0xFFf8fafc),
+                  Color(0xFFf1f5f9),
+                  Color(0xFFe2e8f0),
                 ],
-                stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
               ),
-        color: isDarkMode ? Colors.black : null,
       ),
       child: Stack(
         children: [
+          // 背景装饰 - 玻璃态光晕
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _loadingAnimationController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: _LoadingBackgroundPainter(
+                    progress: _loadingAnimationController.value,
+                    isDarkMode: isDarkMode,
+                  ),
+                );
+              },
+            ),
+          ),
+
           // PC 端左上角返回按钮
           if (DeviceUtils.isPC())
             Positioned(
@@ -2925,92 +2945,87 @@ class _PlayerScreenState extends State<PlayerScreen>
                     : const Color(0xFF2c3e50),
               ),
             ),
-          // 中心加载内容
+
+          // 中心加载动画
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 旋转的背景方块（半透明绿色）
-                    RotationTransition(
-                      turns: _loadingAnimationController,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2ecc71).withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    // 中间的图标容器（减小尺寸，删除阴影）
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF2ecc71), Color(0xFF27ae60)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                        child: Text(
-                          _loadingEmoji,
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-                // 进度条
-                Container(
-                  width: 200,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _loadingProgress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2ecc71),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // 加载文案
-                AnimatedBuilder(
-                  animation: _textAnimationController,
-                  builder: (context, child) {
-                    return Text(
-                      _loadingMessage,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: (isDarkMode ? Colors.white70 : Colors.black54)
-                            .withValues(
-                          alpha: 0.3 + (_textAnimationController.value * 0.7),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            child: VideoLoadingAnimation(
+              progress: _loadingProgress,
+              message: _loadingMessage,
+              emoji: _loadingEmoji,
+              isDarkMode: isDarkMode,
+              size: 140,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// 加载背景装饰绘制器
+class _LoadingBackgroundPainter extends CustomPainter {
+  final double progress;
+  final bool isDarkMode;
+
+  _LoadingBackgroundPainter({
+    required this.progress,
+    required this.isDarkMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // 大光晕圆
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          AppColors.primary.withValues(alpha: isDarkMode ? 0.15 : 0.1),
+          Colors.transparent,
+        ],
+      ).createShader(
+        Rect.fromCircle(center: center, radius: size.width * 0.4),
+      );
+
+    canvas.drawCircle(center, size.width * 0.4, glowPaint);
+
+    // 装饰圆环
+    for (var i = 0; i < 3; i++) {
+      final ringProgress = (progress + i * 0.33) % 1.0;
+      final radius = size.width * (0.2 + ringProgress * 0.3);
+      final alpha = (1.0 - ringProgress) * (isDarkMode ? 0.1 : 0.08);
+
+      final ringPaint = Paint()
+        ..color = AppColors.secondary.withValues(alpha: alpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+
+      canvas.drawCircle(center, radius, ringPaint);
+    }
+
+    // 角落装饰点
+    final dotPositions = [
+      Offset(size.width * 0.1, size.height * 0.2),
+      Offset(size.width * 0.9, size.height * 0.2),
+      Offset(size.width * 0.1, size.height * 0.8),
+      Offset(size.width * 0.9, size.height * 0.8),
+    ];
+
+    for (var i = 0; i < dotPositions.length; i++) {
+      final dotProgress = (progress + i * 0.25) % 1.0;
+      final dotAlpha = 0.1 + (math.sin(dotProgress * math.pi * 2) + 1) * 0.1;
+
+      final dotPaint = Paint()
+        ..color = AppColors.primary.withValues(
+          alpha: isDarkMode ? dotAlpha : dotAlpha * 0.7,
+        );
+
+      canvas.drawCircle(dotPositions[i], 3, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 /// 带 hover 效果的返回按钮（PC 端专用）

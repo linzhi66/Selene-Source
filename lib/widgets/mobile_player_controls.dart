@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
+import 'package:selene/components/animations/video_loading_animation.dart';
 import 'package:selene/services/screenshot_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
 import 'package:selene/widgets/video_player_widget.dart';
@@ -720,15 +721,22 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     if (widget.isLoadingVideo) {
       return ColoredBox(
         color: Colors.black.withValues(alpha: 0.7),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-              SizedBox(height: 16),
+              const VideoLoadingIndicator(
+                size: 48,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 16),
               Text(
                 '加载中...',
-                style: TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
