@@ -48,7 +48,6 @@ class FullscreenImageViewer extends StatefulWidget {
             child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }
@@ -75,7 +74,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
           final secondaryTextColor = isDark
               ? Colors.white.withValues(alpha: 0.7)
               : const Color(0xFF2c3e50).withValues(alpha: 0.7);
-          return Container(
+          return DecoratedBox(
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: const BorderRadius.only(
@@ -336,27 +335,32 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
         final completer = Completer<Uint8List>();
 
         late ImageStreamListener listener;
-        listener = ImageStreamListener((ImageInfo imageInfo, bool sync) async {
-          try {
-            final byteData = await imageInfo.image
-                .toByteData(format: ui.ImageByteFormat.png);
-            if (byteData != null) {
-              completer.complete(byteData.buffer.asUint8List());
-            } else {
-              completer.completeError('无法获取图片数据');
+        listener = ImageStreamListener(
+          (ImageInfo imageInfo, bool sync) async {
+            try {
+              final byteData = await imageInfo.image
+                  .toByteData(format: ui.ImageByteFormat.png);
+              if (byteData != null) {
+                completer.complete(byteData.buffer.asUint8List());
+              } else {
+                completer.completeError('无法获取图片数据');
+              }
+            } catch (e) {
+              completer.completeError(e);
+            } finally {
+              imageStream.removeListener(listener);
             }
-          } catch (e) {
-            completer.completeError(e);
-          } finally {
+          },
+          onError: (exception, stackTrace) {
+            // exception is non-nullable here; forward it or wrap if needed
+            completer.completeError(
+              exception is Exception
+                  ? exception
+                  : Exception(exception.toString()),
+            );
             imageStream.removeListener(listener);
-          }
-        }, onError: (exception, stackTrace) {
-          // exception is non-nullable here; forward it or wrap if needed
-          completer.completeError(exception is Exception
-              ? exception
-              : Exception(exception.toString()));
-          imageStream.removeListener(listener);
-        });
+          },
+        );
         imageStream.addListener(listener);
         // 等待，但加上超时，防止永远阻塞
         return await completer.future.timeout(const Duration(seconds: 20));

@@ -276,7 +276,9 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
                                 if (isCurrentDevice)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color:
                                           Theme.of(context).colorScheme.primary,
@@ -390,7 +392,8 @@ class _DLNADeviceDialogState extends State<DLNADeviceDialog> {
       debugPrint('widget.currentUrl: ${widget.currentUrl}');
       debugPrint('formattedTitle: $formattedTitle');
       debugPrint(
-          'widget.resumePosition: ${widget.resumePosition?.inSeconds ?? 0}秒');
+        'widget.resumePosition: ${widget.resumePosition?.inSeconds ?? 0}秒',
+      );
       await device.setUrl(widget.currentUrl, title: formattedTitle);
       await device.play();
 

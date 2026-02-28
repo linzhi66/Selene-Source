@@ -99,9 +99,9 @@ class _CapsuleHoverButtonState extends State<CapsuleHoverButton> {
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: Container(
-          decoration: _isHovering
-              ? BoxDecoration(
+        child: _isHovering
+            ? DecoratedBox(
+                decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: widget.isLeft
                       ? const BorderRadius.only(
@@ -112,10 +112,10 @@ class _CapsuleHoverButtonState extends State<CapsuleHoverButton> {
                           topRight: Radius.circular(22),
                           bottomRight: Radius.circular(22),
                         ),
-                )
-              : null,
-          child: widget.child,
-        ),
+                ),
+                child: widget.child,
+              )
+            : widget.child,
       ),
     );
   }
@@ -213,10 +213,12 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
 
     final targetPosition = _swipeStartPosition +
         Duration(
-            milliseconds: (duration.inMilliseconds * swipeRatio * 0.1).round());
+          milliseconds: (duration.inMilliseconds * swipeRatio * 0.1).round(),
+        );
     final clampedPosition = Duration(
-        milliseconds:
-            targetPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
+      milliseconds:
+          targetPosition.inMilliseconds.clamp(0, duration.inMilliseconds),
+    );
 
     setState(() {
       _swipeTargetPosition = clampedPosition;
@@ -435,7 +437,6 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.2),
-                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -459,12 +460,11 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                       onTap: () {
                         widget.onChangeDevice?.call();
                       },
-                      child: Container(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           border: Border(
                             right: BorderSide(
                               color: Colors.white.withValues(alpha: 0.2),
-                              width: 1,
                             ),
                           ),
                         ),
@@ -597,18 +597,20 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                           _isDragging = false;
                         });
                         final seekPosition = Duration(
-                            milliseconds:
-                                (_dragValue * widget.duration.inMilliseconds)
-                                    .round());
+                          milliseconds:
+                              (_dragValue * widget.duration.inMilliseconds)
+                                  .round(),
+                        );
                         widget.onSeek?.call(seekPosition);
                       }
                     },
                     onTapDown: (details) {
                       _updateDragPosition(details.localPosition.dx);
                       final seekPosition = Duration(
-                          milliseconds:
-                              (_dragValue * widget.duration.inMilliseconds)
-                                  .round());
+                        milliseconds:
+                            (_dragValue * widget.duration.inMilliseconds)
+                                .round(),
+                      );
                       widget.onSeek?.call(seekPosition);
                     },
                     child: Container(
@@ -675,9 +677,11 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                                       ? MouseRegion(
                                           cursor: SystemMouseCursors.click,
                                           onEnter: (_) => setState(
-                                              () => _isHoveringThumb = true),
+                                            () => _isHoveringThumb = true,
+                                          ),
                                           onExit: (_) => setState(
-                                              () => _isHoveringThumb = false),
+                                            () => _isHoveringThumb = false,
+                                          ),
                                           child: AnimatedScale(
                                             scale: (_isHoveringThumb ||
                                                     _isDragging ||
@@ -685,7 +689,8 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                                                 ? 1.25
                                                 : 1.0,
                                             duration: const Duration(
-                                                milliseconds: 150),
+                                              milliseconds: 150,
+                                            ),
                                             child: Container(
                                               width: 16,
                                               height: 16,
@@ -754,18 +759,19 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                         _isDragging = false;
                       });
                       final seekPosition = Duration(
-                          milliseconds:
-                              (_dragValue * widget.duration.inMilliseconds)
-                                  .round());
+                        milliseconds:
+                            (_dragValue * widget.duration.inMilliseconds)
+                                .round(),
+                      );
                       widget.onSeek?.call(seekPosition);
                     }
                   },
                   onTapDown: (details) {
                     _updateDragPosition(details.localPosition.dx);
                     final seekPosition = Duration(
-                        milliseconds:
-                            (_dragValue * widget.duration.inMilliseconds)
-                                .round());
+                      milliseconds:
+                          (_dragValue * widget.duration.inMilliseconds).round(),
+                    );
                     widget.onSeek?.call(seekPosition);
                   },
                   child: Container(
@@ -830,9 +836,11 @@ class _DLNAPlayerControlsState extends State<DLNAPlayerControls> {
                                     ? MouseRegion(
                                         cursor: SystemMouseCursors.click,
                                         onEnter: (_) => setState(
-                                            () => _isHoveringThumb = true),
+                                          () => _isHoveringThumb = true,
+                                        ),
                                         onExit: (_) => setState(
-                                            () => _isHoveringThumb = false),
+                                          () => _isHoveringThumb = false,
+                                        ),
                                         child: AnimatedScale(
                                           scale: (_isHoveringThumb ||
                                                   _isDragging ||

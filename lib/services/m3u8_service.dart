@@ -20,7 +20,9 @@ class M3U8Service {
   }
 
   /// 并发获取流的核心信息：分辨率、下载速度、延迟
-  Future<Map<String, dynamic>> getStreamInfo(String streamUrl) async {
+  Future<Map<String, dynamic>> getStreamInfo(
+    String streamUrl,
+  ) async {
     try {
       // 获取片段列表
       final segments = await _getSegmentUrls(streamUrl);
@@ -68,7 +70,7 @@ class M3U8Service {
   Future<List<String>> _getSegmentUrls(String m3u8Url) async {
     try {
       final response = await _dio.get<String>(m3u8Url);
-      final content = response.data as String;
+      final content = response.data!;
       return _parseSegmentsFromContent(content, m3u8Url);
     } catch (e) {
       return [];
@@ -154,7 +156,7 @@ class M3U8Service {
   Future<Map<String, int>> _getResolutionFromM3U8(String m3u8Url) async {
     try {
       final response = await _dio.get<String>(m3u8Url);
-      final content = response.data as String;
+      final content = response.data!;
       final lines = content.split('\n').map((line) => line.trim()).toList();
 
       for (final line in lines) {
@@ -189,7 +191,9 @@ class M3U8Service {
   }
 
   /// 测量下载速度
-  Future<double> _measureDownloadSpeed(List<String> segments) async {
+  Future<double> _measureDownloadSpeed(
+    List<String> segments,
+  ) async {
     try {
       // 使用前3个片段进行测速
       final segmentsToTest = segments.take(3).toList();
@@ -209,7 +213,7 @@ class M3U8Service {
             ),
           );
 
-          final bytes = (response.data as Uint8List).length;
+          final bytes = response.data!.length;
           totalBytes += bytes;
           successfulDownloads++;
         } catch (e) {
@@ -497,11 +501,10 @@ class M3U8Service {
 
   /// 并发测速所有源并实时回调结果
   Future<void> testSourcesWithCallback(
-    List<dynamic> allSources,
-    void Function(String sourceId, Map<String, dynamic> speedData)
-        onSourceCompleted, {
-    Duration timeout = const Duration(seconds: 5),
-  }) async {
+      List<dynamic> allSources,
+      void Function(String sourceId, Map<String, dynamic> speedData)
+          onSourceCompleted,
+      {Duration timeout = const Duration(seconds: 5)}) async {
     if (allSources.isEmpty) return;
 
     // 为每个源选择要测试的集数链接

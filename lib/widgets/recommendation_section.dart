@@ -212,7 +212,9 @@ class _RecommendationSectionState extends State<RecommendationSection> {
                       onPressed: widget.onMoreTap,
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         overlayColor: Colors.transparent,
@@ -339,7 +341,6 @@ class _RecommendationSectionState extends State<RecommendationSection> {
                   color: themeService.isDarkMode
                       ? const Color(0xFF4B5563)
                       : const Color(0xFFE5E7EB),
-                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -409,7 +410,6 @@ class _RecommendationSectionState extends State<RecommendationSection> {
                       ? (action) =>
                           widget.onGlobalMenuAction!(videoInfo, action)
                       : null,
-                  isFavorited: false, // 推荐页面默认未收藏
                 ),
               );
             },
@@ -468,7 +468,6 @@ class _RecommendationSectionState extends State<RecommendationSection> {
         final double height = width * 1.5;
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 封面骨架
             ShimmerEffect(

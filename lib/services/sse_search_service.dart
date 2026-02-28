@@ -71,14 +71,13 @@ class SSESearchService {
       _progressController?.add(SearchProgress(
         totalSources: _totalSources,
         completedSources: 0,
-        currentSource: null,
         isComplete: false,
       ));
 
       // 并发调用所有资源的搜索，每个调用增加 20 秒超时
-      final searchFutures = resources.map((resource) {
-        return _searchSingleResource(resource, query);
-      }).toList();
+      final searchFutures = resources
+          .map((resource) => _searchSingleResource(resource, query))
+          .toList();
 
       // 等待所有搜索完成
       await Future.wait(searchFutures);
@@ -87,7 +86,6 @@ class SSESearchService {
       _progressController?.add(SearchProgress(
         totalSources: _totalSources,
         completedSources: _totalSources,
-        currentSource: null,
         isComplete: true,
       ));
 
@@ -297,12 +295,10 @@ class SSESearchService {
     // 重置缓冲区
     _buffer = '';
 
-    // 使用流式 UTF-8 解码器，自动处理跨 chunk 的多字节字符
-    const utf8Decoder = Utf8Decoder(allowMalformed: false);
-
     try {
       // 流式处理 SSE 数据
-      await for (final chunk in response.stream.transform(utf8Decoder)) {
+      await for (final chunk
+          in response.stream.transform(const Utf8Decoder())) {
         try {
           // 将新数据添加到缓冲区
           _buffer += chunk;
@@ -360,16 +356,12 @@ class SSESearchService {
       switch (event.type) {
         case SearchEventType.start:
           _handleStartEvent(event as SearchStartEvent);
-          break;
         case SearchEventType.sourceResult:
           _handleSourceResultEvent(event as SearchSourceResultEvent);
-          break;
         case SearchEventType.sourceError:
           _handleSourceErrorEvent(event as SearchSourceErrorEvent);
-          break;
         case SearchEventType.complete:
           _handleCompleteEvent(event as SearchCompleteEvent);
-          break;
       }
     } catch (e) {
       _errorController?.add('消息解析失败: ${e.toString()}');
@@ -382,7 +374,6 @@ class SSESearchService {
     _progressController?.add(SearchProgress(
       totalSources: event.totalSources,
       completedSources: 0,
-      currentSource: null,
       isComplete: false,
     ));
   }
@@ -417,8 +408,8 @@ class SSESearchService {
       totalSources: _totalSources,
       completedSources: _completedSources,
       currentSource: event.sourceName,
-      isComplete: false,
       error: event.error,
+      isComplete: false,
     ));
   }
 
@@ -434,7 +425,6 @@ class SSESearchService {
     _progressController?.add(SearchProgress(
       totalSources: _totalSources,
       completedSources: _completedSources,
-      currentSource: null,
       isComplete: true,
     ));
 
@@ -454,7 +444,6 @@ class SSESearchService {
     _progressController?.add(SearchProgress(
       totalSources: _totalSources,
       completedSources: _completedSources,
-      currentSource: null,
       isComplete: true,
     ));
 

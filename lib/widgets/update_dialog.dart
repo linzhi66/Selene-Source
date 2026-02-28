@@ -197,11 +197,14 @@ class UpdateDialog extends StatelessWidget {
                         child: ElevatedButton.icon(
                           onPressed: () async {
                             final url = VersionService.getReleaseUrl(
-                                versionInfo.latestVersion);
+                              versionInfo.latestVersion,
+                            );
                             final uri = Uri.parse(url);
                             if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
                             }
                             if (context.mounted) {
                               Navigator.of(context).pop();
@@ -233,7 +236,8 @@ class UpdateDialog extends StatelessWidget {
                             child: TextButton(
                               onPressed: () async {
                                 await VersionService.dismissVersion(
-                                    versionInfo.latestVersion);
+                                  versionInfo.latestVersion,
+                                );
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
                                 }
@@ -312,7 +316,9 @@ class UpdateDialog extends StatelessWidget {
 
   /// 显示更新对话框
   static Future<void> show(
-      BuildContext context, VersionInfo versionInfo) async {
+    BuildContext context,
+    VersionInfo versionInfo,
+  ) async {
     return showDialog(
       context: context,
       barrierDismissible: false,

@@ -48,7 +48,7 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         gradient: gradient ?? _buildGlassGradient(),
         border: border ?? _buildGlassBorder(),
-        boxShadow: shadows ?? AppShadows.glassBorder(isDark),
+        boxShadow: shadows ?? AppShadows.glassBorder(isDark: isDark),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius - 1),
@@ -69,7 +69,6 @@ class GlassCard extends StatelessWidget {
 
     if (enableHover && onTap != null) {
       card = HoverAnimation(
-        scale: 1.02,
         child: card,
       );
     }
@@ -103,7 +102,6 @@ class GlassCard extends StatelessWidget {
       color: isDark
           ? Colors.white.withValues(alpha: 0.1)
           : Colors.white.withValues(alpha: 0.5),
-      width: 1,
     );
   }
 }
@@ -156,7 +154,7 @@ class NeonCard extends StatelessWidget {
         ],
       ),
       padding: const EdgeInsets.all(2),
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius - 2),
           color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
@@ -218,7 +216,7 @@ class GradientBorderCard extends StatelessWidget {
         gradient: gradient,
       ),
       padding: EdgeInsets.all(borderWidth),
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius - borderWidth),
           color: backgroundColor ??

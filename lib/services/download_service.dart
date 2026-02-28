@@ -52,45 +52,41 @@ class DownloadTask {
         updatedAt = updatedAt ?? DateTime.now();
 
   /// 从JSON创建DownloadTask实例
-  factory DownloadTask.fromJson(Map<String, dynamic> json) {
-    return DownloadTask(
-      id: json['id'] as String,
-      url: json['url'] as String,
-      fileName: json['fileName'] as String,
-      filePath: json['filePath'] as String,
-      tempFilePath: json['tempFilePath'] as String? ?? '',
-      totalBytes: json['totalBytes'] as int? ?? 0,
-      downloadedBytes: json['downloadedBytes'] as int? ?? 0,
-      progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
-      status: DownloadStatus.values.firstWhere(
-        (e) => e.name == json['status'],
-        orElse: () => DownloadStatus.waiting,
-      ),
-      errorMessage: json['errorMessage'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-      isM3u8: json['isM3u8'] as bool? ?? false,
-    );
-  }
+  factory DownloadTask.fromJson(Map<String, dynamic> json) => DownloadTask(
+        id: json['id'] as String,
+        url: json['url'] as String,
+        fileName: json['fileName'] as String,
+        filePath: json['filePath'] as String,
+        tempFilePath: json['tempFilePath'] as String? ?? '',
+        totalBytes: json['totalBytes'] as int? ?? 0,
+        downloadedBytes: json['downloadedBytes'] as int? ?? 0,
+        progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
+        status: DownloadStatus.values.firstWhere(
+          (e) => e.name == json['status'],
+          orElse: () => DownloadStatus.waiting,
+        ),
+        errorMessage: json['errorMessage'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        isM3u8: json['isM3u8'] as bool? ?? false,
+      );
 
   /// 转换DownloadTask实例为JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'url': url,
-      'fileName': fileName,
-      'filePath': filePath,
-      'tempFilePath': tempFilePath,
-      'totalBytes': totalBytes,
-      'downloadedBytes': downloadedBytes,
-      'progress': progress,
-      'status': status.name,
-      'errorMessage': errorMessage,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-      'isM3u8': isM3u8,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'url': url,
+        'fileName': fileName,
+        'filePath': filePath,
+        'tempFilePath': tempFilePath,
+        'totalBytes': totalBytes,
+        'downloadedBytes': downloadedBytes,
+        'progress': progress,
+        'status': status.name,
+        'errorMessage': errorMessage,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'isM3u8': isM3u8,
+      };
 
   /// 复制并更新DownloadTask实例
   DownloadTask copyWith({
@@ -189,9 +185,6 @@ class DownloadService {
     if (kDebugMode) {
       dio.interceptors.add(LogInterceptor(
         request: false,
-        responseBody: false,
-        error: true,
-        requestBody: false,
       ));
     }
     return dio;
@@ -431,7 +424,7 @@ class DownloadService {
       if (outputFile.existsSync()) {
         await outputFile.delete();
       }
-      sink = outputFile.openWrite(mode: FileMode.write);
+      sink = outputFile.openWrite();
       // 3. 密钥缓存 & 下载状态
       final keyCache = <String, Uint8List>{};
       var downloadedCount = 0;
@@ -851,7 +844,7 @@ class DownloadService {
     } catch (e) {
       debugPrint('Failed to save video to Download/MoonTV: $e');
       // 如果保存失败，尝试保存到应用目录作为备选
-      return await _saveToAppDirectory(taskId, task, tempFile);
+      return _saveToAppDirectory(taskId, task, tempFile);
     }
   }
 

@@ -68,9 +68,11 @@ class VideoPlayerWidget extends StatefulWidget {
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
   final VoidCallback? onExitFullScreen;
   final bool live;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool isPipMode)? onPipModeChanged;
 
   const VideoPlayerWidget({
@@ -298,7 +300,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           start: startAt,
           httpHeaders: _currentHeaders ?? const <String, String>{},
         ),
-        play: true,
       );
       await _player!.setRate(_playbackSpeed.value);
       if (mounted) {
@@ -344,23 +345,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         setState(() {
           _hasCompleted = false;
         });
-        _pip.setup(const PipOptions(
-          autoEnterEnabled: false,
-          aspectRatioX: 16,
-          aspectRatioY: 9,
-          preferredContentWidth: 480,
-          preferredContentHeight: 270,
-          controlStyle: 2,
-        ));
+        _pip.setup(
+          const PipOptions(
+            autoEnterEnabled: false,
+            aspectRatioX: 16,
+            aspectRatioY: 9,
+            preferredContentWidth: 480,
+            preferredContentHeight: 270,
+            controlStyle: 2,
+          ),
+        );
       } else {
-        _pip.setup(const PipOptions(
-          autoEnterEnabled: true,
-          aspectRatioX: 16,
-          aspectRatioY: 9,
-          preferredContentWidth: 480,
-          preferredContentHeight: 270,
-          controlStyle: 2,
-        ));
+        _pip.setup(
+          const PipOptions(
+            autoEnterEnabled: true,
+            aspectRatioX: 16,
+            aspectRatioY: 9,
+            preferredContentWidth: 480,
+            preferredContentHeight: 270,
+            controlStyle: 2,
+          ),
+        );
       }
     });
 
@@ -443,7 +448,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           start: startAt,
           httpHeaders: _currentHeaders ?? const <String, String>{},
         ),
-        play: true,
       );
       _playbackSpeed.value = currentSpeed;
       await _player!.setRate(currentSpeed);
@@ -499,14 +503,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
-    _pip.setup(const PipOptions(
-      autoEnterEnabled: true,
-      aspectRatioX: 16,
-      aspectRatioY: 9,
-      preferredContentWidth: 480,
-      preferredContentHeight: 270,
-      controlStyle: 2,
-    ));
+    _pip.setup(
+      const PipOptions(
+        autoEnterEnabled: true,
+        aspectRatioX: 16,
+        aspectRatioY: 9,
+        preferredContentWidth: 480,
+        preferredContentHeight: 270,
+        controlStyle: 2,
+      ),
+    );
   }
 
   void _registerPipObserver() {
@@ -675,7 +681,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         VideoDownloadInfo(
           taskId: task.id,
           state: VideoDownloadState.downloading,
-          progress: 0.0,
         ),
       );
 
@@ -821,7 +826,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.black,
       child: _isInitialized && _videoController != null
           ? ValueListenableBuilder<BoxFit>(

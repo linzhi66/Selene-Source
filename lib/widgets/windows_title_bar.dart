@@ -6,7 +6,7 @@ import 'package:selene/design/design_system.dart';
 import 'package:selene/services/theme_service.dart';
 
 /// Windows 无边框标题栏
-/// 
+///
 /// 完全透明融入应用，仅显示悬浮控制按钮
 class WindowsTitleBar extends StatelessWidget {
   final bool forceBlack;
@@ -25,9 +25,8 @@ class WindowsTitleBar extends StatelessWidget {
         final isDark = themeService.isDarkMode;
 
         // 文字/图标颜色
-        final foregroundColor = isDark
-            ? AppColors.darkTextSecondary
-            : AppColors.lightTextSecondary;
+        final foregroundColor =
+            isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
         return SizedBox(
           height: 40,
@@ -55,7 +54,7 @@ class WindowsTitleBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: isDark 
+        color: isDark
             ? AppColors.darkSurface.withValues(alpha: 0.6)
             : AppColors.lightSurface.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(8),
@@ -63,7 +62,6 @@ class WindowsTitleBar extends StatelessWidget {
           color: isDark
               ? AppColors.darkBorder.withValues(alpha: 0.3)
               : AppColors.lightBorder.withValues(alpha: 0.3),
-          width: 1,
         ),
       ),
       child: Row(

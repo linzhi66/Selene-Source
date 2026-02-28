@@ -28,9 +28,8 @@ class LocalModeStorageService {
   }
 
   /// 获取订阅 URL
-  static Future<String?> getSubscriptionUrl() async {
-    return Hive.box<String>(_boxName).get(_subscriptionUrlKey);
-  }
+  static Future<String?> getSubscriptionUrl() async =>
+      Hive.box<String>(_boxName).get(_subscriptionUrlKey);
 
   /// 清除订阅 URL
   static Future<void> clearSubscriptionUrl() async {

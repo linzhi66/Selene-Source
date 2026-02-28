@@ -316,7 +316,6 @@ class _SearchScreenState extends State<SearchScreen>
                 color: isDark
                     ? AppColors.darkGlassBorder
                     : AppColors.lightGlassBorder,
-                width: 1,
               ),
               boxShadow: isDark ? AppShadows.darkGlass : AppShadows.lightGlass,
             ),
@@ -363,7 +362,7 @@ class _SearchScreenState extends State<SearchScreen>
                     '确定要清空所有搜索历史吗？此操作无法撤销。',
                     style:
                         AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
-                      color: AppColors.textSecondary(isDark),
+                      color: AppColors.textSecondary(isDark: isDark),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -378,7 +377,7 @@ class _SearchScreenState extends State<SearchScreen>
                             '取消',
                             style: AppTypography.primary(
                               fontWeight: AppTypography.medium,
-                              color: AppColors.textSecondary(isDark),
+                              color: AppColors.textSecondary(isDark: isDark),
                             ),
                           ),
                         ),
@@ -496,12 +495,11 @@ class _SearchScreenState extends State<SearchScreen>
         final bottomPadding = MediaQuery.of(context).padding.bottom;
 
         return MainLayout(
-          content: Container(
+          content: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: AppColors.backgroundGradient(isDark),
+              gradient: AppColors.backgroundGradient(isDark: isDark),
             ),
             child: SafeArea(
-              bottom: true,
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
@@ -615,7 +613,7 @@ class _SearchScreenState extends State<SearchScreen>
                     Icon(
                       LucideIcons.trash2,
                       size: 14,
-                      color: AppColors.textSecondary(isDark),
+                      color: AppColors.textSecondary(isDark: isDark),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -679,7 +677,6 @@ class _SearchScreenState extends State<SearchScreen>
                               : isDark
                                   ? AppColors.darkBorder
                                   : AppColors.lightBorder,
-                          width: 1,
                         ),
                         boxShadow: isHovered
                             ? AppShadows.primary(intensity: 0.4)
@@ -695,7 +692,7 @@ class _SearchScreenState extends State<SearchScreen>
                             size: 14,
                             color: isHovered
                                 ? Colors.white
-                                : AppColors.textSecondary(isDark),
+                                : AppColors.textSecondary(isDark: isDark),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -707,7 +704,7 @@ class _SearchScreenState extends State<SearchScreen>
                                   : AppTypography.regular,
                               color: isHovered
                                   ? Colors.white
-                                  : AppColors.textPrimary(isDark),
+                                  : AppColors.textPrimary(isDark: isDark),
                             ),
                           ),
                           if (DeviceUtils.isPC()) ...[
@@ -777,7 +774,6 @@ class _SearchScreenState extends State<SearchScreen>
               color: isDark
                   ? AppColors.darkGlassBorder
                   : AppColors.lightGlassBorder,
-              width: 1,
             ),
           ),
           child: Column(
@@ -820,7 +816,7 @@ class _SearchScreenState extends State<SearchScreen>
               Text(
                 '搜索你喜欢的影视内容',
                 style: AppTypography.bodyLargeStyle(isDark: isDark).copyWith(
-                  color: AppColors.textSecondary(isDark),
+                  color: AppColors.textSecondary(isDark: isDark),
                 ),
               ),
             ],
@@ -850,7 +846,6 @@ class _SearchScreenState extends State<SearchScreen>
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: AppColors.error.withValues(alpha: 0.3),
-            width: 1,
           ),
           boxShadow: [
             BoxShadow(
@@ -985,7 +980,6 @@ class _SearchScreenState extends State<SearchScreen>
                   color: isDark
                       ? AppColors.darkGlassBorder
                       : AppColors.lightGlassBorder,
-                  width: 1,
                 ),
               ),
               child: _buildFilterSection(isDark),
@@ -1069,7 +1063,6 @@ class _SearchScreenState extends State<SearchScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.3),
-          width: 1,
         ),
       ),
       child: Row(
@@ -1139,7 +1132,7 @@ class _SearchScreenState extends State<SearchScreen>
             Text(
               '正在聚合多源搜索结果',
               style: AppTypography.bodyLargeStyle(isDark: isDark).copyWith(
-                color: AppColors.textSecondary(isDark),
+                color: AppColors.textSecondary(isDark: isDark),
               ),
             ),
             const SizedBox(height: 24),
@@ -1195,7 +1188,6 @@ class _SearchScreenState extends State<SearchScreen>
               color: isDark
                   ? AppColors.darkGlassBorder
                   : AppColors.lightGlassBorder,
-              width: 1,
             ),
           ),
           child: Column(
@@ -1209,8 +1201,10 @@ class _SearchScreenState extends State<SearchScreen>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.textTertiary(isDark).withValues(alpha: 0.2),
-                      AppColors.textTertiary(isDark).withValues(alpha: 0.05),
+                      AppColors.textTertiary(isDark: isDark)
+                          .withValues(alpha: 0.2),
+                      AppColors.textTertiary(isDark: isDark)
+                          .withValues(alpha: 0.05),
                     ],
                   ),
                   shape: BoxShape.circle,
@@ -1218,7 +1212,7 @@ class _SearchScreenState extends State<SearchScreen>
                 child: Icon(
                   LucideIcons.folderSearch,
                   size: 40,
-                  color: AppColors.textTertiary(isDark),
+                  color: AppColors.textTertiary(isDark: isDark),
                 ),
               ),
               const SizedBox(height: 32),
@@ -1230,7 +1224,7 @@ class _SearchScreenState extends State<SearchScreen>
               Text(
                 '请尝试更换关键词搜索',
                 style: AppTypography.bodyLargeStyle(isDark: isDark).copyWith(
-                  color: AppColors.textSecondary(isDark),
+                  color: AppColors.textSecondary(isDark: isDark),
                 ),
               ),
             ],
@@ -1310,10 +1304,9 @@ class _SearchScreenState extends State<SearchScreen>
                       : isDark
                           ? AppColors.darkBorder
                           : AppColors.lightBorder,
-              width: 1,
             ),
             boxShadow: !isDefault
-                ? AppShadows.primary(intensity: 0.3)
+                ? AppShadows.primary()
                 : isHovered
                     ? AppShadows.small
                     : null,
@@ -1332,7 +1325,7 @@ class _SearchScreenState extends State<SearchScreen>
                       ? Colors.white
                       : isHovered
                           ? AppColors.primary
-                          : AppColors.textSecondary(isDark),
+                          : AppColors.textSecondary(isDark: isDark),
                 ),
               ),
               const SizedBox(width: 4),
@@ -1343,7 +1336,7 @@ class _SearchScreenState extends State<SearchScreen>
                     ? Colors.white70
                     : isHovered
                         ? AppColors.primary
-                        : AppColors.textSecondary(isDark),
+                        : AppColors.textSecondary(isDark: isDark),
               ),
             ],
           ),
@@ -1415,10 +1408,9 @@ class _SearchScreenState extends State<SearchScreen>
                       : isDark
                           ? AppColors.darkBorder
                           : AppColors.lightBorder,
-              width: 1,
             ),
             boxShadow: !isDefault
-                ? AppShadows.secondary(intensity: 0.3)
+                ? AppShadows.secondary()
                 : _isYearSortHovered
                     ? AppShadows.small
                     : null,
@@ -1437,7 +1429,7 @@ class _SearchScreenState extends State<SearchScreen>
                       ? Colors.white
                       : _isYearSortHovered
                           ? AppColors.secondary
-                          : AppColors.textSecondary(isDark),
+                          : AppColors.textSecondary(isDark: isDark),
                 ),
               ),
               const SizedBox(width: 6),
@@ -1448,7 +1440,7 @@ class _SearchScreenState extends State<SearchScreen>
                     ? Colors.white70
                     : _isYearSortHovered
                         ? AppColors.secondary
-                        : AppColors.textSecondary(isDark),
+                        : AppColors.textSecondary(isDark: isDark),
               ),
             ],
           ),
@@ -1726,7 +1718,6 @@ class _GlassButton extends StatelessWidget {
           border: Border.all(
             color:
                 isDark ? AppColors.darkGlassBorder : AppColors.lightGlassBorder,
-            width: 1,
           ),
           boxShadow: isDark ? AppShadows.darkGlass : AppShadows.lightGlass,
         ),
@@ -1856,7 +1847,7 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textTertiary(widget.isDark),
+              color: AppColors.textTertiary(isDark: widget.isDark),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1899,7 +1890,7 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
           if (_showSearch) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: widget.isDark
                       ? AppColors.darkElevated
@@ -1909,23 +1900,22 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
                     color: widget.isDark
                         ? AppColors.darkBorder
                         : AppColors.lightBorder,
-                    width: 1,
                   ),
                 ),
                 child: TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   style: AppTypography.primary(
-                    color: AppColors.textPrimary(widget.isDark),
+                    color: AppColors.textPrimary(isDark: widget.isDark),
                   ),
                   decoration: InputDecoration(
                     hintText: '搜索${widget.title}...',
                     hintStyle: AppTypography.primary(
-                      color: AppColors.textTertiary(widget.isDark),
+                      color: AppColors.textTertiary(isDark: widget.isDark),
                     ),
                     prefixIcon: Icon(
                       LucideIcons.search,
-                      color: AppColors.textSecondary(widget.isDark),
+                      color: AppColors.textSecondary(isDark: widget.isDark),
                       size: 20,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -1936,7 +1926,8 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
                             },
                             child: Icon(
                               LucideIcons.x,
-                              color: AppColors.textSecondary(widget.isDark),
+                              color: AppColors.textSecondary(
+                                  isDark: widget.isDark),
                               size: 18,
                             ),
                           )
@@ -2001,14 +1992,14 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.textTertiary(widget.isDark)
+                color: AppColors.textTertiary(isDark: widget.isDark)
                     .withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 LucideIcons.search,
                 size: 32,
-                color: AppColors.textTertiary(widget.isDark),
+                color: AppColors.textTertiary(isDark: widget.isDark),
               ),
             ),
             const SizedBox(height: 16),
@@ -2016,7 +2007,7 @@ class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
               '未找到匹配项',
               style:
                   AppTypography.bodyLargeStyle(isDark: widget.isDark).copyWith(
-                color: AppColors.textSecondary(widget.isDark),
+                color: AppColors.textSecondary(isDark: widget.isDark),
               ),
             ),
           ],
@@ -2065,7 +2056,6 @@ class _FilterOptionItem extends StatelessWidget {
                 : isDark
                     ? AppColors.darkBorder
                     : AppColors.lightBorder,
-            width: 1,
           ),
         ),
         child: Row(
@@ -2077,8 +2067,9 @@ class _FilterOptionItem extends StatelessWidget {
                   fontSize: 15,
                   fontWeight:
                       isSelected ? AppTypography.medium : AppTypography.regular,
-                  color:
-                      isSelected ? Colors.white : AppColors.textPrimary(isDark),
+                  color: isSelected
+                      ? Colors.white
+                      : AppColors.textPrimary(isDark: isDark),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

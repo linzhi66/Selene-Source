@@ -235,7 +235,7 @@ class _DLNAPlayerState extends State<DLNAPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.black,
       child: DLNAPlayerControls(
         device: widget.device,

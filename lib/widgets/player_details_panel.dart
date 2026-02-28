@@ -26,7 +26,7 @@ class PlayerDetailsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: showCloseButton
             ? (isDarkMode ? const Color(0xFF1c1c1e) : Colors.white)
@@ -101,7 +101,6 @@ class PlayerDetailsPanel extends StatelessWidget {
                   height: 160,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
                     children: [
                       // 标题
                       Text(
@@ -219,24 +218,28 @@ class PlayerDetailsPanel extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: genres
-                      .map((genre) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
+                      .map(
+                        (genre) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.grey[700]
+                                : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            genre,
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: isDarkMode
-                                  ? Colors.grey[700]
-                                  : Colors.grey[200],
-                              borderRadius: BorderRadius.circular(16),
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                             ),
-                            child: Text(
-                              genre,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDarkMode
-                                    ? Colors.grey[300]
-                                    : Colors.grey[700],
-                              ),
-                            ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ],
@@ -307,7 +310,11 @@ class PlayerDetailsPanel extends StatelessWidget {
             children: [
               // 左侧封面
               _buildCoverImage(
-                  context, cover, currentDetail?.source, isDarkMode),
+                context,
+                cover,
+                currentDetail?.source,
+                isDarkMode,
+              ),
               const SizedBox(width: 16),
               // 右侧信息
               Expanded(
@@ -315,7 +322,6 @@ class PlayerDetailsPanel extends StatelessWidget {
                   height: 160,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
                     children: [
                       // 标题
                       Text(
@@ -336,12 +342,15 @@ class PlayerDetailsPanel extends StatelessWidget {
                           if (sourceName != null && sourceName.isNotEmpty) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3),
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                    color: isDarkMode
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[400]!),
+                                  color: isDarkMode
+                                      ? Colors.grey[600]!
+                                      : Colors.grey[400]!,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -400,24 +409,28 @@ class PlayerDetailsPanel extends StatelessWidget {
                   runSpacing: 8,
                   children: class_
                       .split(',')
-                      .map((category) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
+                      .map(
+                        (category) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.grey[700]
+                                : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            category.trim(),
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: isDarkMode
-                                  ? Colors.grey[700]
-                                  : Colors.grey[200],
-                              borderRadius: BorderRadius.circular(16),
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                             ),
-                            child: Text(
-                              category.trim(),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDarkMode
-                                    ? Colors.grey[300]
-                                    : Colors.grey[700],
-                              ),
-                            ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ],
@@ -450,7 +463,11 @@ class PlayerDetailsPanel extends StatelessWidget {
   }
 
   Widget _buildCoverImage(
-      BuildContext context, String cover, String? source, bool isDarkMode) {
+    BuildContext context,
+    String cover,
+    String? source,
+    bool isDarkMode,
+  ) {
     return SizedBox(
       width: 120,
       height: 160,

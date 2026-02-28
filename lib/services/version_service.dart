@@ -53,9 +53,8 @@ class VersionService {
   }
 
   /// 获取 GitHub Release 页面 URL
-  static String getReleaseUrl(String version) {
-    return '$githubRepoUrl/releases/tag/v$version';
-  }
+  static String getReleaseUrl(String version) =>
+      '$githubRepoUrl/releases/tag/v$version';
 
   /// 比较版本号，判断是否有新版本
   static bool _isNewerVersion(String current, String latest) {

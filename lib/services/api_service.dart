@@ -27,21 +27,18 @@ class ApiResponse<T> {
     this.statusCode,
   });
 
-  factory ApiResponse.success(T data, {int? statusCode}) {
-    return ApiResponse<T>(
-      success: true,
-      data: data,
-      statusCode: statusCode,
-    );
-  }
+  factory ApiResponse.success(T data, {int? statusCode}) => ApiResponse<T>(
+        success: true,
+        data: data,
+        statusCode: statusCode,
+      );
 
-  factory ApiResponse.error(String message, {int? statusCode}) {
-    return ApiResponse<T>(
-      success: false,
-      message: message,
-      statusCode: statusCode,
-    );
-  }
+  factory ApiResponse.error(String message, {int? statusCode}) =>
+      ApiResponse<T>(
+        success: false,
+        message: message,
+        statusCode: statusCode,
+      );
 }
 
 /// 通用API请求服务
@@ -49,14 +46,10 @@ class ApiService {
   static const Duration _timeout = Duration(seconds: 30);
 
   /// 获取基础URL
-  static Future<String?> _getBaseUrl() async {
-    return await UserDataService.getServerUrl();
-  }
+  static Future<String?> _getBaseUrl() => UserDataService.getServerUrl();
 
   /// 获取认证cookies
-  static Future<String?> _getCookies() async {
-    return await UserDataService.getCookies();
-  }
+  static Future<String?> _getCookies() => UserDataService.getCookies();
 
   /// 构建完整URL
   static Future<String> _buildUrl(String endpoint) async {
@@ -159,8 +152,10 @@ class ApiService {
         final data = fromJson(responseData);
         return ApiResponse.success(data, statusCode: response.statusCode);
       } else {
-        return ApiResponse.success(responseData as T,
-            statusCode: response.statusCode);
+        return ApiResponse.success(
+          responseData as T,
+          statusCode: response.statusCode,
+        );
       }
     } catch (e) {
       return ApiResponse.error(
@@ -285,10 +280,7 @@ class ApiService {
   }) async {
     try {
       final url = await _buildUrl(endpoint);
-      final requestHeaders = await _buildHeaders(
-        additionalHeaders: headers,
-        includeAuth: true,
-      );
+      final requestHeaders = await _buildHeaders(additionalHeaders: headers);
 
       // 移除Content-Type，让http包自动设置multipart的Content-Type
       requestHeaders.remove('Content-Type');
@@ -349,11 +341,15 @@ class ApiService {
         return ApiResponse.success(favorites, statusCode: response.statusCode);
       } else if (response.statusCode == 401) {
         // 未授权：让调用方处理UI跳转，直接返回401错误
-        return ApiResponse.error('登录已过期，请重新登录',
-            statusCode: response.statusCode);
+        return ApiResponse.error(
+          '登录已过期，请重新登录',
+          statusCode: response.statusCode,
+        );
       } else {
-        return ApiResponse.error('获取收藏夹失败: ${response.statusCode}',
-            statusCode: response.statusCode);
+        return ApiResponse.error(
+          '获取收藏夹失败: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
       }
     } catch (e) {
       return ApiResponse.error('获取收藏夹异常: ${e.toString()}');
@@ -443,7 +439,9 @@ class ApiService {
 
   /// 删除播放记录
   static Future<ApiResponse<void>> deletePlayRecord(
-      String source, String id) async {
+    String source,
+    String id,
+  ) async {
     try {
       final key = '$source+$id';
       final encodedKey = Uri.encodeComponent(key);
@@ -472,7 +470,10 @@ class ApiService {
 
   /// 添加收藏
   static Future<ApiResponse<void>> favorite(
-      String source, String id, Map<String, dynamic> favoriteData) async {
+    String source,
+    String id,
+    Map<String, dynamic> favoriteData,
+  ) async {
     try {
       final key = '$source+$id';
       final body = {

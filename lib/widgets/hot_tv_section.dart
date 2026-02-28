@@ -117,7 +117,6 @@ class _HotTvSectionState extends State<HotTvSection> {
       isLoading: _isLoading,
       hasError: _hasError,
       onRetry: _loadHotTvShows,
-      cardCount: 2.75,
     );
   }
 }

@@ -91,7 +91,8 @@ class _LiveScreenState extends State<LiveScreen>
       await _speedTestService!.batchCheckUrls(
         urls: urls,
         maxConcurrency: 10, // 直播测速并发数可以高一些
-        onResult: (String id, bool isAvailable, int latencyMs) {
+        onResult: (String id,
+            {required bool isAvailable, required int latencyMs}) {
           setState(() {
             _channelAvailability[id] = isAvailable;
             _channelLatency[id] = latencyMs;
@@ -488,7 +489,6 @@ class _LiveScreenState extends State<LiveScreen>
                       : (themeService.isDarkMode
                           ? Colors.grey[600]!
                           : Colors.grey[400]!)),
-              width: 1,
             ),
           ),
           child: Row(
@@ -628,7 +628,6 @@ class _LiveScreenState extends State<LiveScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: horizontalPadding, vertical: 8),
                       child: Wrap(
-                        alignment: WrapAlignment.start, // 左对齐
                         spacing: spacing,
                         runSpacing: spacing,
                         children: options.map((option) {
@@ -997,14 +996,13 @@ class _LiveChannelCardState extends State<_LiveChannelCard> {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               // 卡片主体 - 2:1 长宽比
               Expanded(
                 child: AspectRatio(
                   aspectRatio: 2.0,
-                  child: Container(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: widget.themeService.isDarkMode
                           ? const Color(0xFF1e1e1e)

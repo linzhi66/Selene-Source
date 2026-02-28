@@ -319,7 +319,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 将 playTime 转换为 Duration 并传递给 updateVideoUrl
     final startAt = playTime > 0 ? Duration(seconds: playTime) : null;
     _resumeStartAt = startAt;
-    updateVideoUrl(currentDetail!.episodes[targetIndex], startAt: null);
+    updateVideoUrl(currentDetail!.episodes[targetIndex]);
     _scrollToCurrentEpisode();
   }
 
@@ -1062,7 +1062,6 @@ class _PlayerScreenState extends State<PlayerScreen>
           VideoPlayerWidget(
             surface:
                 isPC ? VideoPlayerSurface.desktop : VideoPlayerSurface.mobile,
-            url: null,
             onBackPressed: _onBackPressed,
             onControllerCreated: (controller) {
               _videoPlayerController = controller;
@@ -1232,7 +1231,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final isDarkMode = theme.brightness == Brightness.dark;
 
     if (currentDetail == null) {
-      return Container(
+      return ColoredBox(
         color: Colors.transparent,
         child: const Center(
           child: Text('加载中...'),
@@ -1240,15 +1239,14 @@ class _PlayerScreenState extends State<PlayerScreen>
       );
     }
 
-    return Container(
+    return ColoredBox(
       color: Colors.transparent,
       child: SingleChildScrollView(
         child: Column(
           children: [
             // 标题和收藏按钮行
             Padding(
-              padding: const EdgeInsets.only(
-                  left: 16, right: 16, top: 16, bottom: 0),
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
               child: Row(
                 children: [
                   Expanded(
@@ -1292,7 +1290,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                       border: Border.all(
                         color:
                             isDarkMode ? Colors.grey[600]! : Colors.grey[400]!,
-                        width: 1,
                       ),
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -1386,8 +1383,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 (doubanDetails?.summary != null &&
                     doubanDetails!.summary!.isNotEmpty))
               Padding(
-                padding: const EdgeInsets.only(
-                    left: 16, right: 16, top: 0, bottom: 8),
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -1433,8 +1429,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       children: [
         // 推荐标题行
         Padding(
-          padding:
-              const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 0),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -1610,7 +1605,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                       border: Border.all(
                         color:
                             isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-                        width: 1,
                       ),
                     ),
                     child: Center(
@@ -2002,7 +1996,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                       border: Border.all(
                         color:
                             isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-                        width: 1,
                       ),
                     ),
                     child: Center(
@@ -2419,7 +2412,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: const Color(0xFF8B4513).withValues(alpha: 0.3),
-                      width: 1,
                     ),
                   ),
                   child: Text(
@@ -2526,9 +2518,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     // 检查是否启用本地搜索
     final isLocalSearch = await UserDataService.getLocalSearch();
     if (isLocalSearch) {
-      return await SearchService.getDetailSync(source, id);
+      return SearchService.getDetailSync(source, id);
     } else {
-      return await ApiService.fetchSourceDetail(source, id);
+      return ApiService.fetchSourceDetail(source, id);
     }
   }
 
@@ -2649,7 +2641,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Container(
+        body: DecoratedBox(
           decoration: BoxDecoration(
             gradient: isDarkMode
                 ? null
@@ -2729,7 +2721,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
             // 播放器
             Expanded(
-              child: Container(
+              child: ColoredBox(
                 key: _playerKey,
                 color: Colors.black,
                 child: _buildPlayerWidget(),
@@ -2751,7 +2743,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           left: 0,
           width: leftWidth,
           height: playerHeight,
-          child: Container(
+          child: ColoredBox(
             key: _playerKey,
             color: Colors.black,
             child: _buildPlayerWidget(),
@@ -2767,7 +2759,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           left: 0,
           right: 0,
           height: playerHeight,
-          child: Container(
+          child: ColoredBox(
             key: _playerKey,
             color: Colors.black,
             child: _buildPlayerWidget(),
@@ -2783,7 +2775,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           left: 0,
           right: 0,
           height: playerHeight,
-          child: Container(
+          child: ColoredBox(
             key: _playerKey,
             color: Colors.black,
             child: _buildPlayerWidget(),
@@ -2870,7 +2862,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               // 右侧：详情面板（35%）
               Expanded(
                 flex: 35,
-                child: Container(
+                child: ColoredBox(
                   color: Colors.transparent,
                   child: PlayerDetailsPanel(
                     theme: theme,
@@ -3107,7 +3099,7 @@ class _EpisodeCardWithHoverState extends State<_EpisodeCardWithHover> {
         },
         child: GestureDetector(
           onTap: widget.onTap,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: widget.isCurrentEpisode
                   ? Colors.green.withValues(alpha: 0.2)
@@ -3207,7 +3199,7 @@ class _SourceCardWithHoverState extends State<_SourceCardWithHover> {
         },
         child: GestureDetector(
           onTap: widget.onTap,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: widget.isCurrentSource
                   ? Colors.green.withValues(alpha: 0.2)

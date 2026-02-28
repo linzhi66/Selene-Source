@@ -52,7 +52,7 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
   void _scrollToCurrent() {
     if (_gridKey.currentContext == null) return;
 
-    final gridBox = _gridKey.currentContext!.findRenderObject() as RenderBox;
+    final gridBox = _gridKey.currentContext!.findRenderObject()! as RenderBox;
 
     final targetIndex = widget.isReversed
         ? widget.episodes.length - 1 - widget.currentEpisodeIndex
@@ -82,7 +82,7 @@ class _PlayerEpisodesPanelState extends State<PlayerEpisodesPanel> {
   Widget build(BuildContext context) {
     final isDarkMode = widget.theme.brightness == Brightness.dark;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF1c1c1e) : Colors.white,
       ),
@@ -196,7 +196,7 @@ class _EpisodePanelItemWithHoverState
       },
       child: GestureDetector(
         onTap: widget.onTap,
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
             color: widget.isCurrentEpisode
                 ? Colors.green.withValues(alpha: 0.2)

@@ -220,9 +220,9 @@ class _MainLayoutState extends State<MainLayout> {
           data: isDark ? themeService.darkTheme : themeService.lightTheme,
           child: Scaffold(
             resizeToAvoidBottomInset: !widget.isSearchMode,
-            body: Container(
+            body: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: AppColors.backgroundGradient(isDark),
+                gradient: AppColors.backgroundGradient(isDark: isDark),
               ),
               child: Stack(
                 children: [
@@ -251,7 +251,7 @@ class _MainLayoutState extends State<MainLayout> {
                       right: 0,
                       child: WindowsTitleBar(
                         customBackgroundColor: widget.isSearchMode
-                            ? AppColors.surface(isDark)
+                            ? AppColors.surface(isDark: isDark)
                             : null,
                       ),
                     ),
@@ -288,7 +288,7 @@ class _MainLayoutState extends State<MainLayout> {
           bottom: 12,
         ),
         decoration: BoxDecoration(
-          color: AppColors.surface(isDark).withValues(alpha: 0.0),
+          color: AppColors.surface(isDark: isDark).withValues(alpha: 0.0),
         ),
         child: widget.isSearchMode
             ? _buildSearchHeader(themeService)
@@ -392,16 +392,14 @@ class _MainLayoutState extends State<MainLayout> {
           child: TextField(
             controller: widget.searchController,
             focusNode: widget.searchFocusNode,
-            autofocus: false,
-            textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText: '搜索电影、剧集、动漫...',
               hintStyle: AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
-                color: AppColors.textTertiary(isDark),
+                color: AppColors.textTertiary(isDark: isDark),
               ),
               prefixIcon: Icon(
                 LucideIcons.search,
-                color: AppColors.textTertiary(isDark),
+                color: AppColors.textTertiary(isDark: isDark),
                 size: 20,
               ),
               suffixIcon:
@@ -503,7 +501,7 @@ class _MainLayoutState extends State<MainLayout> {
                 ),
                 child: Icon(
                   LucideIcons.x,
-                  color: AppColors.textTertiary(isDark),
+                  color: AppColors.textTertiary(isDark: isDark),
                   size: 18,
                 ),
               ),
@@ -540,7 +538,7 @@ class _MainLayoutState extends State<MainLayout> {
                     ? (_isSearchSubmitHovered
                         ? Colors.white
                         : AppColors.primary)
-                    : AppColors.textTertiary(isDark),
+                    : AppColors.textTertiary(isDark: isDark),
                 size: 18,
               ),
             ),
@@ -554,6 +552,7 @@ class _MainLayoutState extends State<MainLayout> {
     required IconData icon,
     required VoidCallback? onTap,
     required bool isHovered,
+    // ignore: avoid_positional_boolean_parameters
     required void Function(bool) onHover,
     required bool isDark,
   }) {
@@ -576,8 +575,9 @@ class _MainLayoutState extends State<MainLayout> {
           ),
           child: Icon(
             icon,
-            color:
-                isHovered ? AppColors.primary : AppColors.textPrimary(isDark),
+            color: isHovered
+                ? AppColors.primary
+                : AppColors.textPrimary(isDark: isDark),
             size: 22,
           ),
         ),
@@ -673,24 +673,24 @@ class _MainLayoutState extends State<MainLayout> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        item['icon'] as IconData,
+                        item['icon']! as IconData,
                         color: isSelected
                             ? AppColors.primary
                             : (isHovered
                                 ? AppColors.primary
-                                : AppColors.textSecondary(isDark)),
+                                : AppColors.textSecondary(isDark: isDark)),
                         size: 22,
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        item['label'] as String,
+                        item['label']! as String,
                         style: AppTypography.labelMediumStyle(isDark: isDark)
                             .copyWith(
                           color: isSelected
                               ? AppColors.primary
                               : (isHovered
                                   ? AppColors.primary
-                                  : AppColors.textSecondary(isDark)),
+                                  : AppColors.textSecondary(isDark: isDark)),
                           fontWeight: isSelected
                               ? AppTypography.semiBold
                               : AppTypography.medium,
@@ -739,7 +739,7 @@ class _SuggestionItem extends StatelessWidget {
                 Icon(
                   LucideIcons.search,
                   size: 16,
-                  color: AppColors.textTertiary(isDark),
+                  color: AppColors.textTertiary(isDark: isDark),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -753,7 +753,7 @@ class _SuggestionItem extends StatelessWidget {
                 Icon(
                   LucideIcons.arrowUpLeft,
                   size: 14,
-                  color: AppColors.textTertiary(isDark),
+                  color: AppColors.textTertiary(isDark: isDark),
                 ),
               ],
             ),

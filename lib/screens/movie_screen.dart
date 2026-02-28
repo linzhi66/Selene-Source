@@ -486,7 +486,6 @@ class _MovieScreenState extends State<MovieScreen> {
               onGlobalMenuAction: (videoInfo, action) {
                 _handleMenuAction(videoInfo, action);
               },
-              contentType: 'movie',
             ),
             // 底部指示器 - 加载更多或到底提示
             if (_isLoadingMore)

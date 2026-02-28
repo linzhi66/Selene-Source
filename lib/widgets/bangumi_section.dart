@@ -132,7 +132,6 @@ class _BangumiSectionState extends State<BangumiSection> {
       isLoading: _isLoading,
       hasError: _hasError,
       onRetry: _loadBangumiCalendar,
-      cardCount: 2.75,
     );
   }
 }

@@ -28,7 +28,8 @@ class SubscriptionService {
   /// - 成功: 返回 SubscriptionContent 对象，包含 SearchResource 和 LiveSource 列表
   /// - 失败: 返回 null
   static Future<SubscriptionContent?> parseSubscriptionContent(
-      String content) async {
+    String content,
+  ) async {
     try {
       // Base58 解码
       final decoded = bs58.base58.decode(content);
@@ -44,14 +45,16 @@ class SubscriptionService {
         searchResources = <SearchResource>[];
         apiSite.forEach((key, value) {
           final site = value as Map<String, dynamic>;
-          searchResources!.add(SearchResource(
-            key: site['key'] as String? ?? key,
-            name: site['name'] as String? ?? '',
-            api: site['api'] as String? ?? '',
-            detail: site['detail'] as String? ?? '',
-            from: site['from'] as String? ?? '',
-            disabled: false,
-          ));
+          searchResources!.add(
+            SearchResource(
+              key: site['key'] as String? ?? key,
+              name: site['name'] as String? ?? '',
+              api: site['api'] as String? ?? '',
+              detail: site['detail'] as String? ?? '',
+              from: site['from'] as String? ?? '',
+              disabled: false,
+            ),
+          );
         });
       }
 
@@ -62,15 +65,17 @@ class SubscriptionService {
         liveSources = <LiveSource>[];
         liveSourceData.forEach((key, value) {
           final source = value as Map<String, dynamic>;
-          liveSources!.add(LiveSource(
-            key: source['key'] as String? ?? key,
-            name: source['name'] as String? ?? '',
-            url: source['url'] as String? ?? '',
-            ua: source['ua'] as String? ?? '',
-            epg: source['epg'] as String? ?? '',
-            from: source['from'] as String? ?? '',
-            disabled: false,
-          ));
+          liveSources!.add(
+            LiveSource(
+              key: source['key'] as String? ?? key,
+              name: source['name'] as String? ?? '',
+              url: source['url'] as String? ?? '',
+              ua: source['ua'] as String? ?? '',
+              epg: source['epg'] as String? ?? '',
+              from: source['from'] as String? ?? '',
+              disabled: false,
+            ),
+          );
         });
       }
 

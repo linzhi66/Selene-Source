@@ -24,7 +24,8 @@ class SimpleTabSwitcher extends StatelessWidget {
         return Container(
           height: 32, // 与 CapsuleTabSwitcher 相同的高度
           margin: const EdgeInsets.symmetric(
-              vertical: 4), // 与 CapsuleTabSwitcher 相同的 margin
+            vertical: 4,
+          ), // 与 CapsuleTabSwitcher 相同的 margin
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(

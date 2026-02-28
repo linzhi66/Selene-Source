@@ -221,7 +221,7 @@ class _VideoCardState extends State<VideoCard> {
           color: isDark ? AppColors.darkElevated : AppColors.lightElevated,
         ),
       ),
-      errorWidget: (context, url, error) => Container(
+      errorWidget: (context, url, error) => ColoredBox(
         color: isDark ? AppColors.darkElevated : AppColors.lightElevated,
         child: Icon(
           LucideIcons.film,
@@ -282,7 +282,8 @@ class _VideoCardState extends State<VideoCard> {
             if (widget.from == 'playrecord') ...[
               // 收藏按钮
               _buildActionButton(
-                icon: widget.isFavorited ? LucideIcons.heart : LucideIcons.heart,
+                icon:
+                    widget.isFavorited ? LucideIcons.heart : LucideIcons.heart,
                 onTap: _handleFavoriteButtonTap,
                 color: widget.isFavorited ? AppColors.error : null,
                 size: secondarySize,
@@ -352,7 +353,7 @@ class _VideoCardState extends State<VideoCard> {
           ).copyWith(
             color: _isHovered && isPC
                 ? AppColors.primary
-                : AppColors.textPrimary(isDark),
+                : AppColors.textPrimary(isDark: isDark),
           ),
           maxLines: widget.from == 'douban' ? 2 : 1,
           overflow: TextOverflow.ellipsis,
@@ -378,7 +379,7 @@ class _VideoCardState extends State<VideoCard> {
               ).copyWith(
                 color: _isHovered && isPC
                     ? AppColors.primary
-                    : AppColors.textSecondary(isDark),
+                    : AppColors.textSecondary(isDark: isDark),
               ),
             ),
           ),

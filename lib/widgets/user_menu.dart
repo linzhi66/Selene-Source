@@ -137,7 +137,7 @@ class _UserMenuState extends State<UserMenu> {
     // 只清除密码和cookies，保留服务器地址和用户名
     await UserDataService.clearPasswordAndCookies();
 
-    await UserDataService.saveIsLocalMode(false);
+    await UserDataService.saveIsLocalMode(isLocalMode: false);
 
     // 跳转到登录页，并移除所有之前的路由（强制销毁所有页面）
     if (mounted) {
@@ -329,8 +329,12 @@ class _UserMenuState extends State<UserMenu> {
     );
   }
 
-  void _showOptionDialog(String title, String currentValue,
-      List<String> options, Future<void> Function(String) onChanged) {
+  void _showOptionDialog(
+    String title,
+    String currentValue,
+    List<String> options,
+    Future<void> Function(String) onChanged,
+  ) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -575,6 +579,7 @@ class _UserMenuState extends State<UserMenu> {
   Widget _buildToggleOption({
     required String title,
     required bool value,
+    // ignore: avoid_positional_boolean_parameters
     required Future<void> Function(bool) onChanged,
     required IconData icon,
   }) {
@@ -652,7 +657,7 @@ class _UserMenuState extends State<UserMenu> {
       color: Colors.transparent,
       child: GestureDetector(
         onTap: widget.onClose,
-        child: Container(
+        child: ColoredBox(
           color: Colors.black.withValues(alpha: 0.3),
           child: Center(
             child: GestureDetector(
@@ -804,7 +809,8 @@ class _UserMenuState extends State<UserMenu> {
                       title: '优选测速',
                       value: _preferSpeedTest,
                       onChanged: (value) async {
-                        await UserDataService.savePreferSpeedTest(value);
+                        await UserDataService.savePreferSpeedTest(
+                            enabled: value);
                         setState(() {
                           _preferSpeedTest = value;
                         });
@@ -824,7 +830,7 @@ class _UserMenuState extends State<UserMenu> {
                         title: '本地搜索',
                         value: _localSearch,
                         onChanged: (value) async {
-                          await UserDataService.saveLocalSearch(value);
+                          await UserDataService.saveLocalSearch(enabled: value);
                           setState(() {
                             _localSearch = value;
                           });
@@ -965,10 +971,13 @@ class _UserMenuState extends State<UserMenu> {
                       child: GestureDetector(
                         onTap: () async {
                           final url = Uri.parse(
-                              'https://github.com/MoonTechLab/Selene');
+                            'https://github.com/MoonTechLab/Selene',
+                          );
                           if (await canLaunchUrl(url)) {
-                            await launchUrl(url,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
                           }
                         },
                         child: Container(

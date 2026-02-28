@@ -197,7 +197,6 @@ class _HistoryGridState extends State<HistoryGrid>
     final double height = width * 1.4;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         ShimmerEffect(
           width: width,
@@ -348,13 +347,14 @@ class _HistoryGridState extends State<HistoryGrid>
               return VideoCard(
                 videoInfo: VideoInfo.fromPlayRecord(playRecord),
                 onTap: () => widget.onVideoTap(playRecord),
-                from: 'playrecord',
                 cardWidth: itemWidth,
                 onGlobalMenuAction: widget.onGlobalMenuAction != null
                     ? (action) => widget.onGlobalMenuAction!(playRecord, action)
                     : null,
                 isFavorited: _cacheService.isFavoritedSync(
-                    playRecord.source, playRecord.id),
+                  playRecord.source,
+                  playRecord.id,
+                ),
               );
             },
           );

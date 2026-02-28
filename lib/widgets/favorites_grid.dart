@@ -190,7 +190,8 @@ class _FavoritesGridState extends State<FavoritesGrid>
 
     setState(() {
       _favorites.removeWhere(
-          (favorite) => favorite.source == source && favorite.id == id);
+        (favorite) => favorite.source == source && favorite.id == id,
+      );
     });
   }
 
@@ -331,7 +332,6 @@ class _FavoritesGridState extends State<FavoritesGrid>
     final double height = width * 1.4; // 保持与VideoCard相同的比例
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 封面骨架
         ShimmerEffect(
@@ -494,7 +494,9 @@ class _FavoritesGridState extends State<FavoritesGrid>
                 // 传递计算出的宽度
                 onGlobalMenuAction: widget.onGlobalMenuAction != null
                     ? (action) => widget.onGlobalMenuAction!(
-                        VideoInfo.fromPlayRecord(playRecord), action)
+                          VideoInfo.fromPlayRecord(playRecord),
+                          action,
+                        )
                     : null,
                 isFavorited: true, // 收藏页面默认已收藏
               );

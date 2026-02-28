@@ -86,7 +86,6 @@ class DoubanMoviesGrid extends StatelessWidget {
     final double height = width * 1.5;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 封面骨架
         ShimmerEffect(
@@ -215,7 +214,6 @@ class DoubanMoviesGrid extends StatelessWidget {
               onGlobalMenuAction: onGlobalMenuAction != null
                   ? (action) => onGlobalMenuAction!(videoInfo, action)
                   : null,
-              isFavorited: false,
             );
           },
         );

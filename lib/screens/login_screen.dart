@@ -211,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen>
               password: _passwordController.text,
               cookies: cookies,
             );
-            await UserDataService.saveIsLocalMode(false);
+            await UserDataService.saveIsLocalMode(isLocalMode: false);
 
             if (mounted) {
               await Navigator.of(context).pushAndRemoveUntil(
@@ -296,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen>
           await LocalModeStorageService.saveLiveSources(content.liveSources!);
         }
 
-        await UserDataService.saveIsLocalMode(true);
+        await UserDataService.saveIsLocalMode(isLocalMode: true);
         setState(() => _isLoading = false);
 
         if (mounted) {
@@ -315,7 +315,6 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildClearDataDialog() {
     return GlassCard(
       isDark: false,
-      borderRadius: 20,
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -323,12 +322,12 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Text(
             '提示',
-            style: AppTypography.headlineSmallStyle(isDark: false),
+            style: AppTypography.headlineSmallStyle(),
           ),
           const SizedBox(height: 16),
           Text(
             '检测到已有本地模式内容且订阅链接不一致，是否清空全部本地模式存储？',
-            style: AppTypography.bodyMediumStyle(isDark: false),
+            style: AppTypography.bodyMediumStyle(),
           ),
           const SizedBox(height: 24),
           Row(
@@ -338,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen>
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
                   '否',
-                  style: AppTypography.bodyMediumStyle(isDark: false).copyWith(
+                  style: AppTypography.bodyMediumStyle().copyWith(
                     color: AppColors.lightTextSecondary,
                   ),
                 ),
@@ -348,7 +347,6 @@ class _LoginScreenState extends State<LoginScreen>
                 text: '是',
                 onPressed: () => Navigator.of(context).pop(true),
                 height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
               ),
             ],
           ),
@@ -364,9 +362,9 @@ class _LoginScreenState extends State<LoginScreen>
     final isTablet = DeviceUtils.isTablet(context);
 
     return Scaffold(
-      body: Container(
+      body: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: AppColors.backgroundGradient(isDark),
+          gradient: AppColors.backgroundGradient(isDark: isDark),
         ),
         child: Column(
           children: [
@@ -575,7 +573,7 @@ class _LoginScreenState extends State<LoginScreen>
             ? IconButton(
                 icon: Icon(
                   _isPasswordVisible ? LucideIcons.eye : LucideIcons.eyeOff,
-                  color: AppColors.textTertiary(isDark),
+                  color: AppColors.textTertiary(isDark: isDark),
                   size: 20,
                 ),
                 onPressed: () {
@@ -601,17 +599,17 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.error, width: 1),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
         ),
         labelStyle: AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
-          color: AppColors.textSecondary(isDark),
+          color: AppColors.textSecondary(isDark: isDark),
         ),
         hintStyle: AppTypography.bodyMediumStyle(isDark: isDark).copyWith(
-          color: AppColors.textTertiary(isDark),
+          color: AppColors.textTertiary(isDark: isDark),
         ),
       ),
       validator: validator,
@@ -626,13 +624,12 @@ class _LoginScreenState extends State<LoginScreen>
       isLoading: _isLoading,
       isFullWidth: true,
       height: 56,
-      borderRadius: 16,
       gradient: _isFormValid && !_isLoading
           ? AppColors.primaryGradient
           : LinearGradient(
               colors: [
-                AppColors.textTertiary(isDark),
-                AppColors.textTertiary(isDark),
+                AppColors.textTertiary(isDark: isDark),
+                AppColors.textTertiary(isDark: isDark),
               ],
             ),
     );

@@ -99,7 +99,9 @@ class _SearchResultsGridState extends State<SearchResultsGrid>
                     ? (action) => widget.onGlobalMenuAction!(videoInfo, action)
                     : null,
                 isFavorited: _cacheService.isFavoritedSync(
-                    videoInfo.source, videoInfo.id), // 同步检查收藏状态
+                  videoInfo.source,
+                  videoInfo.id,
+                ), // 同步检查收藏状态
               ),
             );
           },

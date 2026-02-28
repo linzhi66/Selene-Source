@@ -41,9 +41,8 @@ class LocalSearchCacheService {
   int _lastCleanupTime = 0;
 
   /// 生成搜索缓存键：source + query + page
-  String _makeSearchCacheKey(String sourceKey, String query, int page) {
-    return '$sourceKey::${query.trim()}::$page';
-  }
+  String _makeSearchCacheKey(String sourceKey, String query, int page) =>
+      '$sourceKey::${query.trim()}::$page';
 
   /// 获取缓存的搜索页面数据
   CachedPageEntry? getCachedSearchPage(

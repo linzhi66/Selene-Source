@@ -276,7 +276,8 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       await _speedTestService!.batchCheckUrls(
         urls: urls,
         maxConcurrency: 10,
-        onResult: (String id, bool isAvailable, int latencyMs) {
+        onResult: (String id,
+            {required bool isAvailable, required int latencyMs}) {
           setState(() {
             _sourceAvailability[id] = isAvailable;
             _sourceLatency[id] = latencyMs;
@@ -562,7 +563,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Container(
+        body: DecoratedBox(
           decoration: BoxDecoration(
             gradient: isDarkMode
                 ? null
@@ -651,7 +652,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             Expanded(
               child: Stack(
                 children: [
-                  Container(
+                  ColoredBox(
                     key: _playerKey,
                     color: Colors.black,
                     child: _buildPlayerWidget(),
@@ -679,7 +680,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           height: playerHeight,
           child: Stack(
             children: [
-              Container(
+              ColoredBox(
                 key: _playerKey,
                 color: Colors.black,
                 child: _buildPlayerWidget(),
@@ -701,7 +702,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           height: playerHeight,
           child: Stack(
             children: [
-              Container(
+              ColoredBox(
                 key: _playerKey,
                 color: Colors.black,
                 child: _buildPlayerWidget(),
@@ -723,7 +724,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           height: playerHeight,
           child: Stack(
             children: [
-              Container(
+              ColoredBox(
                 key: _playerKey,
                 color: Colors.black,
                 child: _buildPlayerWidget(),
@@ -843,7 +844,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
               ),
               // 右侧：播放源和频道列表
               Expanded(
-                child: Container(
+                child: ColoredBox(
                   color: Colors.transparent,
                   child: Column(
                     children: [
@@ -1001,7 +1002,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
         height: 56,
         child: AspectRatio(
           aspectRatio: 2.0,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: themeService.isDarkMode
                   ? const Color(0xFF2a2a2a)
@@ -1094,7 +1095,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                   )
                 : AspectRatio(
                     aspectRatio: 2.0,
-                    child: Container(
+                    child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: themeService.isDarkMode
                             ? const Color(0xFF2a2a2a)
@@ -1197,7 +1198,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             color: themeService.isDarkMode
                 ? const Color(0xFF2a2a2a)
                 : Colors.white,
-            width: 1,
           ),
         ),
       );
@@ -1237,7 +1237,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
               color: themeService.isDarkMode
                   ? const Color(0xFF2a2a2a)
                   : Colors.white,
-              width: 1,
             ),
           ),
         ),
@@ -1274,7 +1273,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 左侧信息区域
               Expanded(
@@ -1321,7 +1319,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: const Color(0xFF27ae60),
-                            width: 1,
                           ),
                         ),
                         child: Row(
@@ -1400,7 +1397,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           border: Border.all(
             color:
                 themeService.isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-            width: 1,
           ),
         ),
         child: Center(
@@ -1507,7 +1503,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: horizontalPadding, vertical: 8),
                       child: Wrap(
-                        alignment: WrapAlignment.start, // 左对齐
                         spacing: spacing,
                         runSpacing: spacing,
                         children: options.map((option) {
@@ -1902,7 +1897,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   /// 构建可滚动的节目单（用于平板横屏）
   Widget _buildProgramGuideScrollable(
       ThemeData theme, ThemeService themeService) {
-    return Container(
+    return DecoratedBox(
       decoration: const BoxDecoration(
         color: Colors.transparent,
       ),
@@ -1949,7 +1944,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
           border: Border.all(
             color:
                 themeService.isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-            width: 1,
           ),
         ),
         child: Center(
@@ -2100,7 +2094,6 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: borderColor,
-          width: 1,
         ),
       ),
       child: Column(

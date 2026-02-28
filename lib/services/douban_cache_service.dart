@@ -35,7 +35,9 @@ class CacheItem<T> {
       if (!json.containsKey('data') ||
           !json.containsKey('timestamp') ||
           !json.containsKey('expiration')) {
-        throw FormatException('缓存项缺少必需字段: ${json.keys.toList()}');
+        throw FormatException(
+          '缓存项缺少必需字段: ${json.keys.toList()}',
+        );
       }
 
       final timestampValue = json['timestamp'];
@@ -341,15 +343,14 @@ class DoubanCacheService {
     required String type,
     required int pageLimit,
     required int page,
-  }) {
-    return _generateCacheKey('douban_category', {
-      'kind': kind,
-      'category': category,
-      'type': type,
-      'pageLimit': pageLimit,
-      'page': page,
-    });
-  }
+  }) =>
+      _generateCacheKey('douban_category', {
+        'kind': kind,
+        'category': category,
+        'type': type,
+        'pageLimit': pageLimit,
+        'page': page,
+      });
 
   /// 为豆瓣推荐数据生成缓存键
   String generateDoubanRecommendsCacheKey({
@@ -363,38 +364,35 @@ class DoubanCacheService {
     required String label,
     required int pageLimit,
     required int page,
-  }) {
-    return _generateCacheKey('douban_recommends', {
-      'kind': kind,
-      'category': category,
-      'format': format,
-      'region': region,
-      'year': year,
-      'platform': platform,
-      'sort': sort,
-      'label': label,
-      'pageLimit': pageLimit,
-      'page': page,
-    });
-  }
+  }) =>
+      _generateCacheKey('douban_recommends', {
+        'kind': kind,
+        'category': category,
+        'format': format,
+        'region': region,
+        'year': year,
+        'platform': platform,
+        'sort': sort,
+        'label': label,
+        'pageLimit': pageLimit,
+        'page': page,
+      });
 
   /// 为豆瓣详情数据生成缓存键
   String generateDoubanDetailsCacheKey({
     required String doubanId,
-  }) {
-    return _generateCacheKey('douban_details', {
-      'doubanId': doubanId,
-    });
-  }
+  }) =>
+      _generateCacheKey('douban_details', {
+        'doubanId': doubanId,
+      });
 
   /// 为 Bangumi 详情数据生成缓存键
   String generateBangumiDetailsCacheKey({
     required String bangumiId,
-  }) {
-    return _generateCacheKey('bangumi_details', {
-      'bangumiId': bangumiId,
-    });
-  }
+  }) =>
+      _generateCacheKey('bangumi_details', {
+        'bangumiId': bangumiId,
+      });
 
   /// 清理所有缓存（用于调试）
   Future<void> clearAllCache() async {

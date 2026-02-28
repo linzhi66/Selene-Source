@@ -91,7 +91,9 @@ class _CustomSwitchState extends State<CustomSwitch>
             ),
             child: Align(
               alignment: Alignment(
-                  _thumbAnimation.value * 2 - 1, 0), // Map 0-1 to -1 to 1
+                _thumbAnimation.value * 2 - 1,
+                0,
+              ), // Map 0-1 to -1 to 1
               child: Container(
                 width: widget.height - 4,
                 height: widget.height - 4,

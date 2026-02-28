@@ -66,7 +66,7 @@ class _CapsuleTabSwitcherState extends State<CapsuleTabSwitcher>
         ),
         maxLines: 1,
         textDirection: TextDirection.ltr,
-      )..layout(minWidth: 0, maxWidth: double.infinity);
+      )..layout();
       _tabWidths.add(textPainter.size.width + 24); // 12 padding on each side
     }
 

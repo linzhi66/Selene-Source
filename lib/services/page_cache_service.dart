@@ -23,9 +23,7 @@ class PageCacheService
   final Map<String, dynamic> _cache = {};
 
   /// 获取缓存数据
-  T? getCache<T>(String key) {
-    return _cache[key] as T?;
-  }
+  T? getCache<T>(String key) => _cache[key] as T?;
 
   /// 设置缓存数据
   void setCache<T>(String key, T data) {
@@ -46,7 +44,8 @@ class PageCacheService
 
   @override
   Future<DataOperationResult<List<PlayRecord>>> getPlayRecords(
-      BuildContext context) async {
+    BuildContext context,
+  ) async {
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
       return DataOperationResult.success(
@@ -63,7 +62,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getPlayRecordsDirect(
+    return getPlayRecordsDirect(
         context); // ignore: use_build_context_synchronously
   }
 
@@ -258,7 +257,8 @@ class PageCacheService
 
   @override
   Future<DataOperationResult<List<FavoriteItem>>> getFavorites(
-      BuildContext context) async {
+    BuildContext context,
+  ) async {
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
       return DataOperationResult.success(
@@ -277,7 +277,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getFavoritesDirect(
+    return getFavoritesDirect(
         context); // ignore: use_build_context_synchronously
   }
 
@@ -333,11 +333,16 @@ class PageCacheService
   }
 
   @override
-  Future<DataOperationResult<void>> addFavorite(String source, String id,
-      Map<String, dynamic> favoriteData, BuildContext context) async {
+  Future<DataOperationResult<void>> addFavorite(
+    String source,
+    String id,
+    Map<String, dynamic> favoriteData,
+    BuildContext context,
+  ) async {
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
-      await LocalModeStorageService.saveFavorite(FavoriteItem(
+      await LocalModeStorageService.saveFavorite(
+        FavoriteItem(
           id: id,
           source: source,
           title: favoriteData['title'],
@@ -346,7 +351,9 @@ class PageCacheService
           cover: favoriteData['cover'],
           totalEpisodes: favoriteData['total_episodes'],
           saveTime: favoriteData['save_time'],
-          origin: ''));
+          origin: '',
+        ),
+      );
       return DataOperationResult.success(null);
     }
 
@@ -367,7 +374,10 @@ class PageCacheService
 
   @override
   Future<DataOperationResult<void>> removeFavorite(
-      String source, String id, BuildContext context) async {
+    String source,
+    String id,
+    BuildContext context,
+  ) async {
     final isLocalMode = await UserDataService.getIsLocalMode();
     if (isLocalMode) {
       await LocalModeStorageService.deleteFavorite(source, id);
@@ -463,7 +473,8 @@ class PageCacheService
 
   @override
   Future<DataOperationResult<List<String>>> getSearchHistory(
-      BuildContext context) async {
+    BuildContext context,
+  ) async {
     final isLocalMode = UserDataService.getIsLocalModeSync();
     if (isLocalMode) {
       return DataOperationResult.success(
@@ -480,7 +491,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getSearchHistoryDirect(context);
+    return getSearchHistoryDirect(context);
   }
 
   /// 直接走接口并保存到缓存
@@ -579,7 +590,9 @@ class PageCacheService
 
   @override
   Future<DataOperationResult<void>> deleteSearchHistory(
-      String query, BuildContext context) async {
+    String query,
+    BuildContext context,
+  ) async {
     final isLocalMode = UserDataService.getIsLocalModeSync();
     if (isLocalMode) {
       await LocalModeStorageService.deleteSearchHistory(query);
@@ -646,7 +659,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getHotMoviesDirect(context);
+    return getHotMoviesDirect(context);
   }
 
   /// 直接走接口并保存到缓存
@@ -680,7 +693,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getHotTvShowsDirect(context);
+    return getHotTvShowsDirect(context);
   }
 
   /// 直接走接口并保存到缓存
@@ -716,7 +729,7 @@ class PageCacheService
     }
 
     // 缓存未命中，直接走接口并保存到缓存
-    return await getHotShowsDirect(context);
+    return getHotShowsDirect(context);
   }
 
   /// 直接走接口并保存到缓存

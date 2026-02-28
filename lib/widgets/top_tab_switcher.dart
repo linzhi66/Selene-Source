@@ -40,10 +40,12 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
     _animation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
     // 根据初始选中状态设置动画
     if (widget.selectedTab == '首页') {
@@ -138,17 +140,29 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
                     // 首页按钮
                     Expanded(
                       child: _buildTabButton(
-                          '首页', widget.selectedTab == '首页', 0, themeService),
+                        '首页',
+                        widget.selectedTab == '首页',
+                        0,
+                        themeService,
+                      ),
                     ),
                     // 播放历史按钮
                     Expanded(
-                      child: _buildTabButton('播放历史',
-                          widget.selectedTab == '播放历史', 1, themeService),
+                      child: _buildTabButton(
+                        '播放历史',
+                        widget.selectedTab == '播放历史',
+                        1,
+                        themeService,
+                      ),
                     ),
                     // 收藏夹按钮
                     Expanded(
                       child: _buildTabButton(
-                          '收藏夹', widget.selectedTab == '收藏夹', 2, themeService),
+                        '收藏夹',
+                        widget.selectedTab == '收藏夹',
+                        2,
+                        themeService,
+                      ),
                     ),
                   ],
                 ),
@@ -162,7 +176,11 @@ class _TopTabSwitcherState extends State<TopTabSwitcher>
 
   /// 构建标签按钮
   Widget _buildTabButton(
-      String label, bool isSelected, int index, ThemeService themeService) {
+    String label,
+    bool isSelected,
+    int index,
+    ThemeService themeService,
+  ) {
     final bool isPC = DeviceUtils.isPC();
     final bool isHovering = label == '首页'
         ? _isHoveringHome

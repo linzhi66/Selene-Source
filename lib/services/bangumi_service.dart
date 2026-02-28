@@ -45,8 +45,11 @@ class BangumiService {
       );
       if (cachedRaw != null && cachedRaw.isNotEmpty) {
         final calendar = cachedRaw
-            .map((item) =>
-                BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
+            .map(
+              (item) => BangumiCalendarResponse.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
             .toList();
         BangumiCalendarResponse? targetDay;
         for (final day in calendar) {
@@ -78,8 +81,11 @@ class BangumiService {
 
         // 解析所有星期数据
         final List<BangumiCalendarResponse> calendarData = responseData
-            .map((item) =>
-                BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
+            .map(
+              (item) => BangumiCalendarResponse.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
             .toList();
 
         BangumiCalendarResponse? targetDay;
@@ -182,7 +188,10 @@ class BangumiService {
             // 静默处理缓存错误
           }
 
-          return ApiResponse.success(details, statusCode: response.statusCode);
+          return ApiResponse.success(
+            details,
+            statusCode: response.statusCode,
+          );
         } catch (parseError) {
           return ApiResponse.error(
               'Bangumi 详情数据解析失败: ${parseError.toString()}');

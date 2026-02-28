@@ -34,10 +34,12 @@ class _ShimmerEffectState extends State<ShimmerEffect>
     _shimmerAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _shimmerController,
+        curve: Curves.easeInOut,
+      ),
+    );
     _shimmerController.repeat();
   }
 
@@ -60,8 +62,6 @@ class _ShimmerEffectState extends State<ShimmerEffect>
               decoration: BoxDecoration(
                 borderRadius: widget.borderRadius,
                 gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
                   colors: themeService.isDarkMode
                       ? [
                           const Color(0xFF333333),

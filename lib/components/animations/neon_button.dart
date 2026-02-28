@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:selene/design/design_system.dart';
 
 /// 霓虹按钮组件
-/// 
+///
 /// 带有发光效果和渐变背景的现代化按钮
 class NeonButton extends StatefulWidget {
   final String text;
@@ -62,13 +62,13 @@ class _NeonButtonState extends State<NeonButton> {
           curve: AppAnimations.standard,
           child: Container(
             height: widget.height,
-          width: widget.isFullWidth ? double.infinity : null,
-          padding: widget.padding,
-          decoration: BoxDecoration(
-            gradient: widget.gradient,
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            boxShadow: _buildShadows(),
-          ),
+            width: widget.isFullWidth ? double.infinity : null,
+            padding: widget.padding,
+            decoration: BoxDecoration(
+              gradient: widget.gradient,
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              boxShadow: _buildShadows(),
+            ),
             child: AnimatedOpacity(
               duration: AppAnimations.fast,
               opacity: widget.onPressed == null ? 0.5 : 1.0,
@@ -202,8 +202,8 @@ class _NeonOutlineButtonState extends State<NeonOutlineButton> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.borderRadius),
             border: Border.all(
-              color: _isHovered 
-                  ? widget.borderColor 
+              color: _isHovered
+                  ? widget.borderColor
                   : widget.borderColor.withValues(alpha: 0.5),
               width: _isHovered ? 2 : 1.5,
             ),
@@ -310,20 +310,18 @@ class _NeonIconButtonState extends State<NeonIconButton> {
             width: widget.size,
             height: widget.size,
             decoration: BoxDecoration(
-            color: widget.backgroundColor ??
-                (isDark 
-                    ? AppColors.darkElevated 
-                    : AppColors.lightSurface),
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            boxShadow: widget.isGlow && _isHovered
-                ? [
-                    BoxShadow(
-                      color: effectiveColor.withValues(alpha: 0.5),
-                      blurRadius: 20,
-                      spreadRadius: -5,
-                    ),
-                  ]
-                : AppShadows.small,
+              color: widget.backgroundColor ??
+                  (isDark ? AppColors.darkElevated : AppColors.lightSurface),
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              boxShadow: widget.isGlow && _isHovered
+                  ? [
+                      BoxShadow(
+                        color: effectiveColor.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        spreadRadius: -5,
+                      ),
+                    ]
+                  : AppShadows.small,
             ),
             child: Icon(
               widget.icon,

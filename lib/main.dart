@@ -203,7 +203,7 @@ class _AppWrapperState extends State<AppWrapper> {
       return Consumer<ThemeService>(
         builder: (context, themeService, child) {
           return Scaffold(
-            body: Container(
+            body: DecoratedBox(
               decoration: BoxDecoration(
                 color: themeService.isDarkMode
                     ? const Color(0xFF000000) // 深色模式纯黑色

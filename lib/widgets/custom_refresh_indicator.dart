@@ -26,8 +26,6 @@ class CustomRefreshIndicator extends StatelessWidget {
           color: const Color(0xFF27AE60), // 绿色主题
           backgroundColor:
               themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
-          strokeWidth: 2.5,
-          displacement: 40,
           child: this.child,
         );
       },
@@ -122,8 +120,6 @@ class StyledRefreshIndicator extends StatelessWidget {
               (themeService.isDarkMode
                   ? const Color(0xFF1e1e1e)
                   : Colors.white),
-          strokeWidth: 2.5,
-          displacement: 40,
           child: this.child,
         );
       },

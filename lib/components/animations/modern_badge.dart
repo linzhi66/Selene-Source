@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:selene/design/design_system.dart';
 
 /// 现代化徽章组件
-/// 
+///
 /// 用于显示状态、标签、计数等
 class ModernBadge extends StatelessWidget {
   final String text;
@@ -107,8 +107,6 @@ class ModernBadge extends StatelessWidget {
 
     if (isAnimated) {
       badge = PulseAnimation(
-        minScale: 1.0,
-        maxScale: 1.05,
         child: badge,
       );
     }
@@ -121,7 +119,7 @@ class ModernBadge extends StatelessWidget {
       return BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: AppShadows.primary(intensity: 0.3),
+        boxShadow: AppShadows.primary(),
       );
     }
 
@@ -131,7 +129,6 @@ class ModernBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.3),
-          width: 1,
         ),
       );
     }
@@ -285,7 +282,7 @@ class RatingBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveSize = size ?? 32.0;
-    
+
     // 根据评分确定颜色
     Color color;
     if (rating >= 8) {

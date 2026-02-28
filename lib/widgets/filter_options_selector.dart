@@ -50,7 +50,6 @@ void showFilterOptionsSelector({
                         color: Theme.of(context)
                             .dividerColor
                             .withValues(alpha: 0.1),
-                        width: 1,
                       ),
                     ),
                   ),
@@ -108,7 +107,7 @@ void showFilterOptionsSelector({
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return Container(
+        return DecoratedBox(
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: const BorderRadius.only(

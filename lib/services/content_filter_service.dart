@@ -41,7 +41,5 @@ class ContentFilterService {
   }
 
   /// 检查搜索结果是否应该被过滤
-  static bool shouldFilter(String? typeName) {
-    return containsYellowWord(typeName);
-  }
+  static bool shouldFilter(String? typeName) => containsYellowWord(typeName);
 }

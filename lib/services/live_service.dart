@@ -26,9 +26,8 @@ class _CacheItem<T> {
   _CacheItem(this.data, this.cacheTime);
 
   /// 检查缓存是否过期
-  bool isExpired(Duration maxAge) {
-    return DateTime.now().difference(cacheTime) > maxAge;
-  }
+  bool isExpired(Duration maxAge) =>
+      DateTime.now().difference(cacheTime) > maxAge;
 }
 
 /// 直播服务
@@ -43,8 +42,9 @@ class LiveService {
   static const Duration _epgCacheDuration = Duration(hours: 2);
 
   /// 获取所有直播源（乐观缓存：过期时先返回旧数据，后台异步刷新）
-  static Future<List<LiveSource>> getLiveSources(
-      {bool forceRefresh = false}) async {
+  static Future<List<LiveSource>> getLiveSources({
+    bool forceRefresh = false,
+  }) async {
     // 如果有缓存且未过期，直接返回
     if (!forceRefresh &&
         _liveSourcesCache != null &&
@@ -59,7 +59,7 @@ class LiveService {
       return _liveSourcesCache!.data;
     }
     // 没有缓存或强制刷新，同步获取
-    return await _fetchAndCacheLiveSources();
+    return _fetchAndCacheLiveSources();
   }
 
   /// 获取并缓存直播源
@@ -81,8 +81,10 @@ class LiveService {
   }
 
   /// 获取指定直播源的频道列表（乐观缓存：过期时先返回旧数据，后台异步刷新）
-  static Future<List<LiveChannel>> getLiveChannels(String sourceKey,
-      {bool forceRefresh = false}) async {
+  static Future<List<LiveChannel>> getLiveChannels(
+    String sourceKey, {
+    bool forceRefresh = false,
+  }) async {
     // 如果有缓存且未过期，直接返回
     if (!forceRefresh && _channelsCache.containsKey(sourceKey)) {
       final cache = _channelsCache[sourceKey]!;
@@ -98,7 +100,7 @@ class LiveService {
       return _channelsCache[sourceKey]!.data.channels;
     }
     // 没有缓存或强制刷新，同步获取
-    return await _fetchAndCacheChannels(sourceKey);
+    return _fetchAndCacheChannels(sourceKey);
   }
 
   /// 获取并缓存频道列表
@@ -107,8 +109,9 @@ class LiveService {
     try {
       // 从缓存中获取对应的 LiveSource
       final liveSource = _liveSourcesCache?.data.firstWhere(
-          (source) => source.key == sourceKey,
-          orElse: () => throw Exception('未找到直播源: $sourceKey'));
+        (source) => source.key == sourceKey,
+        orElse: () => throw Exception('未找到直播源: $sourceKey'),
+      );
       if (liveSource == null) {
         throw Exception('未找到直播源: $sourceKey');
       }
@@ -166,9 +169,9 @@ class LiveService {
 
   /// 获取频道名称到频道列表的映射
   static Map<String, List<LiveChannel>> getChannelsByNameMap(
-      List<LiveChannel> channels) {
-    return _getUniqueChannelsMap(channels);
-  }
+    List<LiveChannel> channels,
+  ) =>
+      _getUniqueChannelsMap(channels);
 
   /// 智能解码响应内容，支持 UTF-8、GBK、GB2312 等编码
   static String _decodeResponse(List<int> bytes) {
@@ -259,14 +262,16 @@ class LiveService {
 
           // 只有当有名称和URL时才添加到结果中，并验证URL格式
           if (name.isNotEmpty && url.isNotEmpty && Uri.tryParse(url) != null) {
-            channels.add(LiveChannel(
-              id: '$sourceKey-$channelIndex',
-              tvgId: tvgId,
-              name: name,
-              logo: logo,
-              group: group,
-              url: url,
-            ));
+            channels.add(
+              LiveChannel(
+                id: '$sourceKey-$channelIndex',
+                tvgId: tvgId,
+                name: name,
+                logo: logo,
+                group: group,
+                url: url,
+              ),
+            );
             channelIndex++;
           }
 
@@ -280,8 +285,11 @@ class LiveService {
   }
 
   /// 获取 EPG 节目单（乐观缓存：过期时先返回旧数据，后台异步刷新）
-  static Future<EpgData?> getLiveEpg(String tvgId, String sourceKey,
-      {bool forceRefresh = false}) async {
+  static Future<EpgData?> getLiveEpg(
+    String tvgId,
+    String sourceKey, {
+    bool forceRefresh = false,
+  }) async {
     // 如果有缓存且未过期，从缓存中查找对应 tvgId 的数据
     if (!forceRefresh && _epgCache.containsKey(sourceKey)) {
       final cache = _epgCache[sourceKey]!;
@@ -361,12 +369,14 @@ class LiveService {
       for (final entry in epgMap.entries) {
         final tvgId = entry.key;
         final programs = entry.value
-            .map((p) => EpgProgram(
-                  channelId: tvgId,
-                  title: p['title'] ?? '',
-                  startTime: _parseEpgDateTime(p['start'] ?? ''),
-                  endTime: _parseEpgDateTime(p['end'] ?? ''),
-                ))
+            .map(
+              (p) => EpgProgram(
+                channelId: tvgId,
+                title: p['title'] ?? '',
+                startTime: _parseEpgDateTime(p['start'] ?? ''),
+                endTime: _parseEpgDateTime(p['end'] ?? ''),
+              ),
+            )
             .toList();
 
         epgDataMap[tvgId] = EpgData(

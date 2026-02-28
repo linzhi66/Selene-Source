@@ -77,9 +77,10 @@ class DownstreamService {
       }
 
       // 过滤包含黄色关键词的结果
-      final filteredResults = results.where((result) {
-        return !ContentFilterService.shouldFilter(result.typeName);
-      }).toList();
+      final filteredResults = results
+          .where(
+              (result) => !ContentFilterService.shouldFilter(result.typeName))
+          .toList();
 
       return filteredResults;
     } catch (error) {
@@ -102,15 +103,13 @@ class DownstreamService {
   }
 
   /// 解码 HTML 实体
-  static String _decodeHtmlEntities(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ');
-  }
+  static String _decodeHtmlEntities(String text) => text
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&nbsp;', ' ');
 
   /// 分页搜索
   static Future<SearchPageResult> searchPage({

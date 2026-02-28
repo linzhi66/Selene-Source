@@ -310,10 +310,12 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
     _transitionAnimation = Tween<double>(
       begin: startHeight,
       end: targetHeight,
-    ).animate(CurvedAnimation(
-      parent: _transitionAnimationController,
-      curve: Curves.easeOutQuart, // 使用更平滑的曲线
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _transitionAnimationController,
+        curve: Curves.easeOutQuart, // 使用更平滑的曲线
+      ),
+    );
 
     _transitionAnimation!.addListener(() {
       if (mounted) {
@@ -329,7 +331,10 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
   /// 更新拖拽高度 - 用于更高效的拖拽处理
   void _updateDragHeight(
-      double newHeight, double effectiveMaxHeight, bool isDraggingDown) {
+    double newHeight,
+    double effectiveMaxHeight,
+    bool isDraggingDown,
+  ) {
     // 限制高度在有效范围内
     final clampedHeight =
         newHeight.clamp(_initialSheetHeight!, effectiveMaxHeight);
@@ -513,7 +518,10 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                         _currentSheetHeight! > _initialSheetHeight!) {
                       // 使用高效的拖拽高度更新
                       _updateDragHeight(
-                          newHeight, effectiveMaxHeight, isDraggingDown);
+                        newHeight,
+                        effectiveMaxHeight,
+                        isDraggingDown,
+                      );
                       return;
                     }
 
@@ -527,14 +535,20 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                         return;
                       }
                       // 否则保持在初始高度
-                      _updateDragHeight(_initialSheetHeight!,
-                          effectiveMaxHeight, isDraggingDown);
+                      _updateDragHeight(
+                        _initialSheetHeight!,
+                        effectiveMaxHeight,
+                        isDraggingDown,
+                      );
                       return;
                     }
                   } else {
                     // 使用高效的拖拽高度更新
                     _updateDragHeight(
-                        newHeight, effectiveMaxHeight, isDraggingDown);
+                      newHeight,
+                      effectiveMaxHeight,
+                      isDraggingDown,
+                    );
                   }
                 }
               },
@@ -729,7 +743,8 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                     BoxShadow(
                                                       color: Colors.black
                                                           .withValues(
-                                                              alpha: 0.1),
+                                                        alpha: 0.1,
+                                                      ),
                                                       blurRadius: 4,
                                                       offset:
                                                           const Offset(0, 2),
@@ -749,25 +764,29 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                     memCacheHeight: 160,
                                                     fadeInDuration:
                                                         const Duration(
-                                                            milliseconds: 150),
+                                                      milliseconds: 150,
+                                                    ),
                                                     // 更快的淡入动画
                                                     fadeOutDuration:
                                                         const Duration(
-                                                            milliseconds: 100),
+                                                      milliseconds: 100,
+                                                    ),
                                                     placeholder:
                                                         (context, url) =>
                                                             Container(
                                                       color: themeService
                                                               .isDarkMode
                                                           ? const Color(
-                                                              0xFF333333)
+                                                              0xFF333333,
+                                                            )
                                                           : Colors.grey[300],
                                                       child: Icon(
                                                         Icons.movie,
                                                         color: themeService
                                                                 .isDarkMode
                                                             ? const Color(
-                                                                0xFF666666)
+                                                                0xFF666666,
+                                                              )
                                                             : Colors.grey,
                                                         size: 24,
                                                       ),
@@ -778,14 +797,16 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                       color: themeService
                                                               .isDarkMode
                                                           ? const Color(
-                                                              0xFF333333)
+                                                              0xFF333333,
+                                                            )
                                                           : Colors.grey[300],
                                                       child: Icon(
                                                         Icons.movie,
                                                         color: themeService
                                                                 .isDarkMode
                                                             ? const Color(
-                                                                0xFF666666)
+                                                                0xFF666666,
+                                                              )
                                                             : Colors.grey,
                                                         size: 24,
                                                       ),
@@ -813,9 +834,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                       color: themeService
                                                               .isDarkMode
                                                           ? const Color(
-                                                              0xFFFFFFFF)
+                                                              0xFFFFFFFF,
+                                                            )
                                                           : const Color(
-                                                              0xFF2C2C2C),
+                                                              0xFF2C2C2C,
+                                                            ),
                                                     ),
                                                     maxLines: 2,
                                                     overflow:
@@ -843,9 +866,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                             color: themeService
                                                                     .isDarkMode
                                                                 ? const Color(
-                                                                    0xFF999999)
+                                                                    0xFF999999,
+                                                                  )
                                                                 : const Color(
-                                                                    0xFF666666),
+                                                                    0xFF666666,
+                                                                  ),
                                                           ),
                                                         )
                                                       : // 聚合来源：显示播放源数量并可点击
@@ -867,13 +892,16 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                                       color: themeService
                                                                               .isDarkMode
                                                                           ? const Color(
-                                                                              0xFF999999)
+                                                                              0xFF999999,
+                                                                            )
                                                                           : const Color(
-                                                                              0xFF666666),
+                                                                              0xFF666666,
+                                                                            ),
                                                                     ),
                                                                   ),
                                                                   const SizedBox(
-                                                                      width: 4),
+                                                                    width: 4,
+                                                                  ),
                                                                   Icon(
                                                                     Icons
                                                                         .chevron_right,
@@ -881,9 +909,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                                     color: themeService
                                                                             .isDarkMode
                                                                         ? const Color(
-                                                                            0xFF999999)
+                                                                            0xFF999999,
+                                                                          )
                                                                         : const Color(
-                                                                            0xFF666666),
+                                                                            0xFF666666,
+                                                                          ),
                                                                   ),
                                                                 ],
                                                               ),
@@ -903,15 +933,17 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                                   color: themeService
                                                                           .isDarkMode
                                                                       ? const Color(
-                                                                          0xFF666666)
+                                                                          0xFF666666,
+                                                                        )
                                                                       : const Color(
-                                                                          0xFFE0E0E0),
-                                                                  width: 1,
+                                                                          0xFFE0E0E0,
+                                                                        ),
                                                                 ),
                                                                 borderRadius:
                                                                     BorderRadius
                                                                         .circular(
-                                                                            4),
+                                                                  4,
+                                                                ),
                                                               ),
                                                               child: Text(
                                                                 widget.videoInfo
@@ -922,9 +954,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                                                   color: themeService
                                                                           .isDarkMode
                                                                       ? const Color(
-                                                                          0xFF999999)
+                                                                          0xFF999999,
+                                                                        )
                                                                       : const Color(
-                                                                          0xFF666666),
+                                                                          0xFF666666,
+                                                                        ),
                                                                 ),
                                                               ),
                                                             ),
@@ -957,18 +991,23 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                       // 豆瓣详情区域（仅在加载完成后展示）
                                       if (_doubanDetails != null)
                                         _buildDoubanDetailsSection(
-                                            context, themeService),
+                                          context,
+                                          themeService,
+                                        ),
 
                                       // Bangumi 详情区域（仅在加载完成后展示）
                                       if (_bangumiDetails != null)
                                         _buildBangumiDetailsSection(
-                                            context, themeService),
+                                          context,
+                                          themeService,
+                                        ),
 
                                       // 底部安全区域
                                       SizedBox(
-                                          height: MediaQuery.of(context)
-                                              .padding
-                                              .bottom),
+                                        height: MediaQuery.of(context)
+                                            .padding
+                                            .bottom,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -984,7 +1023,6 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                               left: 0,
                               right: 0,
                               child: IgnorePointer(
-                                ignoring: true,
                                 child: Center(
                                   child: _buildScrollIndicator(themeService),
                                 ),
@@ -1028,7 +1066,9 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
   /// 构建豆瓣详情区域
   Widget _buildDoubanDetailsSection(
-      BuildContext context, ThemeService themeService) {
+    BuildContext context,
+    ThemeService themeService,
+  ) {
     if (_isLoadingDoubanDetails) {
       return const SizedBox.shrink();
     }
@@ -1105,7 +1145,6 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                     color: themeService.isDarkMode
                         ? const Color(0xFF666666)
                         : const Color(0xFFE0E0E0),
-                    width: 1,
                   ),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -1130,40 +1169,50 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
               runSpacing: 8,
               children: _doubanDetails!.genres
                   .take(5)
-                  .map((genre) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
+                  .map(
+                    (genre) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: themeService.isDarkMode
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        genre,
+                        style: FontUtils.poppins(
+                          fontSize: 12,
                           color: themeService.isDarkMode
-                              ? const Color(0xFF404040)
-                              : const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(4),
+                              ? const Color(0xFFCCCCCC)
+                              : const Color(0xFF666666),
                         ),
-                        child: Text(
-                          genre,
-                          style: FontUtils.poppins(
-                            fontSize: 12,
-                            color: themeService.isDarkMode
-                                ? const Color(0xFFCCCCCC)
-                                : const Color(0xFF666666),
-                          ),
-                        ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
-            )
+            ),
           ],
 
           // 导演和演员
           if (_doubanDetails!.directors.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildDetailRow(
-                '导演', _doubanDetails!.directors.join(', '), themeService),
+              '导演',
+              _doubanDetails!.directors.join(', '),
+              themeService,
+            ),
           ],
 
           if (_doubanDetails!.actors.isNotEmpty) ...[
             const SizedBox(height: 8),
             _buildDetailRow(
-                '主演', _doubanDetails!.actors.take(3).join(', '), themeService),
+              '主演',
+              _doubanDetails!.actors.take(3).join(', '),
+              themeService,
+            ),
           ],
 
           // 简介
@@ -1201,7 +1250,9 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
   /// 构建 Bangumi 详情区域
   Widget _buildBangumiDetailsSection(
-      BuildContext context, ThemeService themeService) {
+    BuildContext context,
+    ThemeService themeService,
+  ) {
     if (_isLoadingBangumiDetails) {
       return const SizedBox.shrink();
     }
@@ -1280,7 +1331,6 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                       color: themeService.isDarkMode
                           ? const Color(0xFF666666)
                           : const Color(0xFFE0E0E0),
-                      width: 1,
                     ),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -1306,27 +1356,31 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
               runSpacing: 8,
               children: _bangumiDetails!.metaTags
                   .take(5)
-                  .map((tag) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
+                  .map(
+                    (tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: themeService.isDarkMode
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        tag,
+                        style: FontUtils.poppins(
+                          fontSize: 12,
                           color: themeService.isDarkMode
-                              ? const Color(0xFF404040)
-                              : const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(4),
+                              ? const Color(0xFFCCCCCC)
+                              : const Color(0xFF666666),
                         ),
-                        child: Text(
-                          tag,
-                          style: FontUtils.poppins(
-                            fontSize: 12,
-                            color: themeService.isDarkMode
-                                ? const Color(0xFFCCCCCC)
-                                : const Color(0xFF666666),
-                          ),
-                        ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
-            )
+            ),
           ],
 
           // 从infobox中提取相关信息
@@ -1366,7 +1420,10 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
   /// 构建详情行
   Widget _buildDetailRow(
-      String label, String value, ThemeService themeService) {
+    String label,
+    String value,
+    ThemeService themeService,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1643,9 +1700,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
           title: widget.isFavorited ? '取消收藏' : '收藏',
           onTap: () {
             widget.onClose();
-            widget.onActionSelected(widget.isFavorited
-                ? VideoMenuAction.unfavorite
-                : VideoMenuAction.favorite);
+            widget.onActionSelected(
+              widget.isFavorited
+                  ? VideoMenuAction.unfavorite
+                  : VideoMenuAction.favorite,
+            );
           },
         ),
       ];
@@ -1719,9 +1778,11 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
           title: widget.isFavorited ? '取消收藏' : '收藏',
           onTap: () {
             widget.onClose();
-            widget.onActionSelected(widget.isFavorited
-                ? VideoMenuAction.unfavorite
-                : VideoMenuAction.favorite);
+            widget.onActionSelected(
+              widget.isFavorited
+                  ? VideoMenuAction.unfavorite
+                  : VideoMenuAction.favorite,
+            );
           },
         ),
 
@@ -1876,7 +1937,6 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
 
     showDialog<void>(
       context: context,
-      barrierDismissible: true,
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,

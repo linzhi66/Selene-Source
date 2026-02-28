@@ -1,57 +1,57 @@
 import 'package:flutter/material.dart';
 
 /// Design System 2026 - 动画系统
-/// 
+///
 /// 提供统一的动画时长、曲线和过渡效果
 /// 遵循流畅、自然、有弹性的动画原则
 class AppAnimations {
   AppAnimations._();
 
   // ==================== 时长规范 ====================
-  
+
   /// 微交互 - 按钮反馈、小状态变化
   static const Duration micro = Duration(milliseconds: 100);
-  
+
   /// 快速 - 悬停效果、小过渡
   static const Duration fast = Duration(milliseconds: 200);
-  
+
   /// 正常 - 标准过渡、页面切换
   static const Duration normal = Duration(milliseconds: 300);
-  
+
   /// 中等 - 复杂动画、列表项
   static const Duration medium = Duration(milliseconds: 400);
-  
+
   /// 慢速 - 强调动画、入场效果
   static const Duration slow = Duration(milliseconds: 500);
-  
+
   /// 展示 - 英雄动画、大型过渡
   static const Duration showcase = Duration(milliseconds: 800);
 
   // ==================== 曲线规范 ====================
-  
+
   /// 标准曲线 - 自然减速
   static const Curve standard = Curves.easeOutCubic;
-  
+
   /// 入场曲线 - 快速开始，缓慢结束
   static const Curve enter = Curves.easeOutQuart;
-  
+
   /// 出场曲线 - 缓慢开始，快速结束
   static const Curve exit = Curves.easeInQuart;
-  
+
   /// 强调曲线 - 有弹性
   static const Curve emphasize = Curves.elasticOut;
-  
+
   /// 弹性曲线 - 强弹性
   static const Curve bounce = Curves.bounceOut;
-  
+
   /// 线性曲线 - 匀速
   static const Curve linear = Curves.linear;
-  
+
   /// 平滑曲线 - 非常平滑
   static const Curve smooth = Curves.fastEaseInToSlowEaseOut;
 
   // ==================== 预设过渡 ====================
-  
+
   /// 淡入过渡
   static Widget fadeIn({
     required Widget child,
@@ -420,8 +420,6 @@ class _ShimmerAnimationState extends State<ShimmerAnimation>
         return ShaderMask(
           shaderCallback: (bounds) {
             return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
               colors: [
                 Colors.transparent,
                 widget.shimmerColor.withValues(alpha: 0.3),
@@ -461,23 +459,23 @@ class PageTransition extends PageRouteBuilder<void> {
     required this.child,
     this.duration = AppAnimations.normal,
   }) : super(
-    pageBuilder: (context, animation, secondaryAnimation) => child,
-    transitionDuration: duration,
-    reverseTransitionDuration: duration,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      const begin = Offset(0.1, 0);
-      const end = Offset.zero;
-      final tween = Tween(begin: begin, end: end)
-          .chain(CurveTween(curve: AppAnimations.enter));
-      final offsetAnimation = animation.drive(tween);
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionDuration: duration,
+          reverseTransitionDuration: duration,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(0.1, 0);
+            const end = Offset.zero;
+            final tween = Tween(begin: begin, end: end)
+                .chain(CurveTween(curve: AppAnimations.enter));
+            final offsetAnimation = animation.drive(tween);
 
-      return FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: offsetAnimation,
-          child: child,
-        ),
-      );
-    },
-  );
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: offsetAnimation,
+                child: child,
+              ),
+            );
+          },
+        );
 }

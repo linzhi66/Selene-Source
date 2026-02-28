@@ -582,7 +582,6 @@ class _AnimeScreenState extends State<AnimeScreen> {
                     onGlobalMenuAction: (videoInfo, action) {
                       _handleMenuAction(videoInfo, action);
                     },
-                    contentType: 'anime',
                   )
                 : DoubanMoviesGrid(
                     movies: _animeList,

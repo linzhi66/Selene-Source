@@ -66,7 +66,10 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
 
     for (final result in widget.results) {
       final key = AggregatedSearchResult.generateKey(
-          result.title, result.year, result.episodes.length);
+        result.title,
+        result.year,
+        result.episodes.length,
+      );
 
       if (newAggregatedResults.containsKey(key)) {
         // 已存在，添加到现有聚合结果中
@@ -149,7 +152,6 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
                 onGlobalMenuAction: widget.onGlobalMenuAction != null
                     ? (action) => widget.onGlobalMenuAction!(videoInfo, action)
                     : null,
-                isFavorited: false,
                 // 聚合卡片不显示收藏状态
                 originalResults: aggregatedResult.originalResults,
                 onSourceSelected: widget.onSourceSelected,

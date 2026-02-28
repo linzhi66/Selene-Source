@@ -116,10 +116,8 @@ class UserDataService {
   }
 
   // 获取豆瓣数据源显示名称
-  static Future<String> getDoubanDataSourceDisplayName() async {
-    return _getDoubanDataSourceDisplayNameFromKey(
-        await getDoubanDataSourceKey());
-  }
+  static Future<String> getDoubanDataSourceDisplayName() async =>
+      _getDoubanDataSourceDisplayNameFromKey(await getDoubanDataSourceKey());
 
   // 保存豆瓣图片源设置（存储key值）
   static Future<void> saveDoubanImageSource(
@@ -135,10 +133,8 @@ class UserDataService {
   }
 
   // 获取豆瓣图片源显示名称
-  static Future<String> getDoubanImageSourceDisplayName() async {
-    return _getDoubanImageSourceDisplayNameFromKey(
-        await getDoubanImageSourceKey());
-  }
+  static Future<String> getDoubanImageSourceDisplayName() async =>
+      _getDoubanImageSourceDisplayNameFromKey(await getDoubanImageSourceKey());
 
   // 根据显示名称获取豆瓣数据源的key值
   static String _getDoubanDataSourceKeyFromDisplayName(String dataSource) {
@@ -216,7 +212,7 @@ class UserDataService {
   }
 
   // 保存优选测速设置
-  static Future<void> savePreferSpeedTest(bool enabled) async {
+  static Future<void> savePreferSpeedTest({required bool enabled}) async {
     await Hive.box<dynamic>(_boxName).put(_preferSpeedTestKey, enabled);
   }
 
@@ -232,7 +228,7 @@ class UserDataService {
   }
 
   // 保存本地搜索设置
-  static Future<void> saveLocalSearch(bool enabled) async {
+  static Future<void> saveLocalSearch({required bool enabled}) async {
     await Hive.box<dynamic>(_boxName).put(_localSearchKey, enabled);
   }
 
@@ -248,7 +244,7 @@ class UserDataService {
   }
 
   // 保存本地模式设置
-  static Future<void> saveIsLocalMode(bool isLocalMode) async {
+  static Future<void> saveIsLocalMode({required bool isLocalMode}) async {
     await Hive.box<dynamic>(_boxName).put(_isLocalModeKey, isLocalMode);
     _isLocalModeCache = isLocalMode;
   }
@@ -270,7 +266,5 @@ class UserDataService {
   }
 
   // 同步获取本地模式设置（从内存缓存读取）
-  static bool getIsLocalModeSync() {
-    return _isLocalModeCache ?? false;
-  }
+  static bool getIsLocalModeSync() => _isLocalModeCache ?? false;
 }

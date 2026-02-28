@@ -67,7 +67,9 @@ class PCPlayerControls extends StatefulWidget {
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool isFullscreen)? onDLNAButtonPressed;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
   final void Function(VoidCallback)? onExitWebFullscreenCallbackReady;
   final VoidCallback? onExitFullScreen;
@@ -331,10 +333,12 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
 
     final targetPosition = _swipeStartPosition +
         Duration(
-            milliseconds: (duration.inMilliseconds * swipeRatio * 0.1).round());
+          milliseconds: (duration.inMilliseconds * swipeRatio * 0.1).round(),
+        );
     final clampedPosition = Duration(
-        milliseconds:
-            targetPosition.inMilliseconds.clamp(0, duration.inMilliseconds));
+      milliseconds:
+          targetPosition.inMilliseconds.clamp(0, duration.inMilliseconds),
+    );
 
     setState(() {
       _dragPosition = clampedPosition;
@@ -614,7 +618,7 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
   @override
   Widget build(BuildContext context) {
     if (widget.isLoadingVideo) {
-      return Container(
+      return ColoredBox(
         color: Colors.black.withValues(alpha: 0.7),
         child: const Center(
           child: Column(
@@ -1201,7 +1205,6 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
               borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
               ),
             ),
             child: ClipRRect(
@@ -1286,7 +1289,6 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
               borderRadius: BorderRadius.circular(effectiveFullscreen ? 8 : 6),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
               ),
             ),
             child: ClipRRect(
@@ -1308,7 +1310,9 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 8.0, horizontal: 12.0),
+                        vertical: 8.0,
+                        horizontal: 12.0,
+                      ),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           return GestureDetector(
@@ -1344,7 +1348,8 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                   width: effectiveFullscreen ? 5 : 4,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(
-                                        effectiveFullscreen ? 2.5 : 2),
+                                      effectiveFullscreen ? 2.5 : 2,
+                                    ),
                                     color: Colors.white.withValues(alpha: 0.3),
                                   ),
                                 ),
@@ -1356,7 +1361,8 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                                       width: effectiveFullscreen ? 5 : 4,
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(
-                                            effectiveFullscreen ? 2.5 : 2),
+                                          effectiveFullscreen ? 2.5 : 2,
+                                        ),
                                         color: Colors.red,
                                       ),
                                     ),
@@ -1547,8 +1553,9 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
             : (details) async {
                 if (_isDragging) {
                   final seekPosition = Duration(
-                      milliseconds:
-                          (_dragValue * duration.inMilliseconds).round());
+                    milliseconds:
+                        (_dragValue * duration.inMilliseconds).round(),
+                  );
 
                   setState(() {
                     _isDragging = false;
@@ -1574,8 +1581,8 @@ class _CustomVideoProgressBarState extends State<CustomVideoProgressBar> {
                 widget.onDragStart?.call();
                 _updateDragPosition(details.localPosition.dx, context);
                 final seekPosition = Duration(
-                    milliseconds:
-                        (_dragValue * duration.inMilliseconds).round());
+                  milliseconds: (_dragValue * duration.inMilliseconds).round(),
+                );
 
                 setState(() {
                   _isSeeking = true;

@@ -134,7 +134,7 @@ class ScreenshotService {
         counter++;
       }
       // 捕获图像
-      final image = await boundary.toImage(pixelRatio: 1.0);
+      final image = await boundary.toImage();
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
         debugPrint('Failed to convert image to bytes');

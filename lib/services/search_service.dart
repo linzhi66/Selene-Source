@@ -21,7 +21,7 @@ class SearchService {
 
     // 本地模式不使用缓存，直接返回
     if (isLocalMode) {
-      return await LocalModeStorageService.getSearchSources();
+      return LocalModeStorageService.getSearchSources();
     }
 
     // 服务器模式使用缓存
@@ -35,7 +35,7 @@ class SearchService {
     }
 
     // 如果没有缓存，同步获取并缓存
-    return await _refreshCache();
+    return _refreshCache();
   }
 
   /// 刷新缓存（仅用于服务器模式）
@@ -117,10 +117,7 @@ class SearchService {
       final searchFutures = resources.map((resource) {
         return DownstreamService.searchFromApi(resource, query)
             .timeout(const Duration(seconds: 20))
-            .catchError((error) {
-          // 捕获错误，返回空列表
-          return <SearchResult>[];
-        });
+            .catchError((error) => <SearchResult>[]);
       }).toList();
 
       // 等待所有搜索完成
@@ -362,13 +359,11 @@ class SearchService {
   }
 
   /// 解码 HTML 实体
-  static String _decodeHtmlEntities(String text) {
-    return text
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#39;', "'")
-        .replaceAll('&nbsp;', ' ');
-  }
+  static String _decodeHtmlEntities(String text) => text
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&nbsp;', ' ');
 }

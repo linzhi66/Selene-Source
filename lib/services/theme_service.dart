@@ -3,18 +3,17 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:macos_window_utils/macos_window_utils.dart';
-
 import 'package:selene/design/design_system.dart';
 
 /// 主题服务
-/// 
+///
 /// 管理应用的主题模式和颜色方案
 /// 支持深色/浅色模式切换，并自动同步系统主题
 class ThemeService extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
-  
+
   bool get isDarkMode {
     if (_themeMode == ThemeMode.dark) return true;
     if (_themeMode == ThemeMode.light) return false;
@@ -39,7 +38,7 @@ class ThemeService extends ChangeNotifier {
     // 不再保存到 SharedPreferences，每次启动都重新遵循系统主题
     notifyListeners();
     _updateMacOSWindowAppearance();
-    
+
     // 更新系统 UI 样式
     _updateSystemUIOverlay();
   }
@@ -67,9 +66,8 @@ class ThemeService extends ChangeNotifier {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: brightness,
         statusBarBrightness: isDarkMode ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: isDarkMode 
-            ? AppColors.darkBackground 
-            : AppColors.lightBackground,
+        systemNavigationBarColor:
+            isDarkMode ? AppColors.darkBackground : AppColors.lightBackground,
         systemNavigationBarIconBrightness: brightness,
       ),
     );
@@ -104,19 +102,16 @@ class ThemeService extends ChangeNotifier {
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
-        onPrimary: Colors.white,
         primaryContainer: AppColors.primaryLight,
         onPrimaryContainer: Colors.white,
         secondary: AppColors.secondary,
         onSecondary: Colors.white,
         secondaryContainer: AppColors.secondaryLight,
         onSecondaryContainer: Colors.white,
-        surface: AppColors.lightSurface,
         onSurface: AppColors.lightTextPrimary,
         surfaceContainerHighest: AppColors.lightElevated,
         onSurfaceVariant: AppColors.lightTextSecondary,
         error: AppColors.error,
-        onError: Colors.white,
         outline: AppColors.lightBorder,
         shadow: Colors.black,
       ),
@@ -126,7 +121,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTypography.headlineSmallStyle(isDark: false),
+        titleTextStyle: AppTypography.headlineSmallStyle(),
         systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
       cardTheme: CardThemeData(
@@ -148,7 +143,7 @@ class ThemeService extends ChangeNotifier {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: AppTypography.buttonStyle(isDark: false),
+          textStyle: AppTypography.buttonStyle(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -159,14 +154,14 @@ class ThemeService extends ChangeNotifier {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: AppTypography.buttonStyle(isDark: false),
+          textStyle: AppTypography.buttonStyle(),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: AppTypography.buttonStyle(isDark: false),
+          textStyle: AppTypography.buttonStyle(),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -186,10 +181,11 @@ class ThemeService extends ChangeNotifier {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.error, width: 1),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: AppTypography.bodyMediumStyle(isDark: false).copyWith(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        hintStyle: AppTypography.bodyMediumStyle().copyWith(
           color: AppColors.lightTextTertiary,
         ),
       ),
@@ -197,17 +193,17 @@ class ThemeService extends ChangeNotifier {
         backgroundColor: AppColors.lightSurface.withValues(alpha: 0.95),
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.lightTextTertiary,
-        selectedLabelStyle: AppTypography.labelMediumStyle(isDark: false).copyWith(
+        selectedLabelStyle: AppTypography.labelMediumStyle().copyWith(
           fontWeight: AppTypography.semiBold,
         ),
-        unselectedLabelStyle: AppTypography.labelMediumStyle(isDark: false),
+        unselectedLabelStyle: AppTypography.labelMediumStyle(),
         elevation: 0,
         type: BottomNavigationBarType.fixed,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.lightElevated,
         selectedColor: AppColors.primary.withValues(alpha: 0.2),
-        labelStyle: AppTypography.labelMediumStyle(isDark: false),
+        labelStyle: AppTypography.labelMediumStyle(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -223,7 +219,7 @@ class ThemeService extends ChangeNotifier {
           color: AppColors.lightTextPrimary.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(8),
         ),
-        textStyle: AppTypography.labelMediumStyle(isDark: false).copyWith(
+        textStyle: AppTypography.labelMediumStyle().copyWith(
           color: Colors.white,
         ),
       ),
@@ -247,7 +243,6 @@ class ThemeService extends ChangeNotifier {
         secondaryContainer: AppColors.secondary,
         onSecondaryContainer: Colors.white,
         surface: AppColors.darkSurface,
-        onSurface: AppColors.darkTextPrimary,
         surfaceContainerHighest: AppColors.darkElevated,
         onSurfaceVariant: AppColors.darkTextSecondary,
         error: AppColors.errorLight,
@@ -321,9 +316,10 @@ class ThemeService extends ChangeNotifier {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.errorLight, width: 1),
+          borderSide: const BorderSide(color: AppColors.errorLight),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         hintStyle: AppTypography.bodyMediumStyle(isDark: true).copyWith(
           color: AppColors.darkTextTertiary,
         ),
@@ -332,7 +328,8 @@ class ThemeService extends ChangeNotifier {
         backgroundColor: AppColors.darkSurface.withValues(alpha: 0.95),
         selectedItemColor: AppColors.primaryLight,
         unselectedItemColor: AppColors.darkTextTertiary,
-        selectedLabelStyle: AppTypography.labelMediumStyle(isDark: true).copyWith(
+        selectedLabelStyle:
+            AppTypography.labelMediumStyle(isDark: true).copyWith(
           fontWeight: AppTypography.semiBold,
         ),
         unselectedLabelStyle: AppTypography.labelMediumStyle(isDark: true),
@@ -366,20 +363,18 @@ class ThemeService extends ChangeNotifier {
   }
 
   /// 构建文字主题
-  TextTheme _buildTextTheme({required bool isDark}) {
-    return TextTheme(
-      displayLarge: AppTypography.displayLargeStyle(isDark: isDark),
-      displayMedium: AppTypography.displayMediumStyle(isDark: isDark),
-      displaySmall: AppTypography.displaySmallStyle(isDark: isDark),
-      headlineLarge: AppTypography.headlineLargeStyle(isDark: isDark),
-      headlineMedium: AppTypography.headlineMediumStyle(isDark: isDark),
-      headlineSmall: AppTypography.headlineSmallStyle(isDark: isDark),
-      bodyLarge: AppTypography.bodyLargeStyle(isDark: isDark),
-      bodyMedium: AppTypography.bodyMediumStyle(isDark: isDark),
-      bodySmall: AppTypography.bodySmallStyle(isDark: isDark),
-      labelLarge: AppTypography.labelLargeStyle(isDark: isDark),
-      labelMedium: AppTypography.labelMediumStyle(isDark: isDark),
-      labelSmall: AppTypography.labelSmallStyle(isDark: isDark),
-    );
-  }
+  TextTheme _buildTextTheme({required bool isDark}) => TextTheme(
+        displayLarge: AppTypography.displayLargeStyle(isDark: isDark),
+        displayMedium: AppTypography.displayMediumStyle(isDark: isDark),
+        displaySmall: AppTypography.displaySmallStyle(isDark: isDark),
+        headlineLarge: AppTypography.headlineLargeStyle(isDark: isDark),
+        headlineMedium: AppTypography.headlineMediumStyle(isDark: isDark),
+        headlineSmall: AppTypography.headlineSmallStyle(isDark: isDark),
+        bodyLarge: AppTypography.bodyLargeStyle(isDark: isDark),
+        bodyMedium: AppTypography.bodyMediumStyle(isDark: isDark),
+        bodySmall: AppTypography.bodySmallStyle(isDark: isDark),
+        labelLarge: AppTypography.labelLargeStyle(isDark: isDark),
+        labelMedium: AppTypography.labelMediumStyle(isDark: isDark),
+        labelSmall: AppTypography.labelSmallStyle(isDark: isDark),
+      );
 }

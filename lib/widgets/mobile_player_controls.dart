@@ -15,8 +15,10 @@ import 'package:volume_controller/volume_controller.dart';
 class MobilePlayerControls extends StatefulWidget {
   final Player player;
   final VideoState state;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool) onControlsVisibilityChanged;
   final VoidCallback? onBackPressed;
+  // ignore: avoid_positional_boolean_parameters
   final void Function(bool) onFullscreenChange;
   final VoidCallback? onNextEpisode;
   final VoidCallback? onPause;
@@ -156,31 +158,37 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   }
 
   void _listenPlayerStreams() {
-    _subscriptions.add(widget.player.stream.playing.listen((playing) {
-      if (!mounted) return;
-      if (playing && _controlsVisible) {
-        _startHideTimer();
-      }
-      if (!playing) {
-        _hideTimer?.cancel();
-        if (!_controlsVisible) {
-          setState(() => _controlsVisible = true);
-          widget.onControlsVisibilityChanged(true);
+    _subscriptions.add(
+      widget.player.stream.playing.listen((playing) {
+        if (!mounted) return;
+        if (playing && _controlsVisible) {
+          _startHideTimer();
         }
-      }
-    }));
+        if (!playing) {
+          _hideTimer?.cancel();
+          if (!_controlsVisible) {
+            setState(() => _controlsVisible = true);
+            widget.onControlsVisibilityChanged(true);
+          }
+        }
+      }),
+    );
 
-    _subscriptions.add(widget.player.stream.position.listen((_) {
-      if (!mounted) return;
-      if (_controlsVisible && !_isSeekingViaSwipe) {
+    _subscriptions.add(
+      widget.player.stream.position.listen((_) {
+        if (!mounted) return;
+        if (_controlsVisible && !_isSeekingViaSwipe) {
+          setState(() {});
+        }
+      }),
+    );
+
+    _subscriptions.add(
+      widget.player.stream.completed.listen((_) {
+        if (!mounted) return;
         setState(() {});
-      }
-    }));
-
-    _subscriptions.add(widget.player.stream.completed.listen((_) {
-      if (!mounted) return;
-      setState(() {});
-    }));
+      }),
+    );
   }
 
   @override
@@ -464,7 +472,8 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     try {
       if (shouldLockPortrait) {
         await SystemChrome.setPreferredOrientations(
-            [DeviceOrientation.portraitUp]);
+          [DeviceOrientation.portraitUp],
+        );
       } else {
         await SystemChrome.setPreferredOrientations([
           DeviceOrientation.landscapeLeft,
@@ -709,7 +718,7 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   @override
   Widget build(BuildContext context) {
     if (widget.isLoadingVideo) {
-      return Container(
+      return ColoredBox(
         color: Colors.black.withValues(alpha: 0.7),
         child: const Center(
           child: Column(
@@ -717,8 +726,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
             children: [
               CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
               SizedBox(height: 16),
-              Text('加载中...',
-                  style: TextStyle(color: Colors.white, fontSize: 14)),
+              Text(
+                '加载中...',
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
             ],
           ),
         ),
@@ -769,7 +780,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
         children: [
           if (_isFullscreen)
             Expanded(
-              flex: 1,
               child: GestureDetector(
                 onTap: _toggleControlsVisibility,
                 onLongPressStart: _onLongPressStart,
@@ -807,7 +817,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
           ),
           if (_isFullscreen)
             Expanded(
-              flex: 1,
               child: GestureDetector(
                 onTap: _toggleControlsVisibility,
                 onLongPressStart: _onLongPressStart,
@@ -1199,8 +1208,9 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     padding: EdgeInsets.only(
-                        left: _isFullscreen ? 12 : 5,
-                        right: _isFullscreen ? 12 : 8),
+                      left: _isFullscreen ? 12 : 5,
+                      right: _isFullscreen ? 12 : 8,
+                    ),
                     child: Icon(
                       _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                       color: Colors.white,
@@ -1224,11 +1234,14 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('2x',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            '2x',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(width: 6),
           Icon(Icons.fast_forward, color: Colors.white, size: 32),
         ],
@@ -1289,9 +1302,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
               Text(
                 '${(_currentBrightness * 100).round()}',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -1404,9 +1418,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
                 Text(
                   '${(_currentVolume * 100).round()}',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),

@@ -22,7 +22,7 @@ class SwitchLoadingOverlay extends StatelessWidget {
     if (!isVisible) return const SizedBox.shrink();
 
     return Positioned.fill(
-      child: Container(
+      child: ColoredBox(
         color: Colors.black,
         child: Stack(
           children: [

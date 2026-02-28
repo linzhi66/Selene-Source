@@ -53,15 +53,13 @@ class DoubanRequestParams {
   });
 
   /// 构建查询参数
-  Map<String, String> toQueryParams() {
-    return {
-      'kind': kind,
-      'category': category,
-      'type': type,
-      'pageLimit': pageLimit.toString(),
-      'page': page.toString(),
-    };
-  }
+  Map<String, String> toQueryParams() => {
+        'kind': kind,
+        'category': category,
+        'type': type,
+        'pageLimit': pageLimit.toString(),
+        'page': page.toString(),
+      };
 }
 
 /// 豆瓣数据请求服务
@@ -102,19 +100,22 @@ class DoubanService {
     try {
       // 提取基本信息 - 标题
       final titleRegex = RegExp(
-          r'<h1[^>]*>[\s\S]*?<span[^>]*property="v:itemreviewed"[^>]*>([^<]+)</span>');
+        r'<h1[^>]*>[\s\S]*?<span[^>]*property="v:itemreviewed"[^>]*>([^<]+)</span>',
+      );
       final titleMatch = titleRegex.firstMatch(html);
       final title = titleMatch?.group(1)?.trim() ?? '';
 
       // 提取海报
-      final posterRegex =
-          RegExp(r'<a[^>]*class="nbgnbg"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"');
+      final posterRegex = RegExp(
+        r'<a[^>]*class="nbgnbg"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"',
+      );
       final posterMatch = posterRegex.firstMatch(html);
       final poster = posterMatch?.group(1) ?? '';
 
       // 提取评分
       final ratingRegex = RegExp(
-          r'<strong[^>]*class="ll rating_num"[^>]*property="v:average">([^<]+)</strong>');
+        r'<strong[^>]*class="ll rating_num"[^>]*property="v:average">([^<]+)</strong>',
+      );
       final ratingMatch = ratingRegex.firstMatch(html);
       final rate = ratingMatch?.group(1);
 
@@ -126,7 +127,8 @@ class DoubanService {
       // 提取导演
       List<String> directors = [];
       final directorRegex = RegExp(
-          r'<span class=["\x27]pl["\x27]>导演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+        r'<span class=["\x27]pl["\x27]>导演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>',
+      );
       final directorMatch = directorRegex.firstMatch(html);
       if (directorMatch != null) {
         final directorLinks =
@@ -140,7 +142,8 @@ class DoubanService {
       // 提取编剧
       List<String> screenwriters = [];
       final writerRegex = RegExp(
-          r'<span class=["\x27]pl["\x27]>编剧</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+        r'<span class=["\x27]pl["\x27]>编剧</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>',
+      );
       final writerMatch = writerRegex.firstMatch(html);
       if (writerMatch != null) {
         final writerLinks =
@@ -154,7 +157,8 @@ class DoubanService {
       // 提取主演
       List<String> actors = [];
       final castRegex = RegExp(
-          r'<span class=["\x27]pl["\x27]>主演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+        r'<span class=["\x27]pl["\x27]>主演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>',
+      );
       final castMatch = castRegex.firstMatch(html);
       if (castMatch != null) {
         final castLinks =
@@ -257,8 +261,11 @@ class DoubanService {
       String? summary;
 
       // 使用多行模式和非贪婪匹配来正确处理包含HTML标签的内容
-      final summaryRegex1 = RegExp(r'<span[^>]*class="all hidden">(.*?)</span>',
-          multiLine: true, dotAll: true);
+      final summaryRegex1 = RegExp(
+        r'<span[^>]*class="all hidden">(.*?)</span>',
+        multiLine: true,
+        dotAll: true,
+      );
       final summaryMatch1 = summaryRegex1.firstMatch(html);
       String? summary1;
       if (summaryMatch1 != null) {
@@ -276,9 +283,10 @@ class DoubanService {
       }
 
       final summaryRegex2 = RegExp(
-          r'<span[^>]*property="v:summary"[^>]*>(.*?)</span>',
-          multiLine: true,
-          dotAll: true);
+        r'<span[^>]*property="v:summary"[^>]*>(.*?)</span>',
+        multiLine: true,
+        dotAll: true,
+      );
       final summaryMatch2 = summaryRegex2.firstMatch(html);
       String? summary2;
       if (summaryMatch2 != null) {
@@ -309,9 +317,10 @@ class DoubanService {
       try {
         // 查找推荐区域
         final recommendationsRegex = RegExp(
-            r'<div[^>]*id="recommendations"[^>]*>(.*?)</div>',
-            multiLine: true,
-            dotAll: true);
+          r'<div[^>]*id="recommendations"[^>]*>(.*?)</div>',
+          multiLine: true,
+          dotAll: true,
+        );
         final recommendationsMatch = recommendationsRegex.firstMatch(html);
 
         if (recommendationsMatch != null) {
@@ -383,8 +392,6 @@ class DoubanService {
         countries: countries,
         languages: languages,
         releaseDate: releaseDate,
-        originalTitle: null, // HTML页面中暂未找到原始标题的提取逻辑
-        imdbId: null, // HTML页面中暂未找到IMDB ID的提取逻辑
         recommends: recommends,
         totalEpisodes: episodes,
       );
@@ -540,14 +547,12 @@ class DoubanService {
     int pageLimit = 25,
     int page = 0,
   }) async {
-    return getCategoryData(
-      context,
-      kind: 'movie',
-      category: '热门',
-      type: '全部',
-      pageLimit: pageLimit,
-      page: page,
-    );
+    return getCategoryData(context,
+        kind: 'movie',
+        category: '热门',
+        type: '全部',
+        pageLimit: pageLimit,
+        page: page);
   }
 
   /// 获取热门剧集数据
@@ -556,14 +561,12 @@ class DoubanService {
     int pageLimit = 25,
     int page = 0,
   }) async {
-    return getCategoryData(
-      context,
-      kind: 'tv',
-      category: '最近热门',
-      type: 'tv',
-      pageLimit: pageLimit,
-      page: page,
-    );
+    return getCategoryData(context,
+        kind: 'tv',
+        category: '最近热门',
+        type: 'tv',
+        pageLimit: pageLimit,
+        page: page);
   }
 
   /// 获取热门综艺数据
@@ -572,14 +575,12 @@ class DoubanService {
     int pageLimit = 25,
     int page = 0,
   }) async {
-    return getCategoryData(
-      context,
-      kind: 'tv',
-      category: 'show',
-      type: 'show',
-      pageLimit: pageLimit,
-      page: page,
-    );
+    return getCategoryData(context,
+        kind: 'tv',
+        category: 'show',
+        type: 'show',
+        pageLimit: pageLimit,
+        page: page);
   }
 
   /// 获取豆瓣推荐数据（新版筛选逻辑）

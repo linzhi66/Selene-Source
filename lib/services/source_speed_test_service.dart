@@ -39,7 +39,6 @@ class SpeedTestResult {
   factory SpeedTestResult.failed(String sourceId, {String error = ''}) =>
       SpeedTestResult(
         sourceId: sourceId,
-        success: false,
         error: error,
         testTime: DateTime.now(),
       );
@@ -93,20 +92,10 @@ class SpeedTestConfig {
     receiveTimeout: Duration(seconds: 3),
     totalTimeout: Duration(seconds: 5),
     fastMode: true,
-    fastModeTimeout: Duration(seconds: 2),
-    smartPreFilter: false,
   );
 
   /// 标准模式配置
-  static const SpeedTestConfig standard = SpeedTestConfig(
-    maxConcurrency: 5,
-    connectTimeout: Duration(seconds: 3),
-    receiveTimeout: Duration(seconds: 5),
-    totalTimeout: Duration(seconds: 8),
-    fastMode: false,
-    segmentsToDownload: 1,
-    smartPreFilter: true,
-  );
+  static const SpeedTestConfig standard = SpeedTestConfig();
 
   /// 深度模式配置（更严格，更准确）
   static const SpeedTestConfig deep = SpeedTestConfig(
@@ -114,9 +103,7 @@ class SpeedTestConfig {
     connectTimeout: Duration(seconds: 5),
     receiveTimeout: Duration(seconds: 10),
     totalTimeout: Duration(seconds: 15),
-    fastMode: false,
     segmentsToDownload: 2,
-    smartPreFilter: true,
     latencyThresholdMs: 300,
   );
 }
@@ -343,7 +330,6 @@ class SourceSpeedTestService {
       quality: resolution,
       loadSpeed: latencyMs < 200 ? '极快' : (latencyMs < 500 ? '较快' : '一般'),
       pingTime: '${latencyMs}ms',
-      downloadSpeedKBps: 0.0,
       latencyMs: latencyMs,
       success: true,
       testTime: DateTime.now(),
@@ -375,7 +361,6 @@ class SourceSpeedTestService {
         quality: quickResult.quality,
         loadSpeed: '延迟高',
         pingTime: '${quickResult.latencyMs}ms',
-        downloadSpeedKBps: 0.0,
         latencyMs: quickResult.latencyMs,
         success: true,
         testTime: DateTime.now(),
@@ -408,7 +393,6 @@ class SourceSpeedTestService {
       quality: quickResult.quality,
       loadSpeed: '未知',
       pingTime: '${quickResult.latencyMs}ms',
-      downloadSpeedKBps: 0.0,
       latencyMs: quickResult.latencyMs,
       success: true,
       testTime: DateTime.now(),
@@ -662,8 +646,7 @@ class SourceSpeedTestService {
           .head<void>(
             url,
             options: Options(
-              validateStatus: (status) => status != null && status < 500,
-            ),
+                validateStatus: (status) => status != null && status < 500),
             cancelToken: cancelToken,
           )
           .timeout(effectiveTimeout);
@@ -690,7 +673,9 @@ class SourceSpeedTestService {
   /// [maxConcurrency] - 最大并发数，默认8
   Future<Map<String, bool>> batchCheckUrls({
     required List<Map<String, String>> urls,
-    required void Function(String id, bool isAvailable, int latencyMs) onResult,
+    required void Function(String id,
+            {required bool isAvailable, required int latencyMs})
+        onResult,
     int maxConcurrency = 8,
   }) async {
     if (_isDisposed) {
@@ -717,9 +702,9 @@ class SourceSpeedTestService {
         id: id,
         url: url,
         semaphorePermit: permit,
-        onResult: (isAvailable, latencyMs) {
+        onResult: ({required bool isAvailable, required int latencyMs}) {
           results[id] = isAvailable;
-          onResult(id, isAvailable, latencyMs);
+          onResult(id, isAvailable: isAvailable, latencyMs: latencyMs);
         },
       );
 
@@ -734,11 +719,12 @@ class SourceSpeedTestService {
     required String id,
     required String url,
     required _SemaphorePermit semaphorePermit,
-    required void Function(bool isAvailable, int latencyMs) onResult,
+    required void Function({required bool isAvailable, required int latencyMs})
+        onResult,
   }) async {
     try {
       final latency = await quickCheckUrl(url);
-      onResult(latency >= 0, latency);
+      onResult(isAvailable: latency >= 0, latencyMs: latency);
     } finally {
       semaphorePermit.release();
     }

@@ -43,9 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // 初始化 PageController，默认显示首页（索引0）
-    _pageController = PageController(initialPage: 0);
+    _pageController = PageController();
     // 初始化底栏 PageController
-    _bottomNavPageController = PageController(initialPage: 0);
+    _bottomNavPageController = PageController();
     // 进入首页时直接刷新播放记录和收藏夹缓存
     _refreshCacheOnHomeEnter();
     // 检查应用更新
