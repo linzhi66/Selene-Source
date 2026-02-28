@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:selene/models/video_download_info.dart';
 import 'package:selene/services/screenshot_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
-import 'package:selene/widgets/video_player_widget.dart';
 
 // 带 hover 效果的按钮组件
 class HoverButton extends StatefulWidget {
@@ -842,31 +842,16 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
                     ignoring: !_controlsVisible,
                     child: HoverButton(
                       onTap: _handleDownloadTap,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // 进度环（下载中始终显示，使用不确定进度或具体进度）
-                          if (isDownloading)
-                            SizedBox(
-                              width: effectiveFullscreen ? 32 : 28,
-                              height: effectiveFullscreen ? 32 : 28,
-                              child: CircularProgressIndicator(
-                                value: info.progress > 0 ? info.progress : null,
-                                strokeWidth: 2,
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.3),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Colors.orange,
-                                ),
-                              ),
+                      child: isDownloading
+                          ? _DownloadProgressWithCancel(
+                              progress: info.progress,
+                              size: effectiveFullscreen ? 24 : 20,
+                            )
+                          : Icon(
+                              _getDownloadIcon(),
+                              color: _getDownloadColor(),
+                              size: effectiveFullscreen ? 24 : 20,
                             ),
-                          Icon(
-                            _getDownloadIcon(),
-                            color: _getDownloadColor(),
-                            size: effectiveFullscreen ? 24 : 20,
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),
@@ -1754,6 +1739,52 @@ class _CenterPlayButtonState extends State<_CenterPlayButton> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 下载进度指示器，悬停时显示取消图标
+class _DownloadProgressWithCancel extends StatefulWidget {
+  final double progress;
+  final double size;
+
+  const _DownloadProgressWithCancel({
+    required this.progress,
+    required this.size,
+  });
+
+  @override
+  State<_DownloadProgressWithCancel> createState() =>
+      _DownloadProgressWithCancelState();
+}
+
+class _DownloadProgressWithCancelState
+    extends State<_DownloadProgressWithCancel> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: _isHovering
+            ? Icon(
+                Icons.close,
+                color: Colors.orange,
+                size: widget.size,
+              )
+            : CircularProgressIndicator(
+                value: widget.progress > 0 ? widget.progress : null,
+                strokeWidth: 2,
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Colors.orange,
+                ),
+              ),
       ),
     );
   }

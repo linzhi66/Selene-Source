@@ -8,9 +8,9 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:selene/components/animations/video_loading_animation.dart';
+import 'package:selene/models/video_download_info.dart';
 import 'package:selene/services/screenshot_service.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
-import 'package:selene/widgets/video_player_widget.dart';
 import 'package:volume_controller/volume_controller.dart';
 
 class MobilePlayerControls extends StatefulWidget {
@@ -1010,34 +1010,16 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
           child: GestureDetector(
             onTap: _handleDownloadTap,
             behavior: HitTestBehavior.opaque,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // 进度环（下载中始终显示，使用不确定进度或具体进度）
-                if (isDownloading)
-                  SizedBox(
-                    width: iconSize + 8,
-                    height: iconSize + 8,
-                    child: CircularProgressIndicator(
-                      value: info.progress > 0 ? info.progress : null,
-                      strokeWidth: 2,
-                      backgroundColor: Colors.white.withValues(alpha: 0.3),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.orange,
-                      ),
-                    ),
-                  ),
-                // 图标
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(
+            child: isDownloading
+                ? _DownloadProgressWithCancel(
+                    progress: info.progress,
+                    size: iconSize,
+                  )
+                : Icon(
                     _getDownloadIcon(),
                     color: _getDownloadColor(),
                     size: iconSize,
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -1733,5 +1715,53 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
           Duration(milliseconds: (value * duration.inMilliseconds).round());
       widget.onPositionUpdate?.call(position);
     }
+  }
+}
+
+/// 下载进度指示器，悬停/按压时显示取消图标
+class _DownloadProgressWithCancel extends StatefulWidget {
+  final double progress;
+  final double size;
+
+  const _DownloadProgressWithCancel({
+    required this.progress,
+    required this.size,
+  });
+
+  @override
+  State<_DownloadProgressWithCancel> createState() =>
+      _DownloadProgressWithCancelState();
+}
+
+class _DownloadProgressWithCancelState
+    extends State<_DownloadProgressWithCancel> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // 移动端使用 GestureDetector 检测按压状态
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: _isPressed
+            ? Icon(
+                Icons.close,
+                color: Colors.orange,
+                size: widget.size,
+              )
+            : CircularProgressIndicator(
+                value: widget.progress > 0 ? widget.progress : null,
+                strokeWidth: 2,
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Colors.orange,
+                ),
+              ),
+      ),
+    );
   }
 }

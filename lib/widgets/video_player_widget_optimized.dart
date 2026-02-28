@@ -5,14 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pip/pip.dart';
+
 import 'package:selene/components/animations/video_loading_animation.dart';
 import 'package:selene/models/video_download_info.dart';
-import 'package:selene/services/download_service.dart';
+import 'package:selene/services/high_performance_download_service.dart';
 import 'package:selene/widgets/mobile_player_controls.dart';
 import 'package:selene/widgets/pc_player_controls.dart';
 import 'package:selene/widgets/video_player_surface.dart';
 
-class VideoPlayerWidget extends StatefulWidget {
+/// 高性能视频播放器组件
+///
+/// 优化特性：
+/// 1. 下载在独立 Isolate 中执行，不影响视频播放
+/// 2. 使用 Stream 替代回调，减少不必要的 Widget 重建
+/// 3. 智能资源管理，播放时优先保证播放流畅
+class VideoPlayerWidgetOptimized extends StatefulWidget {
   final VideoPlayerSurface surface;
   final String? url;
   final Map<String, String>? headers;
@@ -28,14 +35,12 @@ class VideoPlayerWidget extends StatefulWidget {
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
-  // ignore: avoid_positional_boolean_parameters
-  final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
+  final void Function({required bool isWebFullscreen})? onWebFullscreenChanged;
   final VoidCallback? onExitFullScreen;
   final bool live;
-  // ignore: avoid_positional_boolean_parameters
-  final void Function(bool isPipMode)? onPipModeChanged;
+  final void Function({required bool isPipMode})? onPipModeChanged;
 
-  const VideoPlayerWidget({
+  const VideoPlayerWidgetOptimized({
     super.key,
     this.surface = VideoPlayerSurface.mobile,
     this.url,
@@ -59,13 +64,15 @@ class VideoPlayerWidget extends StatefulWidget {
   });
 
   @override
-  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+  State<VideoPlayerWidgetOptimized> createState() =>
+      _VideoPlayerWidgetOptimizedState();
 }
 
+/// 播放器控制器
 class VideoPlayerWidgetController {
   VideoPlayerWidgetController._(this._state);
 
-  final _VideoPlayerWidgetState _state;
+  final _VideoPlayerWidgetOptimizedState _state;
 
   Future<void> updateDataSource(
     String url, {
@@ -129,46 +136,30 @@ class VideoPlayerWidgetController {
 
   // ===== 下载控制接口 =====
 
-  /// 获取当前下载信息
   VideoDownloadInfo get downloadInfo => _state._downloadInfo;
 
-  /// 开始下载当前视频
   Future<void> startDownload({String? fileName}) async {
     await _state._startDownload(fileName: fileName);
   }
 
-  /// 暂停下载
   Future<void> pauseDownload() async {
     await _state._pauseDownload();
   }
 
-  /// 恢复下载
   Future<void> resumeDownload() async {
     await _state._resumeDownload();
   }
 
-  /// 取消下载
   Future<void> cancelDownload() async {
     await _state._cancelDownload();
   }
 
-  /// 另存为
   Future<String?> saveAs() async {
     return _state._saveAs();
   }
-
-  /// 添加下载状态监听
-  void addDownloadListener(ValueChanged<VideoDownloadInfo> listener) {
-    _state._addDownloadListener(listener);
-  }
-
-  /// 移除下载状态监听
-  void removeDownloadListener(ValueChanged<VideoDownloadInfo> listener) {
-    _state._removeDownloadListener(listener);
-  }
 }
 
-class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
+class _VideoPlayerWidgetOptimizedState extends State<VideoPlayerWidgetOptimized>
     with WidgetsBindingObserver {
   Player? _player;
   VideoController? _videoController;
@@ -187,8 +178,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   VoidCallback? _exitWebFullscreenCallback;
   final Pip _pip = Pip();
   bool _isPipMode = false;
-
-  // Store the observer instance so it can be unregistered later.
   PipStateChangedObserver? _pipObserver;
 
   // 视频宽高和全屏状态监听
@@ -198,11 +187,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Timer? _sizeCheckTimer;
   bool _isCurrentlyFullscreen = false;
 
-  // ===== 下载相关 =====
-  final DownloadService _downloadService = DownloadService();
+  // ===== 下载相关（高性能优化）=====
+  final HighPerformanceDownloadService _downloadService =
+      HighPerformanceDownloadService();
   VideoDownloadInfo _downloadInfo = const VideoDownloadInfo();
-  final List<ValueChanged<VideoDownloadInfo>> _downloadListeners =
-      <ValueChanged<VideoDownloadInfo>>[];
+  StreamSubscription<DownloadProgressEvent>? _downloadSubscription;
 
   @override
   void initState() {
@@ -217,7 +206,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   @override
-  void didUpdateWidget(covariant VideoPlayerWidget oldWidget) {
+  void didUpdateWidget(covariant VideoPlayerWidgetOptimized oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.headers != oldWidget.headers && widget.headers != null) {
       _currentHeaders = widget.headers;
@@ -228,15 +217,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<void> _initializePlayer() async {
-    if (_playerDisposed) {
-      return;
-    }
+    if (_playerDisposed) return;
+
     _player = Player();
     _videoController = VideoController(_player!);
     _setupPlayerListeners();
+
     if (_currentUrl != null) {
       await _openCurrentMedia();
     }
+
     if (mounted) {
       setState(() {
         _isInitialized = true;
@@ -245,14 +235,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<void> _openCurrentMedia({Duration? startAt}) async {
-    if (_playerDisposed || _player == null || _currentUrl == null) {
-      return;
-    }
+    if (_playerDisposed || _player == null || _currentUrl == null) return;
+
     if (mounted) {
       setState(() {
         _isLoadingVideo = true;
       });
     }
+
     try {
       await _player!.open(
         Media(
@@ -262,6 +252,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         ),
       );
       await _player!.setRate(_playbackSpeed.value);
+
       if (mounted) {
         setState(() {
           _hasCompleted = false;
@@ -278,14 +269,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _setupPlayerListeners() {
-    if (_player == null) {
-      return;
-    }
+    if (_player == null) return;
+
     _positionSubscription?.cancel();
     _playingSubscription?.cancel();
     _completedSubscription?.cancel();
     _durationSubscription?.cancel();
 
+    // 播放位置监听 - 用于触发进度保存
     _positionSubscription = _player!.stream.position.listen((_) {
       for (final listener in List<VoidCallback>.from(_progressListeners)) {
         try {
@@ -296,39 +287,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
+    // 播放状态监听 - 用于 PiP 设置
     _playingSubscription = _player!.stream.playing.listen((playing) {
       if (!mounted) return;
-      if (!Platform.isAndroid && !Platform.isIOS) {
-        return;
-      }
-      if (!playing) {
-        setState(() {
-          _hasCompleted = false;
-        });
-        _pip.setup(
-          const PipOptions(
-            autoEnterEnabled: false,
-            aspectRatioX: 16,
-            aspectRatioY: 9,
-            preferredContentWidth: 480,
-            preferredContentHeight: 270,
-            controlStyle: 2,
-          ),
-        );
-      } else {
-        _pip.setup(
-          const PipOptions(
-            autoEnterEnabled: true,
-            aspectRatioX: 16,
-            aspectRatioY: 9,
-            preferredContentWidth: 480,
-            preferredContentHeight: 270,
-            controlStyle: 2,
-          ),
-        );
-      }
+      if (!Platform.isAndroid && !Platform.isIOS) return;
+
+      _pip.setup(
+        PipOptions(
+          autoEnterEnabled: playing,
+          aspectRatioX: 16,
+          aspectRatioY: 9,
+          preferredContentWidth: 480,
+          preferredContentHeight: 270,
+          controlStyle: 2,
+        ),
+      );
     });
 
+    // 播放完成监听
     if (!widget.live) {
       _completedSubscription = _player!.stream.completed.listen((completed) {
         if (!mounted) return;
@@ -339,6 +315,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       });
     }
 
+    // 时长监听 - 用于检测视频加载完成
     _durationSubscription = _player!.stream.duration.listen((duration) {
       if (!mounted) return;
       if (duration != Duration.zero) {
@@ -351,7 +328,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // 监听视频尺寸变化并更新视频填充模式
+    // 视频尺寸监听
     _sizeCheckTimer?.cancel();
     _sizeCheckTimer = Timer.periodic(
       const Duration(milliseconds: 500),
@@ -378,9 +355,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     Duration? startAt,
     Map<String, String>? headers,
   }) async {
-    if (_playerDisposed) {
-      return;
-    }
+    if (_playerDisposed) return;
+
     _currentUrl = url;
     if (headers != null) {
       _currentHeaders = headers;
@@ -388,6 +364,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // 取消之前的下载
     await _cancelDownload();
+
+    // 重置下载状态
+    _updateDownloadInfo(const VideoDownloadInfo());
 
     if (_player == null) {
       await _initializePlayer();
@@ -411,6 +390,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
       _playbackSpeed.value = currentSpeed;
       await _player!.setRate(currentSpeed);
+
       if (mounted) {
         setState(() {
           _hasCompleted = false;
@@ -441,15 +421,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     await _player?.setRate(speed);
   }
 
-  /// 更新视频贴合模式
   void _updateVideoFitMode() {
     if (_videoWidth == 0 || _videoHeight == 0) return;
+
     final BoxFit newFit;
     if (!_isCurrentlyFullscreen) {
       newFit = BoxFit.contain;
     } else {
       newFit = _videoWidth > _videoHeight ? BoxFit.contain : BoxFit.scaleDown;
     }
+
     if (_videoFit.value != newFit) {
       _videoFit.value = newFit;
     }
@@ -460,9 +441,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _setupPip() {
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      return;
-    }
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+
     _pip.setup(
       const PipOptions(
         autoEnterEnabled: true,
@@ -476,39 +456,38 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _registerPipObserver() {
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      return;
-    }
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+
     _pipObserver = PipStateChangedObserver(
       onPipStateChanged: (state, error) {
         if (!mounted) return;
+
         switch (state) {
           case PipState.pipStateStarted:
             debugPrint('PiP started successfully');
             if (mounted) {
               setState(() => _isPipMode = true);
-              widget.onPipModeChanged?.call(true);
+              widget.onPipModeChanged?.call(isPipMode: true);
             }
             break;
           case PipState.pipStateStopped:
             debugPrint('PiP stopped');
             if (mounted) {
-              setState(() {
-                _isPipMode = false;
-              });
-              widget.onPipModeChanged?.call(false);
+              setState(() => _isPipMode = false);
+              widget.onPipModeChanged?.call(isPipMode: false);
             }
             break;
           case PipState.pipStateFailed:
             debugPrint('PiP failed: $error');
             if (mounted) {
               setState(() => _isPipMode = false);
-              widget.onPipModeChanged?.call(false);
+              widget.onPipModeChanged?.call(isPipMode: false);
             }
             break;
         }
       },
     );
+
     try {
       _pip.registerStateChangedObserver(_pipObserver!);
     } catch (e) {
@@ -517,7 +496,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<void> _enterPipMode() async {
-    debugPrint('_enterPipMode');
     try {
       final support = await _pip.isSupported();
       if (!support) {
@@ -533,9 +511,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<void> _externalDispose() async {
-    if (!mounted || _playerDisposed) {
-      return;
-    }
+    if (!mounted || _playerDisposed) return;
+
     // 取消下载
     await _cancelDownload();
 
@@ -547,48 +524,29 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
       _pipObserver = null;
     }
+
     await _disposePlayer();
   }
 
   Future<void> _disposePlayer() async {
-    if (_playerDisposed) {
-      return;
-    }
+    if (_playerDisposed) return;
+
     _playerDisposed = true;
     _sizeCheckTimer?.cancel();
+
     await _positionSubscription?.cancel();
     await _playingSubscription?.cancel();
     await _completedSubscription?.cancel();
     await _durationSubscription?.cancel();
+
     _progressListeners.clear();
     await _player?.dispose();
+
     _player = null;
     _videoController = null;
   }
 
-  // ===== 下载功能实现 =====
-
-  void _addDownloadListener(ValueChanged<VideoDownloadInfo> listener) {
-    if (!_downloadListeners.contains(listener)) {
-      _downloadListeners.add(listener);
-    }
-  }
-
-  void _removeDownloadListener(ValueChanged<VideoDownloadInfo> listener) {
-    _downloadListeners.remove(listener);
-  }
-
-  void _notifyDownloadListeners() {
-    for (final listener in List<ValueChanged<VideoDownloadInfo>>.of(
-      _downloadListeners,
-    )) {
-      try {
-        listener(_downloadInfo);
-      } catch (e) {
-        debugPrint('Download listener error: $e');
-      }
-    }
-  }
+  // ===== 下载功能实现（高性能优化版）=====
 
   void _updateDownloadInfo(VideoDownloadInfo info) {
     if (mounted) {
@@ -598,7 +556,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     } else {
       _downloadInfo = info;
     }
-    _notifyDownloadListeners();
   }
 
   Future<void> _startDownload({String? fileName}) async {
@@ -622,11 +579,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     // 确保有正确的扩展名
     var finalFileName = targetFileName;
     if (!finalFileName.contains('.')) {
-      final isM3u8 = _currentUrl!.toLowerCase().endsWith('.m3u8');
-      finalFileName = '$finalFileName.${isM3u8 ? 'mp4' : 'mp4'}';
+      finalFileName = '$finalFileName.mp4';
     }
 
-    // 开始下载
+    // 开始下载 - 在 Isolate 中执行，不阻塞 UI
     final task = await _downloadService.startDownload(
       url: _currentUrl!,
       fileName: finalFileName,
@@ -644,35 +600,49 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         ),
       );
 
-      // 添加监听器
-      _downloadService.addListener(task.id, _onDownloadTaskUpdate);
+      // 订阅下载进度流 - 使用节流减少 UI 更新频率
+      await _downloadSubscription?.cancel();
+
+      _downloadSubscription = _downloadService
+          .getProgressStream(task.id)
+          ?.throttle(const Duration(milliseconds: 200))
+          .listen((event) {
+        if (!mounted) return;
+
+        final state = _convertDownloadStatus(event.status);
+
+        _updateDownloadInfo(
+          VideoDownloadInfo(
+            taskId: event.taskId,
+            state: state,
+            progress: event.progress,
+            errorMessage: event.errorMessage,
+          ),
+        );
+
+        // 下载完成后自动清理订阅
+        if (state == VideoDownloadState.completed ||
+            state == VideoDownloadState.failed) {
+          _downloadSubscription?.cancel();
+          _downloadSubscription = null;
+        }
+      });
     }
   }
 
-  void _onDownloadTaskUpdate(DownloadTask task) {
-    if (!mounted) return;
-
-    VideoDownloadState state;
-    switch (task.status) {
+  VideoDownloadState _convertDownloadStatus(DownloadStatus status) {
+    switch (status) {
       case DownloadStatus.waiting:
-        state = VideoDownloadState.idle;
+        return VideoDownloadState.idle;
       case DownloadStatus.downloading:
-        state = VideoDownloadState.downloading;
+        return VideoDownloadState.downloading;
       case DownloadStatus.paused:
-        state = VideoDownloadState.paused;
+        return VideoDownloadState.paused;
       case DownloadStatus.completed:
-        state = VideoDownloadState.completed;
+        return VideoDownloadState.completed;
       case DownloadStatus.failed:
-        state = VideoDownloadState.failed;
+        return VideoDownloadState.failed;
     }
-
-    _updateDownloadInfo(
-      _downloadInfo.copyWith(
-        state: state,
-        progress: task.progress,
-        errorMessage: task.errorMessage,
-      ),
-    );
   }
 
   Future<void> _pauseDownload() async {
@@ -691,30 +661,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
 
-    // 移除监听器
-    _downloadService.removeListener(
-      _downloadInfo.taskId!,
-      _onDownloadTaskUpdate,
-    );
+    // 取消订阅
+    await _downloadSubscription?.cancel();
+    _downloadSubscription = null;
 
-    // 取消下载（会删除临时文件）
+    // 取消下载
     await _downloadService.cancelDownload(_downloadInfo.taskId!);
 
     _updateDownloadInfo(const VideoDownloadInfo());
   }
 
-  /// 在 dispose 时清理下载资源（不调用 setState）
   void _disposeDownload() {
-    if (_downloadInfo.taskId == null) return;
+    // 取消订阅
+    _downloadSubscription?.cancel();
+    _downloadSubscription = null;
 
-    // 移除监听器
-    _downloadService.removeListener(
-      _downloadInfo.taskId!,
-      _onDownloadTaskUpdate,
-    );
-
-    // 取消下载（会删除临时文件）- 不等待完成，避免阻塞 dispose
-    unawaited(_downloadService.cancelDownload(_downloadInfo.taskId!));
+    // 取消下载（不等待完成，避免阻塞 dispose）
+    if (_downloadInfo.taskId != null) {
+      unawaited(_downloadService.cancelDownload(_downloadInfo.taskId!));
+    }
   }
 
   Future<String?> _saveAs() async {
@@ -743,28 +708,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (_player == null) {
-      return;
-    }
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        break;
-      case AppLifecycleState.resumed:
-        break;
-      case AppLifecycleState.detached:
-        break;
-    }
-  }
-
-  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
-    // 取消下载并清理临时文件（不调用 setState）
+    // 取消下载并清理资源（不调用 setState）
     _disposeDownload();
 
     if (Platform.isAndroid || Platform.isIOS) {
@@ -778,9 +725,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
       _pip.dispose();
     }
+
     _disposePlayer();
     _playbackSpeed.dispose();
     _videoFit.dispose();
+
     super.dispose();
   }
 
@@ -794,6 +743,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               builder: (context, videoFit, _) {
                 final needsPadding = !_isCurrentlyFullscreen &&
                     (videoFit == BoxFit.cover || videoFit == BoxFit.scaleDown);
+
                 final videoWidget = Video(
                   controller: _videoController!,
                   fit: videoFit,
@@ -814,7 +764,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                             totalEpisodes: widget.totalEpisodes,
                             sourceName: widget.sourceName,
                             onWebFullscreenChanged:
-                                widget.onWebFullscreenChanged,
+                                widget.onWebFullscreenChanged != null
+                                    ? (isFullscreen) =>
+                                        widget.onWebFullscreenChanged!(
+                                          isWebFullscreen: isFullscreen,
+                                        )
+                                    : null,
                             onExitWebFullscreenCallbackReady: (callback) {
                               _exitWebFullscreenCallback = callback;
                             },
@@ -859,6 +814,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                           );
                   },
                 );
+
                 return needsPadding
                     ? Padding(
                         padding: const EdgeInsets.all(16),
@@ -873,6 +829,34 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 color: Colors.white,
               ),
             ),
+    );
+  }
+}
+
+/// Stream 节流扩展
+extension _StreamThrottle<T> on Stream<T> {
+  Stream<T> throttle(Duration duration) {
+    Timer? timer;
+    T? lastEvent;
+    var hasPendingEvent = false;
+
+    return transform(
+      StreamTransformer<T, T>.fromHandlers(
+        handleData: (data, sink) {
+          if (timer == null || !timer!.isActive) {
+            sink.add(data);
+            timer = Timer(duration, () {
+              if (hasPendingEvent) {
+                sink.add(lastEvent as T);
+                hasPendingEvent = false;
+              }
+            });
+          } else {
+            lastEvent = data;
+            hasPendingEvent = true;
+          }
+        },
+      ),
     );
   }
 }
