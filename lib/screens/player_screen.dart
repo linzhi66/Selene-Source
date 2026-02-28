@@ -11,6 +11,7 @@ import 'package:selene/services/douban_service.dart';
 import 'package:selene/services/m3u8_service.dart';
 import 'package:selene/services/page_cache_service.dart';
 import 'package:selene/services/search_service.dart';
+import 'package:selene/services/source_speed_test_service.dart';
 import 'package:selene/services/user_data_service.dart';
 import 'package:selene/utils/device_utils.dart';
 import 'package:selene/widgets/dlna_device_dialog.dart';
@@ -119,6 +120,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   // 刷新相关状态
   bool _isRefreshing = false;
   late AnimationController _refreshAnimationController;
+
+  // 测速服务
+  SourceSpeedTestService? _speedTestService;
 
   // 保存进度相关状态
   DateTime? _lastSaveTime;
@@ -2240,6 +2244,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       await _refreshAnimationController.repeat();
     }
 
+    // 清理之前的测速服务
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = SourceSpeedTestService();
+
     try {
       // 清空之前的测速结果
       allSourcesSpeed.clear();
@@ -2247,26 +2256,38 @@ class _PlayerScreenState extends State<PlayerScreen>
       // 立即更新UI显示，让用户看到测速信息被清空
       aSetState(() {});
 
-      // 使用新的实时测速方法
-      final m3u8Service = M3U8Service();
-      await m3u8Service.testSourcesWithCallback(
-        allSources,
-        (String sourceId, Map<String, dynamic> speedData) {
+      // 使用新的优化测速服务
+      // 根据源数量自动选择配置：源多时使用快速模式
+      final config = allSources.length > 10
+          ? SpeedTestConfig.fast
+          : SpeedTestConfig.standard;
+
+      await _speedTestService!.testAllSources(
+        sources: allSources,
+        config: config,
+        onResult: (SpeedTestResult result) {
           // 每个源测速完成后立即更新
-          allSourcesSpeed[sourceId] = SourceSpeed(
-            quality: speedData['quality'] as String,
-            loadSpeed: speedData['loadSpeed'] as String,
-            pingTime: speedData['pingTime'] as String,
+          allSourcesSpeed[result.sourceId] = SourceSpeed(
+            quality: result.quality,
+            loadSpeed: result.loadSpeed,
+            pingTime: result.pingTime,
           );
 
           // 立即更新UI显示
           aSetState(() {});
         },
-        timeout: const Duration(seconds: 10), // 自定义超时时间
+        onProgress: (int completed, int total) {
+          debugPrint('测速进度: $completed/$total');
+        },
       );
     } catch (e) {
       // 静默处理错误
+      debugPrint('测速失败: $e');
     } finally {
+      // 清理测速服务
+      _speedTestService?.dispose();
+      _speedTestService = null;
+
       // 如果是从外部调用（非面板），停止刷新状态
       if (stateSetter == null) {
         setState(() {
@@ -2604,6 +2625,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     _loadingAnimationController.dispose();
     _textAnimationController.dispose();
     _switchLoadingAnimationController.dispose();
+    // 取消并清理测速服务
+    _speedTestService?.cancelAllTests();
+    _speedTestService?.dispose();
+    _speedTestService = null;
     super.dispose();
   }
 
