@@ -492,38 +492,44 @@ class _SearchScreenState extends State<SearchScreen>
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         final isDark = themeService.isDarkMode;
+        // 获取底部安全区域高度（适配虚拟导航栏）
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
 
         return MainLayout(
           content: Container(
             decoration: BoxDecoration(
               gradient: AppColors.backgroundGradient(isDark),
             ),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!_hasSearched) ...[
-                      if (_searchError != null)
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: _buildSearchError(isDark),
+            child: SafeArea(
+              bottom: true,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!_hasSearched) ...[
+                        if (_searchError != null)
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: _buildSearchError(isDark),
+                          ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: _buildSearchHistory(isDark),
+                          ),
                         ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: _buildSearchHistory(isDark),
+                      ],
+                      if (_hasSearched) ...[
+                        Expanded(
+                          child: _buildSearchResults(isDark,
+                              bottomPadding: bottomPadding),
                         ),
-                      ),
+                      ],
                     ],
-                    if (_hasSearched) ...[
-                      Expanded(
-                        child: _buildSearchResults(isDark),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -895,7 +901,7 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildSearchResults(bool isDark) {
+  Widget _buildSearchResults(bool isDark, {double bottomPadding = 0}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -956,48 +962,76 @@ class _SearchScreenState extends State<SearchScreen>
         else if (_hasSearched && _searchResults.isEmpty && _hasReceivedStart)
           Expanded(child: _buildNoResultsState(isDark))
         else ...[
-          // 筛选器
+          // 筛选器 - 固定在顶部，带玻璃拟态背景
           if (_hasSearched && _searchResults.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    isDark
+                        ? AppColors.darkSurface.withValues(alpha: 0.8)
+                        : AppColors.lightSurface.withValues(alpha: 0.8),
+                    isDark
+                        ? AppColors.darkElevated.withValues(alpha: 0.6)
+                        : AppColors.lightElevated.withValues(alpha: 0.6),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.darkGlassBorder
+                      : AppColors.lightGlassBorder,
+                  width: 1,
+                ),
+              ),
               child: _buildFilterSection(isDark),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
           ],
-          // 结果网格
+          // 结果网格 - 添加底部padding避免被导航栏遮挡
           Expanded(
-            child: _useAggregatedView
-                ? SearchResultAggGrid(
-                    key: const ValueKey('agg_grid'),
-                    results: _filteredSearchResults,
-                    themeService: context.read<ThemeService>(),
-                    onVideoTap: _onVideoTap,
-                    onGlobalMenuAction: _onGlobalMenuAction,
-                    onSourceSelected: (SearchResult result) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => PlayerScreen(
-                            source: result.source,
-                            id: result.id,
-                            year: result.year,
-                            title: result.title,
-                            stitle: _searchQuery,
-                            stype: result.episodes.length > 1 ? 'tv' : 'movie',
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: bottomPadding > 0 ? bottomPadding + 8 : 16,
+              ),
+              child: _useAggregatedView
+                  ? SearchResultAggGrid(
+                      key: const ValueKey('agg_grid'),
+                      results: _filteredSearchResults,
+                      themeService: context.read<ThemeService>(),
+                      onVideoTap: _onVideoTap,
+                      onGlobalMenuAction: _onGlobalMenuAction,
+                      onSourceSelected: (SearchResult result) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (context) => PlayerScreen(
+                              source: result.source,
+                              id: result.id,
+                              year: result.year,
+                              title: result.title,
+                              stitle: _searchQuery,
+                              stype:
+                                  result.episodes.length > 1 ? 'tv' : 'movie',
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    hasReceivedStart: _hasReceivedStart,
-                  )
-                : SearchResultsGrid(
-                    key: const ValueKey('list_grid'),
-                    results: _filteredSearchResults,
-                    themeService: context.read<ThemeService>(),
-                    onVideoTap: _onVideoTap,
-                    onGlobalMenuAction: _onGlobalMenuAction,
-                    hasReceivedStart: _hasReceivedStart,
-                  ),
+                        );
+                      },
+                      hasReceivedStart: _hasReceivedStart,
+                    )
+                  : SearchResultsGrid(
+                      key: const ValueKey('list_grid'),
+                      results: _filteredSearchResults,
+                      themeService: context.read<ThemeService>(),
+                      onVideoTap: _onVideoTap,
+                      onGlobalMenuAction: _onGlobalMenuAction,
+                      hasReceivedStart: _hasReceivedStart,
+                    ),
+            ),
           ),
         ],
       ],
@@ -1442,103 +1476,19 @@ class _SearchScreenState extends State<SearchScreen>
         useCompactLayout: title == '标题',
       );
     } else {
+      // 使用专门的移动端筛选弹窗组件
       showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
+        useSafeArea: true,
         builder: (context) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  isDark ? AppColors.darkBackground : AppColors.lightBackground,
-                ],
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 拖动指示器
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.textTertiary(isDark),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    title,
-                    style: AppTypography.headlineSmallStyle(isDark: isDark),
-                  ),
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: options.map((option) {
-                        final isSelected = option.value == selectedValue;
-                        return GestureDetector(
-                          onTap: () {
-                            onSelected(option.value);
-                            Navigator.pop(context);
-                          },
-                          child: AnimatedContainer(
-                            duration: AppAnimations.fast,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient:
-                                  isSelected ? AppColors.primaryGradient : null,
-                              color: isSelected
-                                  ? null
-                                  : isDark
-                                      ? AppColors.darkElevated
-                                      : AppColors.lightElevated,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary.withValues(alpha: 0.5)
-                                    : isDark
-                                        ? AppColors.darkBorder
-                                        : AppColors.lightBorder,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              option.label,
-                              style: AppTypography.primary(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? AppTypography.medium
-                                    : AppTypography.regular,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.textPrimary(isDark),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+          return _FilterOptionsBottomSheet(
+            title: title,
+            options: options,
+            selectedValue: selectedValue,
+            onSelected: onSelected,
+            isDark: isDark,
           );
         },
       );
@@ -1672,8 +1622,33 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
+  /// 检查值是否为无效的程序关键字
+  bool _isInvalidValue(String value) {
+    final lowerValue = value.toLowerCase().trim();
+    const invalidValues = {
+      'null',
+      'undefined',
+      'unknown',
+      'none',
+      'nan',
+      'infinity',
+      '-infinity',
+      'nil',
+      'empty',
+      'void',
+      'default',
+      'error',
+      'exception',
+    };
+    return invalidValues.contains(lowerValue);
+  }
+
   List<SelectorOption> get _sourceOptions {
-    final sources = _searchResults.map((r) => r.sourceName).toSet().toList();
+    final sources = _searchResults
+        .map((r) => r.sourceName)
+        .where((s) => s.isNotEmpty && !_isInvalidValue(s))
+        .toSet()
+        .toList();
     sources.sort();
     final options =
         sources.map((s) => SelectorOption(label: s, value: s)).toList();
@@ -1686,7 +1661,7 @@ class _SearchScreenState extends State<SearchScreen>
   List<SelectorOption> get _yearOptions {
     final years = _searchResults
         .map((r) => r.year)
-        .where((y) => y.isNotEmpty)
+        .where((y) => y.isNotEmpty && !_isInvalidValue(y))
         .toSet()
         .toList();
     years.sort((a, b) => b.compareTo(a));
@@ -1699,7 +1674,11 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   List<SelectorOption> get _titleOptions {
-    final titles = _searchResults.map((r) => r.title).toSet().toList();
+    final titles = _searchResults
+        .map((r) => r.title)
+        .where((t) => t.isNotEmpty && !_isInvalidValue(t))
+        .toSet()
+        .toList();
     titles.sort();
     final options =
         titles.map((t) => SelectorOption(label: t, value: t)).toList();
@@ -1794,6 +1773,334 @@ class _GlowButton extends StatelessWidget {
           ],
         ),
         child: child,
+      ),
+    );
+  }
+}
+
+/// 移动端筛选选项底部弹窗（高性能版本）
+///
+/// 使用 ListView.builder 实现虚拟列表，支持大量数据流畅滑动
+/// 当选项超过20个时自动启用搜索功能
+class _FilterOptionsBottomSheet extends StatefulWidget {
+  final String title;
+  final List<SelectorOption> options;
+  final String selectedValue;
+  final ValueChanged<String> onSelected;
+  final bool isDark;
+
+  const _FilterOptionsBottomSheet({
+    required this.title,
+    required this.options,
+    required this.selectedValue,
+    required this.onSelected,
+    required this.isDark,
+  });
+
+  @override
+  State<_FilterOptionsBottomSheet> createState() =>
+      _FilterOptionsBottomSheetState();
+}
+
+class _FilterOptionsBottomSheetState extends State<_FilterOptionsBottomSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  List<SelectorOption> get _filteredOptions {
+    if (_searchQuery.isEmpty) return widget.options;
+    return widget.options
+        .where((option) =>
+            option.label.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+  }
+
+  /// 是否显示搜索栏（对所有筛选类型启用，方便快速定位）
+  bool get _showSearch => widget.options.length > 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final filteredOptions = _filteredOptions;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: bottomInset),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            widget.isDark ? AppColors.darkSurface : AppColors.lightSurface,
+            widget.isDark
+                ? AppColors.darkBackground
+                : AppColors.lightBackground,
+          ],
+        ),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 拖动指示器
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.textTertiary(widget.isDark),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // 标题栏
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: AppTypography.headlineSmallStyle(
+                      isDark: widget.isDark,
+                    ),
+                  ),
+                ),
+                // 选项数量徽章
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${widget.options.length}',
+                    style: AppTypography.mono(
+                      fontSize: 12,
+                      fontWeight: AppTypography.medium,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 搜索栏（选项较多时显示）
+          if (_showSearch) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: widget.isDark
+                      ? AppColors.darkElevated
+                      : AppColors.lightElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
+                    width: 1,
+                  ),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  style: AppTypography.primary(
+                    color: AppColors.textPrimary(widget.isDark),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '搜索${widget.title}...',
+                    hintStyle: AppTypography.primary(
+                      color: AppColors.textTertiary(widget.isDark),
+                    ),
+                    prefixIcon: Icon(
+                      LucideIcons.search,
+                      color: AppColors.textSecondary(widget.isDark),
+                      size: 20,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            child: Icon(
+                              LucideIcons.x,
+                              color: AppColors.textSecondary(widget.isDark),
+                              size: 18,
+                            ),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
+                ),
+              ),
+            ),
+          ],
+          // 选项列表（使用 ListView.builder 实现高性能虚拟列表）
+          Flexible(
+            child: filteredOptions.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    itemCount: filteredOptions.length,
+                    itemBuilder: (context, index) {
+                      final option = filteredOptions[index];
+                      final isSelected = option.value == widget.selectedValue;
+
+                      return AppAnimations.entrance(
+                        delay: index * 0.01,
+                        child: _FilterOptionItem(
+                          option: option,
+                          isSelected: isSelected,
+                          isDark: widget.isDark,
+                          onTap: () {
+                            widget.onSelected(option.value);
+                            Navigator.pop(context);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          // 底部安全区域 + 额外间距
+          SizedBox(height: 16 + bottomInset),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.textTertiary(widget.isDark)
+                    .withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                LucideIcons.search,
+                size: 32,
+                color: AppColors.textTertiary(widget.isDark),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '未找到匹配项',
+              style:
+                  AppTypography.bodyLargeStyle(isDark: widget.isDark).copyWith(
+                color: AppColors.textSecondary(widget.isDark),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 筛选选项列表项
+class _FilterOptionItem extends StatelessWidget {
+  final SelectorOption option;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _FilterOptionItem({
+    required this.option,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppAnimations.fast,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        decoration: BoxDecoration(
+          gradient: isSelected ? AppColors.primaryGradient : null,
+          color: isSelected
+              ? null
+              : isDark
+                  ? AppColors.darkElevated
+                  : AppColors.lightElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.5)
+                : isDark
+                    ? AppColors.darkBorder
+                    : AppColors.lightBorder,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                option.label,
+                style: AppTypography.primary(
+                  fontSize: 15,
+                  fontWeight:
+                      isSelected ? AppTypography.medium : AppTypography.regular,
+                  color:
+                      isSelected ? Colors.white : AppColors.textPrimary(isDark),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.white24,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
