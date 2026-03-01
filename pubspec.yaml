@@ -22,7 +22,8 @@ dependencies:
   media_kit: 1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.7
-  pip: ^0.0.3
+  pip: ^0.0.3  # iOS PiP
+  floating: ^6.0.0  # Android PiP
   # ====================
   # 数据存储
   # ====================

@@ -2670,8 +2670,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     _restoreOrientation();
     // 恢复原始的系统UI样式
     SystemChrome.setSystemUIOverlayStyle(_originalStyle);
-    // 销毁播放器
-    _videoPlayerController?.dispose();
+    // 停止播放器（同步操作，确保立即执行）
+    _stopPlayer();
     // 释放滚动控制器
     _episodesScrollController.dispose();
     _sourcesScrollController.dispose();
@@ -2688,6 +2688,22 @@ class _PlayerScreenState extends State<PlayerScreen>
     _saveDebounceTimer?.cancel();
     _saveDebounceTimer = null;
     super.dispose();
+  }
+
+  /// 停止播放器（确保音频立即停止）
+  void _stopPlayer() {
+    // 直接使用底层播放器停止，不依赖异步等待
+    try {
+      _videoPlayerController?.pause();
+    } catch (e) {
+      debugPrint('暂停播放器失败: $e');
+    }
+    try {
+      _videoPlayerController?.dispose();
+    } catch (e) {
+      debugPrint('销毁播放器失败: $e');
+    }
+    _videoPlayerController = null;
   }
 
   @override

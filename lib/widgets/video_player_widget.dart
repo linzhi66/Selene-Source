@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:pip/pip.dart';
 import 'package:selene/components/animations/video_loading_animation.dart';
 import 'package:selene/models/video_download_info.dart';
 import 'package:selene/services/download_service.dart';
+import 'package:selene/utils/pip_manager.dart';
 import 'package:selene/widgets/mobile_player_controls.dart';
 import 'package:selene/widgets/pc_player_controls.dart';
 import 'package:selene/widgets/video_player_surface.dart';
@@ -187,11 +187,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   final ValueNotifier<double> _playbackSpeed = ValueNotifier<double>(1.0);
   bool _playerDisposed = false;
   VoidCallback? _exitWebFullscreenCallback;
-  final Pip _pip = Pip();
-  bool _isPipMode = false;
 
-  // Store the observer instance so it can be unregistered later.
-  PipStateChangedObserver? _pipObserver;
+  // 画中画管理器（平台区分实现）
+  final PipManager _pipManager = PipManager();
+  bool _isPipMode = false;
 
   // 视频宽高和全屏状态监听
   final ValueNotifier<BoxFit> _videoFit = ValueNotifier<BoxFit>(BoxFit.contain);
@@ -213,9 +212,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _currentUrl = widget.url;
     _currentHeaders = widget.headers;
     _initializePlayer();
-    _setupPip();
-    _registerPipObserver();
+    _initializePip();
     widget.onControllerCreated?.call(VideoPlayerWidgetController._(this));
+  }
+
+  /// 初始化画中画功能
+  Future<void> _initializePip() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
+
+    // 设置状态变化回调
+    _pipManager.setOnPipModeChanged(({required isPipMode}) {
+      if (!mounted) return;
+      setState(() {
+        _isPipMode = isPipMode;
+      });
+      widget.onPipModeChanged?.call(isPipMode);
+    });
+
+    // 初始化
+    await _pipManager.initialize();
   }
 
   @override
@@ -410,23 +427,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   /// 更新 PiP 配置
-  void _updatePipConfiguration(bool playing) {
+  Future<void> _updatePipConfiguration(bool playing) async {
     if (!mounted) return;
 
     setState(() {
       _hasCompleted = false;
     });
 
-    _pip.setup(
-      PipOptions(
-        autoEnterEnabled: playing,
-        aspectRatioX: 16,
-        aspectRatioY: 9,
-        preferredContentWidth: 480,
-        preferredContentHeight: 270,
-        controlStyle: 2,
-      ),
-    );
+    await _pipManager.configure(playing: playing);
   }
 
   /// 设置尺寸检查定时器
@@ -541,94 +549,47 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _exitWebFullscreenCallback?.call();
   }
 
-  void _setupPip() {
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      return;
-    }
-    _pip.setup(
-      const PipOptions(
-        autoEnterEnabled: true,
-        aspectRatioX: 16,
-        aspectRatioY: 9,
-        preferredContentWidth: 480,
-        preferredContentHeight: 270,
-        controlStyle: 2,
-      ),
-    );
-  }
-
-  void _registerPipObserver() {
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      return;
-    }
-    _pipObserver = PipStateChangedObserver(
-      onPipStateChanged: (state, error) {
-        if (!mounted) return;
-        switch (state) {
-          case PipState.pipStateStarted:
-            debugPrint('PiP started successfully');
-            if (mounted) {
-              setState(() => _isPipMode = true);
-              widget.onPipModeChanged?.call(true);
-            }
-            break;
-          case PipState.pipStateStopped:
-            debugPrint('PiP stopped');
-            if (mounted) {
-              setState(() {
-                _isPipMode = false;
-              });
-              widget.onPipModeChanged?.call(false);
-            }
-            break;
-          case PipState.pipStateFailed:
-            debugPrint('PiP failed: $error');
-            if (mounted) {
-              setState(() => _isPipMode = false);
-              widget.onPipModeChanged?.call(false);
-            }
-            break;
-        }
-      },
-    );
-    try {
-      _pip.registerStateChangedObserver(_pipObserver!);
-    } catch (e) {
-      debugPrint('Failed to register PiP observer: $e');
-    }
-  }
-
   Future<void> _enterPipMode() async {
     debugPrint('_enterPipMode');
     try {
-      final support = await _pip.isSupported();
+      final support = await _pipManager.isSupported();
       if (!support) {
         debugPrint('Device does not support PiP!');
         return;
       }
-      await _player?.play();
-      await _pip.start();
+      // 不要强制播放，保持当前状态（如果原来是暂停的，进入 PiP 后仍保持暂停）
+      await _pipManager.enterPipMode();
     } catch (e) {
       debugPrint('Failed to enter PiP mode: $e');
-      _setupPip();
+    }
+  }
+
+  Future<void> _exitPipMode() async {
+    debugPrint('_exitPipMode');
+    try {
+      // Android 无法直接退出 PiP，只能通过返回按钮或系统手势
+      // iOS 可以通过编程退出
+      if (Platform.isIOS) {
+        await _pipManager.exitPipMode();
+      }
+      // 恢复全屏状态
+      if (mounted) {
+        setState(() {
+          _isPipMode = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to exit PiP mode: $e');
     }
   }
 
   Future<void> _externalDispose() async {
-    if (!mounted || _playerDisposed) {
+    if (_playerDisposed) {
       return;
     }
     // 取消下载
     await _cancelDownload();
 
-    if ((Platform.isAndroid || Platform.isIOS) && _pipObserver != null) {
-      try {
-        await _pip.unregisterStateChangedObserver();
-      } catch (e) {
-        debugPrint('Failed to unregister PiP observer: $e');
-      }
-      _pipObserver = null;
-    }
     await _disposePlayer();
   }
 
@@ -637,6 +598,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
     _playerDisposed = true;
+
+    // 先暂停播放，确保音频/视频立即停止
+    try {
+      await _player?.pause();
+    } catch (e) {
+      debugPrint('VideoPlayerWidget: 暂停播放器时出错: $e');
+    }
 
     // 取消定时器
     _sizeCheckTimer?.cancel();
@@ -885,23 +853,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // 释放 PiP 资源
     if (Platform.isAndroid || Platform.isIOS) {
-      if (_pipObserver != null) {
-        try {
-          _pip.unregisterStateChangedObserver();
-        } catch (e) {
-          debugPrint('Failed to unregister PiP observer during dispose: $e');
-        }
-        _pipObserver = null;
-      }
-      try {
-        _pip.dispose();
-      } catch (e) {
-        debugPrint('Failed to dispose PiP: $e');
-      }
+      unawaited(_pipManager.dispose());
     }
 
-    // 释放播放器资源
-    _disposePlayer();
+    // 释放播放器资源（启动异步操作但不等待）
+    unawaited(_disposePlayer());
 
     // 释放 ValueNotifier
     _playbackSpeed.dispose();
@@ -978,6 +934,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                             onSetSpeed: _setPlaybackSpeed,
                             onEnterPipMode: _enterPipMode,
                             isPipMode: _isPipMode,
+                            onExitPip: _exitPipMode,
                             downloadInfo: _downloadInfo,
                             onStartDownload: _startDownload,
                             onCancelDownload: _cancelDownload,

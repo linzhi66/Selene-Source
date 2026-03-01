@@ -39,6 +39,7 @@ class MobilePlayerControls extends StatefulWidget {
   final Future<void> Function(double speed) onSetSpeed;
   final Future<void> Function() onEnterPipMode;
   final bool isPipMode;
+  final VoidCallback? onExitPip;
 
   // 下载相关参数
   final VideoDownloadInfo downloadInfo;
@@ -69,6 +70,7 @@ class MobilePlayerControls extends StatefulWidget {
     required this.onSetSpeed,
     required this.onEnterPipMode,
     required this.isPipMode,
+    this.onExitPip,
     // 下载相关
     this.downloadInfo = const VideoDownloadInfo(),
     required this.onStartDownload,
@@ -117,8 +119,14 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     _startTimeUpdateTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _forceStartHideTimer();
-      widget.onControlsVisibilityChanged(true);
+      // PiP 模式下默认隐藏控制栏
+      if (widget.isPipMode) {
+        setState(() => _controlsVisible = false);
+        widget.onControlsVisibilityChanged(false);
+      } else {
+        _forceStartHideTimer();
+        widget.onControlsVisibilityChanged(true);
+      }
     });
   }
 
@@ -140,11 +148,17 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     } catch (e) {
       // 忽略
     }
-    // 当 PIP 模式停止时，显示控制栏
+    // 处理 PiP 模式变化
     if (oldWidget.isPipMode && !widget.isPipMode) {
+      // 退出 PiP 模式 - 显示控制栏
       setState(() => _controlsVisible = true);
       widget.onControlsVisibilityChanged(true);
       _startHideTimer();
+    } else if (!oldWidget.isPipMode && widget.isPipMode) {
+      // 进入 PiP 模式 - 隐藏控制栏，保持播放状态不变
+      setState(() => _controlsVisible = false);
+      widget.onControlsVisibilityChanged(false);
+      _hideTimer?.cancel();
     }
   }
 
@@ -244,7 +258,11 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   void _startHideTimer() {
     _hideTimer?.cancel();
     if (_isPlaying) {
-      _hideTimer = Timer(const Duration(seconds: 3), () {
+      // PiP 模式下控制栏隐藏时间更短
+      final hideDuration = widget.isPipMode
+          ? const Duration(seconds: 1)
+          : const Duration(seconds: 3);
+      _hideTimer = Timer(hideDuration, () {
         if (!mounted) return;
         setState(() => _controlsVisible = false);
         widget.onControlsVisibilityChanged(false);
@@ -254,7 +272,11 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
 
   void _forceStartHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
+    // PiP 模式下控制栏隐藏时间更短
+    final hideDuration = widget.isPipMode
+        ? const Duration(seconds: 1)
+        : const Duration(seconds: 3);
+    _hideTimer = Timer(hideDuration, () {
       if (!mounted) return;
       setState(() => _controlsVisible = false);
       widget.onControlsVisibilityChanged(false);
@@ -756,6 +778,11 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       );
     }
 
+    // PiP 模式下使用简化 UI
+    if (widget.isPipMode) {
+      return _buildPipModeUI();
+    }
+
     Widget content = Stack(
       children: [
         _buildGestureLayer(),
@@ -792,6 +819,201 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }
 
     return content;
+  }
+
+  /// 构建 PiP 模式下的简化 UI
+  Widget _buildPipModeUI() {
+    return Stack(
+      children: [
+        // 底部进度条（细线样式）
+        if (!widget.live)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedOpacity(
+              opacity: _controlsVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: _buildPipProgressBar(),
+            ),
+          ),
+
+        // 中央播放/暂停按钮（简化版）- 只在暂停时显示
+        if (!_isPlaying)
+          Positioned.fill(
+            child: Center(
+              child: GestureDetector(
+                onTap: _togglePlayPause,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // 顶部控制栏（播放/暂停 + 还原按钮）
+        // 注意：控制栏背景不拦截触摸事件，让 Android PiP 双击改变窗口大小手势正常工作
+        Positioned(
+          top: 8,
+          right: 8,
+          child: AnimatedOpacity(
+            opacity: _controlsVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 播放/暂停按钮 - 仅按钮区域响应点击
+                  GestureDetector(
+                    onTap: _togglePlayPause,
+                    behavior: HitTestBehavior.deferToChild,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isPlaying ? Icons.pause : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _isPlaying ? '暂停' : '播放',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 分隔线 - 不响应点击，让事件穿透
+                  IgnorePointer(
+                    child: Container(
+                      width: 1,
+                      height: 16,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  // 还原按钮 - 仅按钮区域响应点击
+                  GestureDetector(
+                    onTap: () {
+                      // 退出 PiP 模式，恢复全屏
+                      widget.onExitPip?.call();
+                    },
+                    behavior: HitTestBehavior.deferToChild,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.open_in_full,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '还原',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 全屏点击区域（单击切换控制栏显示/隐藏）
+        // 注意：不处理双击事件，让 Android PiP 双击改变窗口大小手势正常工作
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _controlsVisible = !_controlsVisible;
+              });
+              widget.onControlsVisibilityChanged(_controlsVisible);
+              if (_controlsVisible) {
+                _startHideTimer();
+              }
+            },
+            // 不设置 onDoubleTap，让双击事件穿透到 Android 系统处理 PiP 窗口大小切换
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 构建 PiP 模式下的简化进度条
+  Widget _buildPipProgressBar() {
+    // 直播模式下显示无限循环进度条
+    if (widget.live) {
+      return Container(
+        height: 3,
+        color: Colors.transparent,
+        child: LinearProgressIndicator(
+          backgroundColor: Colors.white.withValues(alpha: 0.3),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.red.shade400),
+          minHeight: 3,
+        ),
+      );
+    }
+
+    final position = _position;
+    final duration = _duration;
+
+    if (duration == Duration.zero) {
+      return const SizedBox.shrink();
+    }
+
+    final progress = position.inMilliseconds / duration.inMilliseconds;
+    final clampedProgress = progress.clamp(0.0, 1.0);
+
+    return Container(
+      height: 3,
+      color: Colors.transparent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            children: [
+              // 背景
+              Container(
+                width: double.infinity,
+                height: 3,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              // 进度
+              Container(
+                width: constraints.maxWidth * clampedProgress,
+                height: 3,
+                color: const Color(0xFF27ae60),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildGestureLayer() {
