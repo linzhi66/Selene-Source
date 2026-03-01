@@ -707,36 +707,51 @@ class _SearchScreenState extends State<SearchScreen>
                                   : AppColors.textPrimary(isDark: isDark),
                             ),
                           ),
-                          if (DeviceUtils.isPC()) ...[
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => _deleteSearchHistory(history),
-                              child: MouseRegion(
-                                onEnter: (_) => setState(
-                                    () => _hoveredDeleteButton = history),
-                                onExit: (_) =>
-                                    setState(() => _hoveredDeleteButton = null),
-                                child: AnimatedContainer(
-                                  duration: AppAnimations.micro,
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    color: _hoveredDeleteButton == history
-                                        ? AppColors.error
-                                        : isDark
-                                            ? AppColors.darkTextTertiary
-                                            : AppColors.lightTextTertiary,
-                                    shape: BoxShape.circle,
+                          // 删除按钮 - 支持 PC 和移动端
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _deleteSearchHistory(history),
+                            child: DeviceUtils.isPC()
+                                ? MouseRegion(
+                                    onEnter: (_) => setState(
+                                        () => _hoveredDeleteButton = history),
+                                    onExit: (_) => setState(
+                                        () => _hoveredDeleteButton = null),
+                                    child: AnimatedContainer(
+                                      duration: AppAnimations.micro,
+                                      width: 18,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        color: _hoveredDeleteButton == history
+                                            ? AppColors.error
+                                            : isDark
+                                                ? AppColors.darkTextTertiary
+                                                : AppColors.lightTextTertiary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? AppColors.darkTextTertiary
+                                          : AppColors.lightTextTertiary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ],
                       ),
                     ),

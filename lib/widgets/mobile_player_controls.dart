@@ -16,9 +16,11 @@ import 'package:volume_controller/volume_controller.dart';
 class MobilePlayerControls extends StatefulWidget {
   final Player player;
   final VideoState state;
+
   // ignore: avoid_positional_boolean_parameters
   final void Function(bool) onControlsVisibilityChanged;
   final VoidCallback? onBackPressed;
+
   // ignore: avoid_positional_boolean_parameters
   final void Function(bool) onFullscreenChange;
   final VoidCallback? onNextEpisode;
@@ -1010,16 +1012,21 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
           child: GestureDetector(
             onTap: _handleDownloadTap,
             behavior: HitTestBehavior.opaque,
-            child: isDownloading
-                ? _DownloadProgressWithCancel(
-                    progress: info.progress,
-                    size: iconSize,
-                  )
-                : Icon(
-                    _getDownloadIcon(),
-                    color: _getDownloadColor(),
-                    size: iconSize,
-                  ),
+            // 统一使用与投屏按钮相同的 Container + padding 结构
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: isDownloading
+                  ? _DownloadProgressWithCancel(
+                      progress: info.progress,
+                      size: iconSize,
+                      onCancel: widget.onCancelDownload,
+                    )
+                  : Icon(
+                      _getDownloadIcon(),
+                      color: _getDownloadColor(),
+                      size: iconSize,
+                    ),
+            ),
           ),
         ),
       ),
@@ -1722,10 +1729,12 @@ class _MobileVideoProgressBarState extends State<_MobileVideoProgressBar> {
 class _DownloadProgressWithCancel extends StatefulWidget {
   final double progress;
   final double size;
+  final Future<void> Function() onCancel;
 
   const _DownloadProgressWithCancel({
     required this.progress,
     required this.size,
+    required this.onCancel,
   });
 
   @override
@@ -1737,12 +1746,24 @@ class _DownloadProgressWithCancelState
     extends State<_DownloadProgressWithCancel> {
   bool _isPressed = false;
 
+  Future<void> _handleTap() async {
+    if (_isPressed) {
+      // 点击 X 图标时取消下载
+      await widget.onCancel();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 移动端使用 GestureDetector 检测按压状态
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapUp: (_) async {
+        await _handleTap();
+        if (mounted) {
+          setState(() => _isPressed = false);
+        }
+      },
       onTapCancel: () => setState(() => _isPressed = false),
       child: SizedBox(
         width: widget.size,
