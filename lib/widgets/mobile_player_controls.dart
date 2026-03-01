@@ -471,32 +471,42 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
   Future<void> _enterFullscreen() async {
     final shouldLockPortrait = _determineShouldLockPortrait();
     try {
+      // 设置屏幕方向（根据视频尺寸固定）
       await _setScreenOrientation(shouldLockPortrait);
       await _hideSystemUI();
-      await _waitForOrientationApplied(shouldLockPortrait, maxAttempts: 12);
     } catch (e) {
       debugPrint('[Fullscreen] Failed while applying orientation/ui: $e');
     }
+    // 进入全屏
     await widget.state.enterFullscreen();
     widget.onFullscreenChange(true);
+    // Android 需要延迟后再次设置方向，防止系统回调改变方向
     if (Platform.isAndroid) {
-      await Future<void>.delayed(const Duration(milliseconds: 30));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       await _setScreenOrientation(shouldLockPortrait);
     }
     _onUserInteraction();
   }
 
+  /// 判断是否应该锁定竖屏
+  ///
+  /// 逻辑：
+  /// - 竖屏视频（高>宽）：保持竖屏全屏
+  /// - 横屏视频（宽>高）：旋转为横屏全屏
   bool _determineShouldLockPortrait() {
     try {
-      final screenSize = MediaQuery.of(context).size;
-      final screenAspectRatio = screenSize.width / screenSize.height;
       final videoWidth = widget.player.state.width ?? 0;
       final videoHeight = widget.player.state.height ?? 0;
-      final videoAspectRatio =
-          (videoWidth > 0 && videoHeight > 0) ? videoWidth / videoHeight : 0;
-      final isScreenPortrait = screenAspectRatio < 1.0;
-      final isVideoPortrait = videoAspectRatio > 0 && videoAspectRatio < 1.0;
-      return isScreenPortrait && isVideoPortrait;
+      // 如果视频尺寸有效，根据视频比例判断
+      if (videoWidth > 0 && videoHeight > 0) {
+        final videoAspectRatio = videoWidth / videoHeight;
+        // 视频比例小于1.0表示竖屏视频（高>宽）
+        return videoAspectRatio < 1.0;
+      }
+      // 视频尺寸未知时，根据当前屏幕方向判断
+      final screenSize = MediaQuery.of(context).size;
+      final screenAspectRatio = screenSize.width / screenSize.height;
+      return screenAspectRatio < 1.0;
     } catch (e) {
       debugPrint('[Fullscreen] _determineShouldLockPortrait error: $e');
       return false;
@@ -517,24 +527,6 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       }
     } catch (e) {
       debugPrint('[Fullscreen] Failed to set orientation: $e');
-    }
-  }
-
-  Future<void> _waitForOrientationApplied(
-    bool shouldLockPortrait, {
-    int maxAttempts = 8,
-  }) async {
-    try {
-      for (var i = 0; i < maxAttempts; i++) {
-        if (!mounted) return;
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        if (!mounted) return;
-        final ms = MediaQuery.of(context).size;
-        final isPortraitNow = (ms.width / ms.height) < 1.0;
-        if (isPortraitNow == shouldLockPortrait) return;
-      }
-    } catch (e) {
-      debugPrint('[Fullscreen] waitForOrientationApplied error: $e');
     }
   }
 

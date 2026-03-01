@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:selene/components/animations/video_loading_animation.dart';
@@ -879,6 +880,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 final videoWidget = Video(
                   controller: _videoController!,
                   fit: videoFit,
+                  // 自定义全屏回调，覆盖默认的横屏强制设置
+                  onEnterFullscreen: () async {
+                    // 仅隐藏系统UI，不设置方向（方向由 MobilePlayerControls 控制）
+                    await SystemChrome.setEnabledSystemUIMode(
+                      SystemUiMode.immersiveSticky,
+                      overlays: [],
+                    );
+                  },
+                  onExitFullscreen: () async {
+                    // 恢复系统UI
+                    await SystemChrome.setEnabledSystemUIMode(
+                      SystemUiMode.manual,
+                      overlays: SystemUiOverlay.values,
+                    );
+                  },
                   controls: (state) {
                     return widget.surface == VideoPlayerSurface.desktop
                         ? PCPlayerControls(
