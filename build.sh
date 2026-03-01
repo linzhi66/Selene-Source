@@ -349,13 +349,26 @@ build_windows() {
         return 0
     fi
     
-    flutter build windows --release \
+    # Windows 构建优化环境变量
+    export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-$(nproc 2>/dev/null || echo 4)}"
+    
+    # 构建参数
+    local build_args=(
+        "--release"
+        "--no-tree-shake-icons"
+    )
+    
+    flutter build windows "${build_args[@]}" \
         || error_exit "Windows 构建失败"
     
     if [ -d "build/windows/x64/runner/Release" ]; then
         mkdir -p build-windows
         cp -r build/windows/x64/runner/Release/* build-windows/
-        log_success "Windows 构建完成"
+        
+        # 显示构建产物大小
+        local exe_size
+        exe_size=$(du -h build-windows/selene.exe 2>/dev/null | cut -f1)
+        log_success "Windows 构建完成 (selene.exe: ${exe_size})"
     fi
 }
 
