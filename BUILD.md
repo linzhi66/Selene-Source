@@ -78,6 +78,99 @@ flutter build web --release --web-renderer html
 
 ---
 
+## 🔧 一键构建脚本 (build.sh)
+
+项目提供 `build.sh` 脚本，支持一键构建多个平台，自动打包并输出到 `dist/` 目录。
+
+### 使用方法
+
+```bash
+# 赋予执行权限（首次使用）
+chmod +x build.sh
+
+# 构建所有平台（并行模式）
+./build.sh
+
+# 查看帮助
+./build.sh --help
+```
+
+### 命令参数
+
+| 参数                    | 说明                        |
+|-----------------------|---------------------------|
+| `--android-only`      | 仅构建 Android               |
+| `--ios-only`          | 仅构建 iOS（仅 macOS）          |
+| `--macos-arm64-only`  | 仅构建 macOS ARM64（仅 macOS）  |
+| `--macos-x86_64-only` | 仅构建 macOS x86_64（仅 macOS） |
+| `--macos-only`        | 构建 macOS 双架构（仅 macOS）     |
+| `--apple-only`        | 构建所有 Apple 平台（仅 macOS）    |
+| `--windows-only`      | 仅构建 Windows（仅 Windows）    |
+| `--linux-only`        | 仅构建 Linux（仅 Linux）        |
+| `--web-only`          | 仅构建 Web                   |
+| `--sequential`        | 顺序构建（默认并行）                |
+| `--no-clean`          | 跳过清理（保留缓存，快速构建）           |
+| `--help, -h`          | 显示帮助信息                    |
+
+### 使用示例
+
+```bash
+# 日常开发 - 仅 Android，保留缓存（最快）
+./build.sh --android-only --no-clean
+
+# CI/CD - 完整 Android 构建（含 AAB）
+./build.sh --android-only
+
+# macOS 开发 - 双架构构建（仅 macOS）
+./build.sh --macos-only
+
+# Apple 生态 - iOS + macOS（仅 macOS）
+./build.sh --apple-only
+
+# 全平台发布（根据操作系统自动选择可构建平台）
+./build.sh
+```
+
+### 脚本特性
+
+| 特性       | 说明                                     |
+|----------|----------------------------------------|
+| **并行构建** | 默认并行构建多个平台，大幅缩短总耗时                     |
+| **自动检测** | 自动检测操作系统，跳过不支持的平台                      |
+| **智能清理** | `--no-clean` 保留 Gradle/Flutter 缓存，增量构建 |
+| **自动打包** | 自动打包为 DMG、ZIP、tar.gz 等分发格式             |
+| **版本读取** | 自动从 `pubspec.yaml` 读取版本号命名产物           |
+| **耗时统计** | 构建完成后显示总耗时                             |
+| **错误处理** | 详细错误日志，构建失败自动退出                        |
+
+### 输出产物
+
+运行 `./build.sh` 后，`dist/` 目录将包含：
+
+```
+dist/
+├── selene-1.6.6-android-arm64.apk      # Android ARM64
+├── selene-1.6.6-android-armv7a.apk     # Android ARMv7
+├── selene-1.6.6-android.aab            # Android App Bundle (Google Play)
+├── selene-1.6.6-ios.ipa                # iOS
+├── selene-1.6.6-macos-arm64.dmg        # macOS Apple Silicon
+├── selene-1.6.6-macos-x86_64.dmg       # macOS Intel
+├── selene-1.6.6-windows.zip            # Windows
+├── selene-1.6.6-linux.tar.gz           # Linux
+└── selene-1.6.6-web.tar.gz             # Web
+```
+
+### 构建优化建议
+
+| 场景         | 推荐命令                                   | 耗时     |
+|------------|----------------------------------------|--------|
+| 日常开发测试     | `./build.sh --android-only --no-clean` | ~30s   |
+| Android 发布 | `./build.sh --android-only`            | ~60s   |
+| macOS 双架构  | `./build.sh --macos-only`              | ~120s  |
+| 全平台 CI/CD  | `./build.sh`                           | ~180s+ |
+
+---
+
 ## 📋 目录
 
 1. [环境要求](#环境要求)
