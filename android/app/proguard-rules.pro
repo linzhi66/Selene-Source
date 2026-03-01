@@ -1,113 +1,54 @@
-# =========================
-# Flutter Core (最小化保留)
-# =========================
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.common.** { *; }
--keep class io.flutter.embedding.engine.FlutterEngine { *; }
--keep class io.flutter.embedding.android.FlutterActivity { *; }
--keep class io.flutter.view.FlutterMain { *; }
+# 优化 R8 编译速度：禁用部分优化，保留核心混淆
+# 注意：这会轻微增加 APK 大小（约 5-10%），但大幅提升编译速度
 
-# =========================
-# Native Methods (必须保留)
-# =========================
--keepclasseswithmembernames class * {
-    native <methods>;
+# 禁用 R8 的激进优化（编译更快）
+-dontoptimize
+-dontpreverify
+
+# === Play Core 动态交付（Flutter 需要）===
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallException
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManager
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManagerFactory
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest$Builder
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallSessionState
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListener
+-dontwarn com.google.android.play.core.tasks.OnFailureListener
+-dontwarn com.google.android.play.core.tasks.OnSuccessListener
+-dontwarn com.google.android.play.core.tasks.Task
+
+# 保留行号信息方便调试
+-keepattributes SourceFile,LineNumberTable
+
+# === media_kit 相关规则 ===
+-keep class com.alexmercerind.media_kit_video.** { *; }
+-keep class com.alexmercerind.media_kit.** { *; }
+-keep class io.flutter.embedding.** { *; }
+-keep class io.flutter.plugin.** { *; }
+
+# === DLNA 库 ===
+-keep class com.dlna.** { *; }
+-keep class org.fourthline.cling.** { *; }
+
+# === 加密库 ===
+-keep class org.bouncycastle.** { *; }
+-keep class com.pointycastle.** { *; }
+
+# === 其他 Flutter 插件 ===
+-keep class com.builttoroam.devicecalendar.** { *; }
+-keep class io.github.ponnamkarthik.** { *; }
+-keep class com.ryanheise.** { *; }
+-keep class me.schlaubi.** { *; }
+
+# === 避免反射问题 ===
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
 }
 
-# =========================
-# Project Specific
-# =========================
--keep class org.moontechlab.selene.MainActivity { *; }
-
-# =========================
-# 关键属性 (用于调试)
-# =========================
--keepattributes SourceFile,LineNumberTable
+# === 保持注解 ===
+-keepattributes *Annotation*
 -keepattributes Signature
 -keepattributes Exceptions
--renamesourcefileattribute SourceFile
-
-# =========================
-# Kotlin (最小化)
-# =========================
--keep class kotlin.Metadata { *; }
--dontwarn kotlin.**
-
-# Kotlin 反射 (按需保留)
--keepclassmembers class kotlin.Metadata {
-    public <methods>;
-}
-
-# =========================
-# Video Players (只保留必要的)
-# =========================
-# Media Kit - 只保留公共 API
--keep class com.alexmercerind.**.MediaKitPlugin { *; }
--dontwarn com.alexmercerind.**
-
-# =========================
-# Network (最小化)
-# =========================
-# OkHttp - 只保留必要的
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# =========================
-# Flutter Plugins (通用规则)
-# =========================
-# 保留所有 Plugin 注册类
--keep class * implements io.flutter.plugin.common.PluginRegistry$Registrar {
-    public <init>();
-}
--keep class * implements io.flutter.embedding.engine.plugins.FlutterPlugin {
-    public <init>();
-}
-
-# =========================
-# Serialization (最小化)
-# =========================
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-}
-
-# =========================
-# R8 完全优化
-# =========================
-# 移除所有日志
--assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-    public static *** w(...);
-    public static *** e(...);
-}
-
-# 移除调试代码
--assumenosideeffects class java.lang.Throwable {
-    public void printStackTrace();
-}
-
-# 移除 Kotlin 断言
--assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-    static void check*(...);
-    static void throw*(...);
-}
-
-# =========================
-# 允许激进优化
-# =========================
-# 允许访问修饰符优化
--allowaccessmodification
-
-# 允许重新打包类
--repackageclasses
-
-# =========================
-# Warnings to Ignore
-# =========================
--dontwarn javax.annotation.**
--dontwarn org.conscrypt.**
--dontwarn org.bouncycastle.**
--dontwarn org.openjsse.**
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
