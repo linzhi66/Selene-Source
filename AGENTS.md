@@ -376,10 +376,7 @@ Manages local caching for favorites, history, and search:
 ```dart
 
 final cacheService = PageCacheService();
-await
-cacheService.refreshFavorites
-(
-context);
+await cacheService.refreshFavorites(context);
 await cacheService.refreshPlayRecords(context);
 ```
 

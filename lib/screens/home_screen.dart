@@ -38,6 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedTopTab = '首页';
   late PageController _pageController;
   late PageController _bottomNavPageController;
+  // 页面是否已经构建过（用于延迟加载优化）
+  final Set<int> _loadedPages = {0}; // 默认首页已加载
+  // 是否正在切换页面
+  bool _isTransitioning = false;
 
   @override
   void initState() {
@@ -398,10 +402,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNavPageView() {
     return PageView(
       controller: _bottomNavPageController,
+      physics: _isTransitioning
+          ? const NeverScrollableScrollPhysics()
+          : const PageScrollPhysics(),
       onPageChanged: (index) {
         if (_currentBottomNavIndex != index) {
           setState(() {
             _currentBottomNavIndex = index;
+            _loadedPages.add(index);
           });
         }
       },
@@ -419,20 +427,30 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 处理底部导航栏切换
   void _onBottomNavChanged(int index) {
     // 防止重复点击同一个标签
-    if (_currentBottomNavIndex == index) {
+    if (_currentBottomNavIndex == index || _isTransitioning) {
       return;
     }
 
     setState(() {
       _currentBottomNavIndex = index;
+      _loadedPages.add(index);
+      _isTransitioning = true;
     });
 
-    // 使用动画切换到对应页面
-    _bottomNavPageController.animateToPage(
+    // 使用动画切换到对应页面 - 使用更流畅的曲线
+    _bottomNavPageController
+        .animateToPage(
       index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.fastEaseInToSlowEaseOut,
+    )
+        .then((_) {
+      if (mounted) {
+        setState(() {
+          _isTransitioning = false;
+        });
+      }
+    });
   }
 
   /// 处理顶部标签切换

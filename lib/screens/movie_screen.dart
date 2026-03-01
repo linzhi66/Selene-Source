@@ -146,7 +146,14 @@ class _MovieScreenState extends State<MovieScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchMovies(isRefresh: true);
+    // 延迟加载数据，避免页面切换动画卡顿
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _fetchMovies(isRefresh: true);
+        }
+      });
+    });
     _scrollController.addListener(() {
       _handleScroll();
     });

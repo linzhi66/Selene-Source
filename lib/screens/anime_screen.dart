@@ -221,7 +221,14 @@ class _AnimeScreenState extends State<AnimeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchAnimeData(isRefresh: true);
+    // 延迟加载数据，避免页面切换动画卡顿
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _fetchAnimeData(isRefresh: true);
+        }
+      });
+    });
     _scrollController.addListener(() {
       _handleScroll();
     });

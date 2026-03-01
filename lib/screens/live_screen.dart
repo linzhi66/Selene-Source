@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/components/animations/modern_loading_animation.dart';
+import 'package:selene/design/colors.dart';
 import 'package:selene/models/live_channel.dart';
 import 'package:selene/models/live_source.dart';
 import 'package:selene/screens/live_player_screen.dart';
@@ -49,7 +51,18 @@ class _LiveScreenState extends State<LiveScreen>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _loadChannels();
+    // 延迟加载数据，避免页面切换动画卡顿
+    // 使用延迟确保页面切换动画完成后再开始加载数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // 再延迟150ms，确保页面切换动画已完成
+        Future<void>.delayed(const Duration(milliseconds: 150), () {
+          if (mounted) {
+            _loadChannels();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -677,45 +690,35 @@ class _LiveScreenState extends State<LiveScreen>
   }
 
   Widget _buildLoadingView(ThemeService themeService) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '加载中...',
-            style: FontUtils.poppins(
-              color: themeService.isDarkMode
-                  ? const Color(0xFFb0b0b0)
-                  : const Color(0xFF7f8c8d),
-            ),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: themeService.isDarkMode
+            ? AppColors.darkBackgroundGradient
+            : AppColors.lightBackgroundGradient,
+      ),
+      child: Center(
+        child: ModernLoadingAnimation(
+          message: '加载中',
+          subMessage: '正在获取直播频道',
+          isDarkMode: themeService.isDarkMode,
+        ),
       ),
     );
   }
 
   Widget _buildRefreshingView(ThemeService themeService) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '刷新中...',
-            style: FontUtils.poppins(
-              color: themeService.isDarkMode
-                  ? const Color(0xFFb0b0b0)
-                  : const Color(0xFF7f8c8d),
-            ),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: themeService.isDarkMode
+            ? AppColors.darkBackgroundGradient
+            : AppColors.lightBackgroundGradient,
+      ),
+      child: Center(
+        child: ModernLoadingAnimation(
+          message: '刷新中',
+          subMessage: '正在更新直播频道数据',
+          isDarkMode: themeService.isDarkMode,
+        ),
       ),
     );
   }

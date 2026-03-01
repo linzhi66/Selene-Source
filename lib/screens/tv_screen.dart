@@ -161,7 +161,14 @@ class _TvScreenState extends State<TvScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchTvShows(isRefresh: true);
+    // 延迟加载数据，避免页面切换动画卡顿
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _fetchTvShows(isRefresh: true);
+        }
+      });
+    });
     _scrollController.addListener(() {
       _handleScroll();
     });

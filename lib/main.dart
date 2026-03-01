@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:macos_window_utils/macos_window_utils.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
+import 'package:selene/components/animations/modern_loading_animation.dart';
+import 'package:selene/design/colors.dart';
 import 'package:selene/screens/home_screen.dart';
 import 'package:selene/screens/login_screen.dart';
 import 'package:selene/services/api_service.dart';
@@ -205,46 +207,16 @@ class _AppWrapperState extends State<AppWrapper> {
           return Scaffold(
             body: DecoratedBox(
               decoration: BoxDecoration(
-                color: themeService.isDarkMode
-                    ? const Color(0xFF000000) // 深色模式纯黑色
-                    : null,
                 gradient: themeService.isDarkMode
-                    ? null
-                    : const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFFe6f3fb),
-                          Color(0xFFeaf3f7),
-                          Color(0xFFf7f7f3),
-                          Color(0xFFe9ecef),
-                          Color(0xFFdbe3ea),
-                          Color(0xFFd3dde6),
-                        ],
-                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                      ),
+                    ? AppColors.darkBackgroundGradient
+                    : AppColors.lightBackgroundGradient,
               ),
               child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          themeService.isDarkMode
-                              ? const Color(0xFFffffff)
-                              : const Color(0xFF2c3e50)),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '正在检查登录状态...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: themeService.isDarkMode
-                            ? const Color(0xFFffffff)
-                            : const Color(0xFF2c3e50),
-                      ),
-                    ),
-                  ],
+                child: ModernLoadingAnimation(
+                  message: '正在检查登录状态',
+                  subMessage: '请稍候',
+                  isDarkMode: themeService.isDarkMode,
+                  size: 160,
                 ),
               ),
             ),
