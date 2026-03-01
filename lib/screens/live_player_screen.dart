@@ -13,6 +13,7 @@ import 'package:selene/services/source_speed_test_service.dart';
 import 'package:selene/services/theme_service.dart';
 import 'package:selene/utils/device_utils.dart';
 import 'package:selene/utils/font_utils.dart';
+import 'package:selene/widgets/cached_image.dart';
 import 'package:selene/widgets/filter_options_selector.dart';
 import 'package:selene/widgets/filter_pill_hover.dart';
 import 'package:selene/widgets/switch_loading_overlay.dart';
@@ -326,9 +327,11 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
   void dispose() {
     // 恢复原始的系统UI样式
     SystemChrome.setSystemUIOverlayStyle(_originalStyle);
+    // 释放滚动控制器
     _programScrollController.dispose();
     _verticalProgramScrollController.dispose();
     _channelScrollController.dispose();
+    // 释放动画控制器
     _loadingAnimationController.dispose();
     // 清理测速服务
     _speedTestService?.cancelAllTests();
@@ -944,12 +947,12 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: Image.network(
-                      _currentChannel.logo,
+                    child: OptimizedImage(
+                      imageUrl: _currentChannel.logo,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildDefaultLogoIcon();
-                      },
+                      cacheWidth: 200,
+                      cacheHeight: 100,
+                      errorWidget: _buildDefaultLogoIcon(),
                     ),
                   ),
                 ),
@@ -1081,16 +1084,16 @@ class _LivePlayerScreenState extends State<LivePlayerScreen>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          channel.logo,
+                        child: OptimizedImage(
+                          imageUrl: channel.logo,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.tv,
-                              size: 16,
-                              color: Color(0xFF95a5b0),
-                            );
-                          },
+                          cacheWidth: 120,
+                          cacheHeight: 60,
+                          errorWidget: const Icon(
+                            Icons.tv,
+                            size: 16,
+                            color: Color(0xFF95a5b0),
+                          ),
                         ),
                       ),
                     ),

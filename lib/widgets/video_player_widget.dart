@@ -248,11 +248,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_playerDisposed || _player == null || _currentUrl == null) {
       return;
     }
-    if (mounted) {
-      setState(() {
-        _isLoadingVideo = true;
-      });
+
+    // 检查 URL 有效性
+    if (_currentUrl!.isEmpty || !_isValidUrl(_currentUrl!)) {
+      debugPrint('VideoPlayerWidget: invalid URL $_currentUrl');
+      _setLoadingState(false);
+      return;
     }
+
+    _setLoadingState(true);
+
     try {
       await _player!.open(
         Media(
@@ -262,18 +267,38 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         ),
       );
       await _player!.setRate(_playbackSpeed.value);
-      if (mounted) {
-        setState(() {
-          _hasCompleted = false;
-        });
-      }
+      _setCompletedState(false);
     } catch (error) {
       debugPrint('VideoPlayerWidget: failed to open media $error');
-      if (mounted) {
-        setState(() {
-          _isLoadingVideo = false;
-        });
-      }
+      _setLoadingState(false);
+    }
+  }
+
+  /// 检查 URL 是否有效
+  bool _isValidUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 安全地设置加载状态
+  void _setLoadingState(bool loading) {
+    if (mounted && !_playerDisposed) {
+      setState(() {
+        _isLoadingVideo = loading;
+      });
+    }
+  }
+
+  /// 安全地设置完成状态
+  void _setCompletedState(bool completed) {
+    if (mounted && !_playerDisposed) {
+      setState(() {
+        _hasCompleted = completed;
+      });
     }
   }
 
@@ -354,7 +379,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     // 监听视频尺寸变化并更新视频填充模式
     _sizeCheckTimer?.cancel();
     _sizeCheckTimer = Timer.periodic(
-      const Duration(milliseconds: 500),
+      const Duration(milliseconds: 1000), // 从 500ms 优化为 1000ms
       (timer) {
         if (!mounted || _playerDisposed) {
           timer.cancel();

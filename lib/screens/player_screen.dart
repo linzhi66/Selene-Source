@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
@@ -130,6 +131,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   DateTime? _lastSaveTime;
   int? _lastSavePosition; // 上次保存的播放位置（秒）
   static const Duration _saveProgressInterval = Duration(seconds: 10);
+  Timer? _saveDebounceTimer; // 防抖定时器
+  static const Duration _saveDebounceDelay = Duration(seconds: 2); // 防抖延迟
   Duration? _resumeStartAt;
 
   // 网页全屏状态
@@ -498,7 +501,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  /// 保存播放进度（同步函数，提前获取参数避免异步问题）
+  /// 保存播放进度（带防抖机制）
+  ///
+  /// [force] - 是否强制立即保存，跳过防抖
+  /// [scene] - 保存场景，用于调试
   void _saveProgress({bool force = false, required String scene}) {
     try {
       if (currentDetail == null) return;
@@ -527,6 +533,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
       final playTime = currentPosition.inSeconds;
       final totalTime = duration.inSeconds;
+
       // 如果不是强制保存，检查时间间隔和进度变化
       if (!force) {
         final now = DateTime.now();
@@ -541,6 +548,28 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
       }
 
+      // 取消之前的防抖定时器
+      _saveDebounceTimer?.cancel();
+
+      if (force) {
+        // 强制保存：立即执行
+        _executeSave(playTime, totalTime, scene);
+      } else {
+        // 非强制保存：使用防抖
+        _saveDebounceTimer = Timer(_saveDebounceDelay, () {
+          if (mounted) {
+            _executeSave(playTime, totalTime, scene);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('保存播放进度失败: $e');
+    }
+  }
+
+  /// 执行实际的保存操作
+  void _executeSave(int playTime, int totalTime, String scene) {
+    try {
       // 更新最后保存时间和位置
       _lastSaveTime = DateTime.now();
       _lastSavePosition = playTime;
@@ -582,7 +611,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         debugPrint('保存播放进度失败 [场景: $scene]: $e');
       });
     } catch (e) {
-      debugPrint('保存播放进度失败: $e');
+      debugPrint('执行保存播放进度失败: $e');
     }
   }
 
@@ -2623,6 +2652,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     _speedTestService?.cancelAllTests();
     _speedTestService?.dispose();
     _speedTestService = null;
+    // 取消防抖定时器
+    _saveDebounceTimer?.cancel();
+    _saveDebounceTimer = null;
     super.dispose();
   }
 

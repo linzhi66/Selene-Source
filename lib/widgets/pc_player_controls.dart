@@ -156,6 +156,10 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
     });
   }
 
+  // 用于节流位置更新
+  DateTime? _lastPositionUpdate;
+  static const _positionUpdateInterval = Duration(milliseconds: 500);
+
   void _setupPlayerListeners() {
     _playingSubscription = widget.player.stream.playing.listen((playing) {
       if (!mounted) return;
@@ -176,7 +180,13 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
 
     _positionSubscription = widget.player.stream.position.listen((_) {
       if (mounted && _controlsVisible && !_isSeekingViaSwipe) {
-        setState(() {});
+        // 节流：每 500ms 最多更新一次 UI
+        final now = DateTime.now();
+        if (_lastPositionUpdate == null ||
+            now.difference(_lastPositionUpdate!) > _positionUpdateInterval) {
+          _lastPositionUpdate = now;
+          setState(() {});
+        }
       }
     });
   }
@@ -576,43 +586,58 @@ class _PCPlayerControlsState extends State<PCPlayerControls> {
         _toggleFullscreen();
         return KeyEventResult.handled;
       } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-        final currentPosition = widget.player.state.position;
-        final newPosition = currentPosition - const Duration(seconds: 10);
-        final clampedPosition = Duration(
-          milliseconds: newPosition.inMilliseconds
-              .clamp(0, widget.player.state.duration.inMilliseconds),
-        );
-        widget.player.seek(clampedPosition);
-        _onUserInteraction();
-        return KeyEventResult.handled;
+        return _handleSeek(-10);
       } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-        final currentPosition = widget.player.state.position;
-        final duration = widget.player.state.duration;
-        final newPosition = currentPosition + const Duration(seconds: 10);
-        final clampedPosition = Duration(
-          milliseconds:
-              newPosition.inMilliseconds.clamp(0, duration.inMilliseconds),
-        );
-        widget.player.seek(clampedPosition);
-        _onUserInteraction();
-        return KeyEventResult.handled;
+        return _handleSeek(10);
       } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        final currentVolume = widget.player.state.volume;
-        final newVolume = (currentVolume + 10).clamp(0.0, 100.0);
-        widget.player.setVolume(newVolume);
-        _onUserInteraction();
-        _showVolumeMenuTemporarily();
-        return KeyEventResult.handled;
+        return _handleVolumeChange(10);
       } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        final currentVolume = widget.player.state.volume;
-        final newVolume = (currentVolume - 10).clamp(0.0, 100.0);
-        widget.player.setVolume(newVolume);
-        _onUserInteraction();
-        _showVolumeMenuTemporarily();
-        return KeyEventResult.handled;
+        return _handleVolumeChange(-10);
       }
     }
     return KeyEventResult.ignored;
+  }
+
+  /// 处理进度调整（带安全边界检查）
+  KeyEventResult _handleSeek(int seconds) {
+    try {
+      final currentPosition = widget.player.state.position;
+      final duration = widget.player.state.duration;
+
+      // 检查有效性
+      if (duration == Duration.zero || duration.inMilliseconds < 0) {
+        return KeyEventResult.ignored;
+      }
+
+      final newPosition = currentPosition + Duration(seconds: seconds);
+      final clampedPosition = Duration(
+        milliseconds: newPosition.inMilliseconds.clamp(
+          0,
+          duration.inMilliseconds,
+        ),
+      );
+      widget.player.seek(clampedPosition);
+      _onUserInteraction();
+      return KeyEventResult.handled;
+    } catch (e) {
+      debugPrint('Seek error: $e');
+      return KeyEventResult.ignored;
+    }
+  }
+
+  /// 处理音量调整（带安全边界检查）
+  KeyEventResult _handleVolumeChange(double delta) {
+    try {
+      final currentVolume = widget.player.state.volume;
+      final newVolume = (currentVolume + delta).clamp(0.0, 100.0);
+      widget.player.setVolume(newVolume);
+      _onUserInteraction();
+      _showVolumeMenuTemporarily();
+      return KeyEventResult.handled;
+    } catch (e) {
+      debugPrint('Volume change error: $e');
+      return KeyEventResult.ignored;
+    }
   }
 
   @override

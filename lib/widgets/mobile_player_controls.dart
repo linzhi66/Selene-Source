@@ -160,6 +160,10 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
     }).catchError((_) {});
   }
 
+  // 用于节流位置更新
+  DateTime? _lastPositionUpdate;
+  static const _positionUpdateInterval = Duration(milliseconds: 500);
+
   void _listenPlayerStreams() {
     _subscriptions.add(
       widget.player.stream.playing.listen((playing) {
@@ -181,7 +185,13 @@ class _MobilePlayerControlsState extends State<MobilePlayerControls> {
       widget.player.stream.position.listen((_) {
         if (!mounted) return;
         if (_controlsVisible && !_isSeekingViaSwipe) {
-          setState(() {});
+          // 节流：每 500ms 最多更新一次 UI
+          final now = DateTime.now();
+          if (_lastPositionUpdate == null ||
+              now.difference(_lastPositionUpdate!) > _positionUpdateInterval) {
+            _lastPositionUpdate = now;
+            setState(() {});
+          }
         }
       }),
     );
