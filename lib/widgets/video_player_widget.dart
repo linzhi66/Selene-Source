@@ -28,10 +28,12 @@ class VideoPlayerWidget extends StatefulWidget {
   final int? currentEpisodeIndex;
   final int? totalEpisodes;
   final String? sourceName;
+
   // ignore: avoid_positional_boolean_parameters
   final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
   final VoidCallback? onExitFullScreen;
   final bool live;
+
   // ignore: avoid_positional_boolean_parameters
   final void Function(bool isPipMode)? onPipModeChanged;
 
@@ -231,16 +233,31 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_playerDisposed) {
       return;
     }
-    _player = Player();
-    _videoController = VideoController(_player!);
-    _setupPlayerListeners();
-    if (_currentUrl != null) {
-      await _openCurrentMedia();
-    }
-    if (mounted) {
-      setState(() {
-        _isInitialized = true;
-      });
+    try {
+      // 使用 PlayerConfiguration 优化播放器配置
+      // 根据官方文档建议配置参数
+      _player = Player(
+        configuration: const PlayerConfiguration(
+          // 降低日志级别以减少性能开销
+          logLevel: MPVLogLevel.warn,
+        ),
+      );
+
+      // 配置 VideoController
+      _videoController = VideoController(_player!);
+
+      _setupPlayerListeners();
+      if (_currentUrl != null) {
+        await _openCurrentMedia();
+      }
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('VideoPlayerWidget: 初始化播放器失败: $e');
+      _setLoadingState(false);
     }
   }
 
@@ -302,84 +319,121 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
   }
 
+  // 用于节流位置更新的时间戳
+  DateTime? _lastPositionUpdate;
+  static const _positionUpdateInterval = Duration(milliseconds: 500);
+
   void _setupPlayerListeners() {
     if (_player == null) {
       return;
     }
+
+    // 取消之前的订阅
+    _cancelAllSubscriptions();
+
+    // 使用 listen 的 onError 参数增强错误处理
+    _positionSubscription = _player!.stream.position.listen(
+      (_) {
+        // 节流：每 500ms 最多通知一次监听器
+        final now = DateTime.now();
+        if (_lastPositionUpdate != null &&
+            now.difference(_lastPositionUpdate!) < _positionUpdateInterval) {
+          return;
+        }
+        _lastPositionUpdate = now;
+
+        for (final listener in List<VoidCallback>.from(_progressListeners)) {
+          try {
+            listener();
+          } catch (error) {
+            debugPrint('VideoPlayerWidget: progress listener error $error');
+          }
+        }
+      },
+      onError: (Object error) {
+        debugPrint('VideoPlayerWidget: position stream error: $error');
+      },
+      cancelOnError: false,
+    );
+
+    _playingSubscription = _player!.stream.playing.listen(
+      (playing) {
+        if (!mounted || _playerDisposed) return;
+        if (!Platform.isAndroid && !Platform.isIOS) {
+          return;
+        }
+        _updatePipConfiguration(playing);
+      },
+      onError: (Object error) {
+        debugPrint('VideoPlayerWidget: playing stream error: $error');
+      },
+    );
+
+    if (!widget.live) {
+      _completedSubscription = _player!.stream.completed.listen(
+        (completed) {
+          if (!mounted || _playerDisposed) return;
+          if (completed && !_hasCompleted) {
+            _hasCompleted = true;
+            widget.onVideoCompleted?.call();
+          }
+        },
+        onError: (Object error) {
+          debugPrint('VideoPlayerWidget: completed stream error: $error');
+        },
+      );
+    }
+
+    _durationSubscription = _player!.stream.duration.listen(
+      (duration) {
+        if (!mounted || _playerDisposed) return;
+        if (duration != Duration.zero) {
+          _setLoadingState(false);
+          widget.onReady?.call();
+        }
+      },
+      onError: (Object error) {
+        debugPrint('VideoPlayerWidget: duration stream error: $error');
+      },
+    );
+
+    // 监听视频尺寸变化并更新视频填充模式
+    _setupSizeCheckTimer();
+  }
+
+  /// 取消所有 Stream 订阅
+  void _cancelAllSubscriptions() {
     _positionSubscription?.cancel();
     _playingSubscription?.cancel();
     _completedSubscription?.cancel();
     _durationSubscription?.cancel();
+  }
 
-    _positionSubscription = _player!.stream.position.listen((_) {
-      for (final listener in List<VoidCallback>.from(_progressListeners)) {
-        try {
-          listener();
-        } catch (error) {
-          debugPrint('VideoPlayerWidget: progress listener error $error');
-        }
-      }
+  /// 更新 PiP 配置
+  void _updatePipConfiguration(bool playing) {
+    if (!mounted) return;
+
+    setState(() {
+      _hasCompleted = false;
     });
 
-    _playingSubscription = _player!.stream.playing.listen((playing) {
-      if (!mounted) return;
-      if (!Platform.isAndroid && !Platform.isIOS) {
-        return;
-      }
-      if (!playing) {
-        setState(() {
-          _hasCompleted = false;
-        });
-        _pip.setup(
-          const PipOptions(
-            autoEnterEnabled: false,
-            aspectRatioX: 16,
-            aspectRatioY: 9,
-            preferredContentWidth: 480,
-            preferredContentHeight: 270,
-            controlStyle: 2,
-          ),
-        );
-      } else {
-        _pip.setup(
-          const PipOptions(
-            autoEnterEnabled: true,
-            aspectRatioX: 16,
-            aspectRatioY: 9,
-            preferredContentWidth: 480,
-            preferredContentHeight: 270,
-            controlStyle: 2,
-          ),
-        );
-      }
-    });
+    _pip.setup(
+      PipOptions(
+        autoEnterEnabled: playing,
+        aspectRatioX: 16,
+        aspectRatioY: 9,
+        preferredContentWidth: 480,
+        preferredContentHeight: 270,
+        controlStyle: 2,
+      ),
+    );
+  }
 
-    if (!widget.live) {
-      _completedSubscription = _player!.stream.completed.listen((completed) {
-        if (!mounted) return;
-        if (completed && !_hasCompleted) {
-          _hasCompleted = true;
-          widget.onVideoCompleted?.call();
-        }
-      });
-    }
-
-    _durationSubscription = _player!.stream.duration.listen((duration) {
-      if (!mounted) return;
-      if (duration != Duration.zero) {
-        if (_isLoadingVideo) {
-          setState(() {
-            _isLoadingVideo = false;
-          });
-        }
-        widget.onReady?.call();
-      }
-    });
-
-    // 监听视频尺寸变化并更新视频填充模式
+  /// 设置尺寸检查定时器
+  void _setupSizeCheckTimer() {
     _sizeCheckTimer?.cancel();
     _sizeCheckTimer = Timer.periodic(
-      const Duration(milliseconds: 1000), // 从 500ms 优化为 1000ms
+      const Duration(milliseconds: 1000),
       (timer) {
         if (!mounted || _playerDisposed) {
           timer.cancel();
@@ -403,9 +457,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     Duration? startAt,
     Map<String, String>? headers,
   }) async {
-    if (_playerDisposed) {
+    if (_playerDisposed || !mounted) {
       return;
     }
+
+    // 验证 URL
+    if (url.isEmpty || !_isValidUrl(url)) {
+      debugPrint('VideoPlayerWidget: 无效的 URL: $url');
+      return;
+    }
+
     _currentUrl = url;
     if (headers != null) {
       _currentHeaders = headers;
@@ -414,19 +475,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     // 取消之前的下载
     await _cancelDownload();
 
+    // 如果播放器未初始化，先初始化
     if (_player == null) {
       await _initializePlayer();
       return;
     }
 
-    if (mounted) {
-      setState(() {
-        _isLoadingVideo = true;
-      });
-    }
+    _setLoadingState(true);
+    _setCompletedState(false);
 
     try {
+      // 保存当前播放速度
       final currentSpeed = _player!.state.rate;
+
+      // 打开新媒体（默认自动播放）
       await _player!.open(
         Media(
           url,
@@ -434,20 +496,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           httpHeaders: _currentHeaders ?? const <String, String>{},
         ),
       );
+
+      // 恢复播放速度
+      if (currentSpeed != 1.0) {
+        await _player!.setRate(currentSpeed);
+      }
       _playbackSpeed.value = currentSpeed;
-      await _player!.setRate(currentSpeed);
-      if (mounted) {
-        setState(() {
-          _hasCompleted = false;
-        });
-      }
     } catch (error) {
-      debugPrint('VideoPlayerWidget: error while changing source $error');
-      if (mounted) {
-        setState(() {
-          _isLoadingVideo = false;
-        });
-      }
+      debugPrint('VideoPlayerWidget: 切换视频源失败: $error');
+      _setLoadingState(false);
     }
   }
 
@@ -580,13 +637,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return;
     }
     _playerDisposed = true;
+
+    // 取消定时器
     _sizeCheckTimer?.cancel();
-    await _positionSubscription?.cancel();
-    await _playingSubscription?.cancel();
-    await _completedSubscription?.cancel();
-    await _durationSubscription?.cancel();
+    _sizeCheckTimer = null;
+
+    // 取消所有 Stream 订阅
+    _cancelAllSubscriptions();
+    _positionSubscription = null;
+    _playingSubscription = null;
+    _completedSubscription = null;
+    _durationSubscription = null;
+
+    // 清空监听器
     _progressListeners.clear();
-    await _player?.dispose();
+
+    // 释放播放器资源
+    try {
+      await _player?.dispose();
+    } catch (e) {
+      debugPrint('VideoPlayerWidget: 释放播放器时出错: $e');
+    }
+
     _player = null;
     _videoController = null;
   }
@@ -767,31 +839,51 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     return userPath ?? autoPath;
   }
 
+  // 记录应用进入后台前的播放状态
+  bool _wasPlayingBeforePause = false;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (_player == null) {
+    if (_player == null || _playerDisposed) {
       return;
     }
+
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        // 应用进入后台时记录播放状态
+        _wasPlayingBeforePause = _player!.state.playing;
+        break;
       case AppLifecycleState.hidden:
+        // Android 10+ 可能触发，但通常不需要特殊处理
         break;
       case AppLifecycleState.resumed:
+        // 应用回到前台时，如果需要可以恢复播放
+        // 注意：是否恢复播放取决于业务需求
         break;
       case AppLifecycleState.detached:
+        // 应用被销毁时确保释放资源
+        // 注意：实际释放应在 dispose 中处理
         break;
     }
   }
 
+  /// 获取应用进入后台前的播放状态
+  bool get wasPlayingBeforePause => _wasPlayingBeforePause;
+
   @override
   void dispose() {
+    // 标记为已销毁，防止后续操作
+    _playerDisposed = true;
+
+    // 移除应用生命周期监听
     WidgetsBinding.instance.removeObserver(this);
 
     // 取消下载并清理临时文件（不调用 setState）
     _disposeDownload();
 
+    // 释放 PiP 资源
     if (Platform.isAndroid || Platform.isIOS) {
       if (_pipObserver != null) {
         try {
@@ -801,11 +893,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         }
         _pipObserver = null;
       }
-      _pip.dispose();
+      try {
+        _pip.dispose();
+      } catch (e) {
+        debugPrint('Failed to dispose PiP: $e');
+      }
     }
+
+    // 释放播放器资源
     _disposePlayer();
+
+    // 释放 ValueNotifier
     _playbackSpeed.dispose();
     _videoFit.dispose();
+
     super.dispose();
   }
 

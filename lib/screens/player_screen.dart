@@ -668,6 +668,38 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  /// 重新加载视频数据
+  ///
+  /// 点击"重新尝试"按钮时调用，重置状态并重新加载数据
+  void _retryLoading() {
+    if (!mounted) return;
+
+    // 隐藏错误状态，显示加载状态
+    setState(() {
+      _showError = false;
+      _errorMessage = null;
+      _isLoading = true;
+      _loadingProgress = 0.0;
+      _loadingMessage = '正在搜索播放源...';
+      _loadingEmoji = '🔍';
+    });
+
+    // 重置播放器相关状态
+    _isInitialized = false;
+    _showSwitchLoadingOverlay = false;
+
+    // 清除之前的数据，确保重新加载
+    allSources = [];
+    currentDetail = null;
+
+    // 延迟一帧后重新初始化，确保 UI 已更新
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        initVideoData();
+      }
+    });
+  }
+
   void updateLoadingMessage(String message) {
     if (mounted) {
       setState(() {
@@ -2507,7 +2539,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: hideError,
+                          onPressed: _retryLoading,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDarkMode
                                 ? const Color(0xFF2D3748)
