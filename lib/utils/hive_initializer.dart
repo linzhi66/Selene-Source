@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:selene/models/download_task_record.g.dart';
 import 'package:selene/utils/hive_adapters.dart';
 
 /// Hive 初始化器
@@ -13,6 +14,7 @@ class HiveInitializer {
     Hive.registerAdapter(PlayRecordAdapter());
     Hive.registerAdapter(FavoriteItemAdapter());
     Hive.registerAdapter(SearchResourceAdapter());
+    Hive.registerAdapter(DownloadTaskRecordAdapter());
     // 打开本地模式数据盒子
     await Hive.openBox<dynamic>('user_data');
     await Hive.openBox<String>('version_data');

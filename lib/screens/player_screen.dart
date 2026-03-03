@@ -36,6 +36,7 @@ class PlayerScreen extends StatefulWidget {
   final String? stitle;
   final String? stype;
   final String? prefer;
+  final String? localFilePath;
 
   const PlayerScreen({
     super.key,
@@ -46,6 +47,7 @@ class PlayerScreen extends StatefulWidget {
     this.stitle,
     this.stype,
     this.prefer,
+    this.localFilePath,
   });
 
   @override
@@ -202,6 +204,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void initVideoData() async {
+    // 如果是本地文件播放
+    if (widget.localFilePath != null) {
+      videoTitle = widget.title;
+      _isLoading = false;
+      _isInitialized = true;
+      setState(() {});
+      return;
+    }
+
     if (widget.source == null &&
         widget.id == null &&
         widget.title.isEmpty &&
@@ -1148,6 +1159,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 _isWebFullscreen = isWebFullscreen;
               });
             },
+            localFilePath: widget.localFilePath,
           ),
         if (_isCasting && _dlnaDevice != null)
           DLNAPlayer(
