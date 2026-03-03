@@ -766,8 +766,9 @@ class _PlayerScreenState extends State<PlayerScreen>
             startAt: startAt);
       } else {
         // 本地播放：根据设备类型调用对应播放器的 updateDataSource
+        // 传递原始 URL 用于下载
         await _videoPlayerController?.updateDataSource(finalUrl,
-            startAt: startAt);
+            startAt: startAt, originalUrl: newUrl);
       }
     } catch (e) {
       // 静默处理错误
@@ -1160,6 +1161,8 @@ class _PlayerScreenState extends State<PlayerScreen>
               });
             },
             localFilePath: widget.localFilePath,
+            source: currentSource,
+            videoId: currentID,
           ),
         if (_isCasting && _dlnaDevice != null)
           DLNAPlayer(

@@ -91,12 +91,6 @@ class DownloadManagerService extends ChangeNotifier {
     return dio;
   }
 
-  String _generateTaskId(String url) {
-    final hash = url.hashCode.abs().toRadixString(36);
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
-    return '$hash$timestamp';
-  }
-
   Future<Directory> _getDownloadDirectory() async {
     Directory? dir;
     try {
@@ -151,13 +145,23 @@ class DownloadManagerService extends ChangeNotifier {
   }) async {
     await init();
 
-    final existingTask = _storageService.findTaskByUrl(url);
+    // 生成唯一的任务ID（使用 source + sourceId + episodeInfo）
+    final taskId = _generateTaskId(source, sourceId, episodeInfo);
+
+    // 检查是否已存在相同 taskId 的任务
+    final existingTask = _storageService.getTask(taskId);
     if (existingTask != null && (existingTask.isDownloading || existingTask.isCompleted)) {
+      debugPrint('任务已存在: $taskId, 状态: ${existingTask.status}');
       return existingTask;
     }
 
+    // 如果存在失败或暂停的任务，删除后重新创建
+    if (existingTask != null && (existingTask.isFailed || existingTask.isPaused)) {
+      debugPrint('删除旧任务并重新创建: $taskId');
+      await _storageService.deleteTask(taskId);
+    }
+
     try {
-      final taskId = _generateTaskId(url);
       final dir = await _getDownloadDirectory();
       final tempDir = await _getTempDirectory();
 
@@ -203,6 +207,14 @@ class DownloadManagerService extends ChangeNotifier {
       debugPrint('创建下载任务失败: $e\n$st');
       return null;
     }
+  }
+
+  String _generateTaskId(String? source, String? sourceId, [String? episodeInfo]) {
+    // 使用 source + sourceId + episodeInfo 生成唯一标识
+    // 这样同一部剧的不同集数会有不同的 taskId
+    final key = '${source ?? ''}_${sourceId ?? ''}_${episodeInfo ?? ''}';
+    final hash = key.hashCode.abs().toRadixString(36);
+    return hash;
   }
 
   void _processQueue() {
@@ -372,8 +384,11 @@ class DownloadManagerService extends ChangeNotifier {
     // 合并分片
     await _mergeChunks(task, chunks, totalBytes);
 
+    // 移动到最终目录
+    final finalFilePath = await _moveTempToFinal(task);
+
     // 标记完成
-    await _storageService.markTaskCompleted(task.taskId);
+    await _storageService.markTaskCompleted(task.taskId, filePath: finalFilePath);
     _emitProgress(task.taskId, DownloadProgressInfo(
       taskId: task.taskId,
       status: DownloadManagerStatus.completed,
@@ -497,7 +512,10 @@ class DownloadManagerService extends ChangeNotifier {
         },
       );
 
-      await _storageService.markTaskCompleted(task.taskId);
+      // 下载完成后，将临时文件移动到最终目录
+      final finalFilePath = await _moveTempToFinal(task);
+      
+      await _storageService.markTaskCompleted(task.taskId, filePath: finalFilePath);
       _emitProgress(task.taskId, DownloadProgressInfo(
         taskId: task.taskId,
         status: DownloadManagerStatus.completed,
@@ -607,7 +625,9 @@ class DownloadManagerService extends ChangeNotifier {
       if (!cancelToken.isCancelled) {
         final currentTask = _storageService.getTask(task.taskId);
         if (currentTask != null && !currentTask.isPaused) {
-          await _storageService.markTaskCompleted(task.taskId);
+          // 移动到最终目录
+          final finalFilePath = await _moveTempToFinal(task);
+          await _storageService.markTaskCompleted(task.taskId, filePath: finalFilePath);
           _emitProgress(task.taskId, DownloadProgressInfo(
             taskId: task.taskId,
             status: DownloadManagerStatus.completed,
@@ -679,6 +699,37 @@ class DownloadManagerService extends ChangeNotifier {
         }
       }
     }
+  }
+
+  Future<String> _moveTempToFinal(DownloadTaskRecord task) async {
+    final tempFile = File(task.tempFilePath);
+    if (!tempFile.existsSync()) {
+      throw Exception('临时文件不存在: ${task.tempFilePath}');
+    }
+
+    final dir = await _getDownloadDirectory();
+    var targetPath = '${dir.path}/${task.fileName}';
+    var counter = 1;
+    final ext = path.extension(task.fileName);
+    final baseName = path.basenameWithoutExtension(task.fileName);
+
+    while (File(targetPath).existsSync()) {
+      targetPath = '${dir.path}/${baseName}_$counter$ext';
+      counter++;
+    }
+
+    // 移动文件到最终目录，处理跨设备操作
+    try {
+      await tempFile.rename(targetPath);
+      debugPrint('文件已重命名到: $targetPath');
+    } catch (e) {
+      debugPrint('重命名失败，使用复制: $e');
+      await tempFile.copy(targetPath);
+      await tempFile.delete();
+      debugPrint('文件已复制到: $targetPath');
+    }
+
+    return targetPath;
   }
 
   Future<String?> saveToGallery(String taskId) async {

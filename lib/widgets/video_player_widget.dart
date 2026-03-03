@@ -30,6 +30,8 @@ class VideoPlayerWidget extends StatefulWidget {
   final int? totalEpisodes;
   final String? sourceName;
   final String? localFilePath;
+  final String? source;
+  final String? videoId;
 
   // ignore: avoid_positional_boolean_parameters
   final void Function(bool isWebFullscreen)? onWebFullscreenChanged;
@@ -61,6 +63,8 @@ class VideoPlayerWidget extends StatefulWidget {
     this.live = false,
     this.onPipModeChanged,
     this.localFilePath,
+    this.source,
+    this.videoId,
   });
 
   @override
@@ -76,11 +80,13 @@ class VideoPlayerWidgetController {
     String url, {
     Duration? startAt,
     Map<String, String>? headers,
+    String? originalUrl,
   }) async {
     await _state._updateDataSource(
       url,
       startAt: startAt,
       headers: headers,
+      originalUrl: originalUrl,
     );
   }
 
@@ -181,6 +187,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   bool _hasCompleted = false;
   bool _isLoadingVideo = false;
   String? _currentUrl;
+  String? _originalUrl; // 原始 URL（不经过代理），用于下载
   Map<String, String>? _currentHeaders;
   bool _isLocalFile = false;
   final List<VoidCallback> _progressListeners = <VoidCallback>[];
@@ -217,9 +224,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     // 优先使用本地文件路径
     if (widget.localFilePath != null) {
       _currentUrl = widget.localFilePath;
+      _originalUrl = widget.localFilePath;
       _isLocalFile = true;
     } else {
       _currentUrl = widget.url;
+      _originalUrl = widget.url; // 初始时保存原始 URL
       _currentHeaders = widget.headers;
     }
     _initializePlayer();
@@ -482,6 +491,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     String url, {
     Duration? startAt,
     Map<String, String>? headers,
+    String? originalUrl,
   }) async {
     if (_playerDisposed || !mounted) {
       return;
@@ -494,6 +504,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     _currentUrl = url;
+    _originalUrl = originalUrl ?? url; // 保存原始 URL 用于下载
     if (headers != null) {
       _currentHeaders = headers;
     }
@@ -685,11 +696,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<void> _startDownload({String? fileName}) async {
-    if (_currentUrl == null) return;
+    // 使用原始 URL 进行下载（不经过代理）
+    final downloadUrl = _originalUrl ?? _currentUrl;
+    if (downloadUrl == null) return;
 
     await _downloadManager.init();
 
-    final existingTask = _downloadManager.getTaskByUrl(_currentUrl!);
+    final existingTask = _downloadManager.getTaskByUrl(downloadUrl);
     if (existingTask != null && (existingTask.isDownloading || existingTask.isCompleted)) {
       _updateDownloadInfo(VideoDownloadInfo(
         taskId: existingTask.taskId,
@@ -710,13 +723,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     final task = await _downloadManager.createTask(
-      url: _currentUrl!,
+      url: downloadUrl,
       fileName: finalFileName,
       headers: _currentHeaders,
       videoTitle: widget.videoTitle,
       episodeInfo: widget.currentEpisodeIndex != null
-          ? 'EP${widget.currentEpisodeIndex}'
+          ? 'EP${widget.currentEpisodeIndex! + 1}'
           : null,
+      source: widget.source,
+      sourceId: widget.videoId,
     );
 
     if (task != null) {
